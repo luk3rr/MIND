@@ -731,3 +731,90 @@ sequenceDiagram
 ### Assumptions & open questions
 - A37: Os ativos de terceiros serão baixados de `npm pack` ou GitHub Releases; se algum não estiver acessível sem credenciais, peço o arquivo ao autor. (confirmed: no)
 - A38: Nenhuma ação destrutiva roda no diretório de dados do usuário durante os testes: todos os testes usam `tmp_path` (`MIND_DATA_DIR` apontado a ele). (confirmed: no)
+
+### UNIT-2 — Provedor LLM, configurações e custo
+
+Decisões confirmadas: [src: Q34–Q35] a chave é gravada pela tela no `.env` local (permissão 600) e nunca devolvida; modelos padrão sugeridos: gerar com `anthropic/claude-haiku-5.5` e verificar com `anthropic/claude-sonnet-5.5` (slugs validados contra o catálogo do OpenRouter quando houver rede).
+
+**Estrutura** (`src/mind/llm/` e módulos de configuração)
+
+```mermaid
+flowchart LR
+    subgraph llm
+        T[types: Message, Usage, ProviderError]
+        P[provider: Provider Protocol]
+        OR[openrouter: OpenRouterProvider]
+        FK[fake: FakeProvider]
+        G[guarded: GuardedProvider]
+    end
+    S[secrets: SecretStore]
+    ST[settings_service: ProviderSettings]
+    C[consent: ConsentService]
+    L[costs: CostLedger + PriceCatalog]
+    R[redaction: filtro de logs]
+    G --> P
+    G --> C
+    G --> L
+    OR --> S
+    OR -.implementa.-> P
+    FK -.implementa.-> P
+    L --> ST
+    R --> S
+```
+
+**Entidades novas em `app.db`** (migração `0002`): `setting(key, value)`; `consent(provider, accepted_at)`; `cost_ledger(id, at, provider, model, purpose, prompt_tokens, completion_tokens, cost_usd)`; `model_price(model, prompt_usd_per_token, completion_usd_per_token, fetched_at)`. A chave de API **não** tem tabela.
+
+**Regras e comportamentos**
+- **Segredo:** `SecretStore` lê `OPENROUTER_API_KEY` do ambiente e, se ausente, de `<data_dir>/.env`. `save_api_key` reescreve só a linha da chave nesse arquivo, preserva as demais, grava de forma atômica e define permissão 600. Nenhum método devolve a chave à UI ou à API; só `is_configured()`.
+- **Provider:** `complete(messages, schema, *, model, max_retries=2) -> (parsed, usage)`. O `OpenRouterProvider` chama `POST https://openrouter.ai/api/v1/chat/completions` com `response_format` de JSON Schema (não estrito) e `usage: {include: true}`; se o modelo não aceitar o modo estruturado (HTTP 400 mencionando `response_format`), refaz a chamada pedindo JSON no prompt com o esquema embutido. A saída é validada por Pydantic; em falha, repete até `max_retries` anexando o erro de validação; esgotadas as tentativas, `ProviderError`. Falhas de rede, 429 e 5xx têm uma nova tentativa com espera curta (injetável nos testes); 401/403 vira `ProviderError` com texto "chave inválida ou sem permissão". Sem chave: `ProviderKeyMissing`.
+- **Consentimento (FR-20):** `ConsentService.is_given(provider)`/`give(provider)`. O `GuardedProvider` (decorador de qualquer `Provider`) bloqueia chamadas sem aceite com `ConsentRequired` **antes** de qualquer acesso à rede. O `FakeProvider` não exige consentimento por não enviar dados, mas passa pelo mesmo `GuardedProvider` nos testes de fluxo, com `requires_consent = False`.
+- **Custo (FR-21):** após cada chamada o `GuardedProvider` grava `usage` no `CostLedger` (custo = `usage.cost_usd` informado pelo provedor, ou tokens × preço do `model_price` se ausente). Antes de cada chamada, `GuardedProvider` recusa com `MonthlyLimitReached` se o gasto do mês corrente já atingiu o limite (`monthly_limit_usd`, padrão 5,00). `PriceCatalog` busca `GET /api/v1/models` (público), grava os preços e só atualiza se o registro tiver mais de 24 h; sem rede usa o último valor; sem nenhum valor a estimativa devolve `None` (a interface mostra "indisponível" e não bloqueia).
+- **Estimativa:** `estimate(model, prompt_text_chars, max_completion_tokens)` usa ≈ 4 caracteres por token e o preço do catálogo.
+- **Redação de logs:** uma fábrica de `LogRecord` substitui a chave atual e o padrão `sk-or-[A-Za-z0-9_-]+` por `***` na mensagem e nos argumentos de qualquer log, instalada na criação do app.
+- **Telas:** `/setup` (assistente: passo 1 chave e modelos, passo 2 aviso de privacidade e aceite), `/settings` (provedor, modelos, limite mensal, custo do mês, consentimento) com link para as configurações do workspace; a página Hoje mostra um aviso "Configure o provedor" enquanto faltar chave ou aceite.
+- **API:** `GET/PATCH /api/v1/settings` (provedor, modelos, limite e `key_configured: bool`, sem chave), `POST /api/v1/settings/consent`, `GET /api/v1/costs?month=YYYY-MM` (total, limite e lançamentos) e `POST /api/v1/costs/estimate`.
+
+**Fluxo: chamada protegida**
+
+```mermaid
+sequenceDiagram
+    participant U as Código chamador
+    participant G as GuardedProvider
+    participant C as ConsentService
+    participant L as CostLedger
+    participant P as OpenRouterProvider
+    U->>G: complete(messages, schema, model)
+    G->>C: aceite dado?
+    alt sem aceite
+        G-->>U: ConsentRequired
+    end
+    G->>L: gasto do mês < limite?
+    alt limite atingido
+        G-->>U: MonthlyLimitReached
+    end
+    G->>P: complete(...)
+    P-->>G: (parsed, usage)
+    G->>L: grava usage
+    G-->>U: (parsed, usage)
+```
+
+**NFR e mecanismos**
+
+| NFR | Mecanismo | Verificação |
+|---|---|---|
+| NFR-6 | `GuardedProvider` sem aceite não toca a rede; nenhum cliente HTTP além do `OpenRouterProvider` e do `PriceCatalog` | `test_consent_guard.py` com transporte que falha se for chamado |
+| NFR-7 | `SecretStore` sem retorno de chave; `.env` com permissão 600; filtro de redação; respostas da API sem segredo | `test_settings.py`, `test_log_redaction.py`, contrato da API |
+| FR-21 | Limite checado antes de cada chamada; custo registrado depois | `test_cost_ledger.py` |
+| NFR-10 | Tipos estritos (`Protocol`, Pydantic); testes com `httpx.MockTransport` | CI |
+
+**Decisões de implementação**
+- Cliente HTTP: `httpx.AsyncClient` (passa de dependência de desenvolvimento para dependência de execução). Os testes injetam `httpx.MockTransport`.
+- O `Provider` é um `Protocol` assíncrono; `GuardedProvider` tem a mesma interface (composição, sem herança).
+- A migração `0002` do `app.db` é a primeira que parte de uma revisão anterior, o que valida de fato o teste de migração a partir de `0001`.
+- Slugs de modelo padrão são sugestões não verificadas nesta sessão (A39); a tela valida contra o catálogo quando há rede e mostra aviso se o slug não existir.
+
+**Critérios de aceitação → comportamento:** US-13 AC1 (aviso e aceite) ← `/setup` passo 2 + `ConsentRequired`; US-13 AC2 (fluxo sem chave real) ← `FakeProvider`; US-14 AC1 (limite) ← `MonthlyLimitReached` e tela `/settings` com gasto do mês.
+
+### Assumptions & open questions
+- A39: Os slugs `anthropic/claude-haiku-5.5` e `anthropic/claude-sonnet-5.5` são suposições sobre o catálogo do OpenRouter; podem diferir (ex.: `claude-5.5-haiku`). A validação contra o catálogo e a opção de editar na tela cobrem o erro. (confirmed: no)
+- A40: O campo `usage.cost` retornado com `usage: {include: true}` é a fonte primária do custo; se o formato divergir, o cálculo por tokens × preço serve de fallback. (confirmed: no)

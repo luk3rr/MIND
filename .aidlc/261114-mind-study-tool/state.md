@@ -4,7 +4,7 @@
 - Status: IN_PROGRESS
 - Profile: mvp   Depth: Standard   Tests: Standard
 - Project type: greenfield   Repos: ~/Projects/MIND
-- Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=gated iteration=unit-major
+- Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=gated (Unit checkpoints automatic from UNIT-2) iteration=unit-major
 - Verification command: `uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov --cov-fail-under=80` (approved 2026-11-14)
 - Language: chat=pt-BR files=pt-BR
 - Current: phase=construction stage=3.1 Functional Design (Inception concluída, aguardando início da Construction)   Updated: 2026-11-14T00:00:00
