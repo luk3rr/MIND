@@ -27,6 +27,7 @@ from mind.study.scheduler import (
     day_end,
     study_day,
 )
+from mind.workspaces.registry import WorkspaceRegistry
 
 LEARNING_STATES = (1, 3)  # learning and relearning
 REVIEW_STATE = 2
@@ -205,6 +206,13 @@ class StudyService:
                 return None
             return StudyCard(self._review.get(fresh.id), None)
 
+    def card(self, item_id: int) -> StudyCard:
+        """A specific card with its current state (used after an undo)."""
+        with self._sessions() as session:
+            row = session.get(CardState, item_id)
+            schedule = self._schedule(row) if row else None
+        return StudyCard(self._review.get(item_id), schedule)
+
     def previews(self, card: StudyCard, now: datetime | None = None) -> dict[Rating, str]:
         moment = now or self._clock()
         spans = self._scheduler_for().preview(card.schedule, moment)
@@ -297,3 +305,13 @@ def _dump(state: CardSchedule | None) -> str | None:
     data = asdict(state)
     data["due"] = state.due.isoformat()
     return json.dumps(data)
+
+
+class StudyFactory:
+    """Builds the `StudyService` of a workspace on demand."""
+
+    def __init__(self, registry: WorkspaceRegistry) -> None:
+        self._registry = registry
+
+    def for_workspace(self, workspace_id: int) -> StudyService:
+        return StudyService(self._registry.open(workspace_id).sessions)

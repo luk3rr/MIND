@@ -8,6 +8,7 @@
   "use strict";
   var KEY = "mind-theme";
   var root = document.documentElement;
+  root.classList.add("js");
 
   try {
     var saved = localStorage.getItem(KEY);

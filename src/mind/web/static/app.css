@@ -83,6 +83,10 @@
   color-scheme: dark;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 *,
 *::before,
 *::after {
@@ -321,6 +325,67 @@ mark {
   .review-columns {
     grid-template-columns: 1fr;
   }
+}
+
+.study {
+  max-width: 44rem;
+  text-align: center;
+}
+.study .card-front {
+  font-size: 1.5rem;
+  margin: 1.5rem 0;
+}
+.study .card-back {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+html:not(.js) .study-back[hidden] {
+  display: block;
+}
+.rating-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+.rating-interval {
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+.rating-again {
+  background: var(--danger);
+  color: var(--bg);
+}
+.rating-hard {
+  background: var(--warn);
+  color: var(--bg);
+}
+.rating-good {
+  background: var(--ok);
+  color: var(--bg);
+}
+.rating-easy {
+  background: var(--info);
+  color: var(--bg);
+}
+.goal-bar {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+}
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .muted {

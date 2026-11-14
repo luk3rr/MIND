@@ -47,7 +47,7 @@ def test_sidebar_lists_every_section_and_workspace(client: TestClient) -> None:
 
 def test_other_sections_show_coming_soon(client: TestClient) -> None:
     workspace_id = create_workspace(client)
-    page = client.get(f"/w/{workspace_id}/study")
+    page = client.get(f"/w/{workspace_id}/chat")
     assert page.status_code == 200
     assert "Em breve" in page.text
 

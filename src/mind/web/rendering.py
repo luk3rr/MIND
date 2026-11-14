@@ -17,6 +17,7 @@ from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
 from mind.review.service import ReviewFactory
 from mind.services import Services
+from mind.study.service import StudyFactory
 from mind.web.math import cloze_plain, render_math
 from mind.web.strings import APP_NAME, SECTIONS, T
 from mind.workspaces.registry import WorkspaceInfo, WorkspaceRegistry
@@ -53,11 +54,17 @@ def get_review(request: Request) -> ReviewFactory:
     return factory
 
 
+def get_study(request: Request) -> StudyFactory:
+    factory: StudyFactory = request.app.state.study
+    return factory
+
+
 Registry = Annotated[WorkspaceRegistry, Depends(get_registry)]
 ServicesDep = Annotated[Services, Depends(get_services)]
 MaterialsDep = Annotated[MaterialsFactory, Depends(get_materials)]
 GenerationDep = Annotated[GenerationFactory, Depends(get_generation)]
 ReviewDep = Annotated[ReviewFactory, Depends(get_review)]
+StudyDep = Annotated[StudyFactory, Depends(get_study)]
 
 
 def render(

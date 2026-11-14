@@ -26,13 +26,15 @@ from mind.llm.provider import Provider
 from mind.redaction import install_log_redaction, uninstall_log_redaction
 from mind.review.service import ReviewFactory
 from mind.services import Services
+from mind.study.service import StudyFactory
 from mind.web.generate_pages import router as generate_router
 from mind.web.library_pages import router as library_router
 from mind.web.provider_pages import router as provider_router
-from mind.web.rendering import BASE_DIR, Registry, render
+from mind.web.rendering import BASE_DIR, MaterialsDep, Registry, ReviewDep, StudyDep, render
 from mind.web.review_pages import router as review_router
 from mind.web.security import install_security
 from mind.web.strings import SECTIONS
+from mind.web.study_pages import router as study_router
 from mind.workspaces.registry import WorkspaceInfo, WorkspaceRegistry
 
 
@@ -62,6 +64,7 @@ def create_app(
             target.state.materials = MaterialsFactory(registry, queue, resolved)
             target.state.generation = GenerationFactory(registry, queue, services)
             target.state.review = ReviewFactory(registry)
+            target.state.study = StudyFactory(registry)
         try:
             yield
         finally:
@@ -85,6 +88,7 @@ def create_app(
     app.include_router(library_router)
     app.include_router(generate_router)
     app.include_router(review_router)
+    app.include_router(study_router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> HTMLResponse:
@@ -121,9 +125,29 @@ def create_app(
         return registry.get(workspace_id)
 
     @app.get("/w/{workspace_id}/today", response_class=HTMLResponse)
-    async def today(request: Request, workspace_id: int, registry: Registry) -> HTMLResponse:
+    async def today(
+        request: Request,
+        workspace_id: int,
+        registry: Registry,
+        study: StudyDep,
+        materials: MaterialsDep,
+        review: ReviewDep,
+    ) -> HTMLResponse:
         workspace = current(registry, workspace_id)
-        return render(request, "today.html", workspace=workspace, active="today")
+        study_service = study.for_workspace(workspace_id)
+        counts = study_service.counts()
+        goal = study_service.settings().daily_goal
+        return render(
+            request,
+            "today.html",
+            workspace=workspace,
+            active="today",
+            counts=counts,
+            goal=goal,
+            goal_met=counts.reviewed_today >= goal,
+            has_materials=bool(materials.for_workspace(workspace_id).list_materials()),
+            approved_cards=review.for_workspace(workspace_id).count(status="approved", kind="card"),
+        )
 
     @app.post("/w/{workspace_id}/rename", response_model=None)
     async def rename_workspace(

@@ -141,9 +141,9 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-5.1 Modelos `card_state` e `review_log` e migração. · FR-12 · teste: `tests/db/test_study_migration.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0005_*.py, tests/study/test_study_migration.py
 - [x] T-5.2 `Scheduler` com py-fsrs atrás de interface. · FR-12 · teste: `tests/study/test_scheduler.py` ("Bom" avança o vencimento; "Errei" o reduz) · files: src/mind/study/{scheduler,formatting}.py, tests/study/test_scheduler.py
 - [x] T-5.3 `StudyService`: fila do dia, avaliação, desfazer. · FR-12, FR-13 · teste: `tests/study/test_study_service.py` · files: src/mind/study/{service,rendering}.py, src/mind/study/scheduler.py (day_end), src/mind/db/workspace_models.py (Meta), tests/study/{test_study_service,test_card_rendering,test_scheduler}.py
-- [ ] T-5.4 Tela Estudar: revelar, avaliar com 1–4, intervalo previsto por botão, atalhos e botões. ≈2 h · FR-13, US-7 · teste: `tests/web/test_study_page.py` (atalho e botão produzem o mesmo efeito) + verificação manual do teclado
-- [ ] T-5.5 Tela Hoje (fila, meta, estados vazios) e passo 3 do assistente. · US-7 · teste: `tests/web/test_today_page.py`
-- [ ] T-5.6 Estudo sem rede: nenhuma rota de estudo depende do provedor. · NFR-5 · teste: `tests/study/test_offline.py` (provedor que falha)
+- [x] T-5.4 Tela Estudar: revelar, avaliar com 1–4, intervalo previsto por botão, atalhos e botões. ≈2 h · FR-13, US-7 · teste: `tests/web/test_study_page.py` (atalho e botão produzem o mesmo efeito) + verificação manual do teclado · files: src/mind/web/{study_pages.py,app.py,rendering.py,strings.py,static/{study.js,theme.js,app.css}}, src/mind/web/templates/{study,study_done_page,_study_card,_study_done}.html, src/mind/study/service.py (StudyFactory, card), tests/web/test_study_pages.py
+- [x] T-5.5 Tela Hoje (fila, meta, estados vazios) e passo 3 do assistente. · US-7 · teste: `tests/web/test_today_page.py` · files: src/mind/web/app.py (today), src/mind/web/templates/today.html, tests/web/test_study_pages.py
+- [x] T-5.6 Estudo sem rede: nenhuma rota de estudo depende do provedor. · NFR-5 · teste: `tests/study/test_offline.py` (provedor que falha) · files: tests/study/test_offline.py
 - [ ] T-5.7 API `study/queue` e `study/reviews`. · FR-24 · teste: `tests/api/test_study_contract.py`
 - [ ] T-5.8 Latência p95 < 300 ms nas telas de estudo e navegação. · NFR-3 · teste: `tests/perf/test_ui_latency.py` (marcador `perf`)
 
