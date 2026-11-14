@@ -128,6 +128,7 @@ class Item(WorkspaceBase):
     quote: Mapped[str] = mapped_column(String, default="")
     edited: Mapped[bool] = mapped_column(Boolean, default=False)
     origin: Mapped[str] = mapped_column(String(16), default="generated")
+    origin_item_id: Mapped[int | None] = mapped_column(Integer, default=None, index=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
     approved_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
 
