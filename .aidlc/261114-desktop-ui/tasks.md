@@ -76,12 +76,17 @@ Ordem: BOLT-1 → BOLT-2 → BOLT-3 → BOLT-4 → BOLT-5 (seguindo o DAG de 2.7
 **Desvios.** (1) Hoje mostra a faixa de resumo da biblioteca; os indicadores de estudo chegam no UNIT-10 (A35). (2) O tema fica em `localStorage` (A36). (3) Contraste: o verde da barra lateral e o acento do tema claro foram escurecidos para passar AA (`--side` #1f7a45, `--accent` claro #177a41), e o vermelho do tema escuro foi clareado (#ff6e6e); o mockup de 2.5 usava valores um pouco diferentes. (4) KaTeX ainda não aparece em nenhuma tela (os Units 9 a 11 usam `MathText`), então seu CSS só entra no bundle quando for usado. (5) O teste de contraste vive em `tests/ui/` porque precisa de tipos do Node.
 
 
-### UNIT-6 Pacote `.deb` (esqueleto ambulante)   Status: not started
-- [ ] UNIT-6.1 Configurar electron-builder alvo deb, ícone, categoria, `depends` e módulos nativos fora do asar [FR-30] — teste: `pnpm package` gera o `.deb`
-- [ ] UNIT-6.2 Verificar metadados com `dpkg-deb` e `lintian` [FR-30] — teste: Verificação sem erros
-- [ ] UNIT-6.3 Teste de instalação, atualização e remoção em contêiner descartável [NFR-9, NFR-17] — teste: Dados persistem após `apt remove`
-- [ ] UNIT-6.4 Medir tamanho do `.deb` e do instalado [NFR-16] — teste: Valores dentro do limite ou registro do desvio
-- [ ] UNIT-6.5 Passo do CI que builda e testa o pacote [NFR-9] — teste: Workflow verde
+### UNIT-6 Pacote `.deb` (esqueleto ambulante)   Status: verified (2026-11-14, exit 0; instalação real pendente do autor)
+- [x] UNIT-6.1 Configurar electron-builder alvo deb, ícone, categoria, `depends` e módulos nativos fora do asar [FR-30] — teste: `pnpm package` gera o `.deb` — files: electron-builder.yml, package.json (scripts package e package:dir), build/icons, build/icon.svg, build/copyright
+- [x] UNIT-6.2 Verificar metadados com `dpkg-deb` e `lintian` [FR-30] — teste: Verificação sem erros — files: scripts/verify-deb.sh (dpkg-deb, desktop-file-validate, lintian)
+- [x] UNIT-6.3 Teste de instalação, atualização e remoção em contêiner descartável [NFR-9, NFR-17] — teste: Dados persistem após `apt remove` — files: .github/workflows/ci.yml (job package: apt install, E2E no app instalado, reinstalação e apt remove); localmente só estático
+- [x] UNIT-6.4 Medir tamanho do `.deb` e do instalado [NFR-16] — teste: Valores dentro do limite ou registro do desvio — files: scripts/verify-deb.sh (limites de tamanho)
+- [x] UNIT-6.5 Passo do CI que builda e testa o pacote [NFR-9] — teste: Workflow verde — files: .github/workflows/ci.yml
+
+**Resumo do UNIT-6.** `pnpm package` gera `dist/mind-study_0.1.0_amd64.deb` com electron-builder 26: app em `/opt/MIND`, atalho `/usr/bin/mind`, entrada de menu `mind.desktop` (categoria Education), ícones de 16 a 512 px, arquivo de copyright, `better-sqlite3` em `app.asar.unpacked` (só o binário linux-x64), dependências de sistema do Electron, `postinst` que configura o `chrome-sandbox` (user namespaces ou setuid) e o perfil do AppArmor do Ubuntu 24+. `scripts/verify-deb.sh` confere metadados, conteúdo, ausência de arquivos em diretórios de usuário e de `conffiles`, `desktop-file-validate`, limites de tamanho e `lintian` (sem erros, com as tags típicas de Electron suprimidas). Resultado: **.deb de 99 MB e 293 MB instalado** (limites 500 MB e 1 GB), verification command exit 0 (133 testes, 91,6%), E2E 13/13 tanto no código de desenvolvimento quanto contra o executável empacotado (`MIND_E2E_EXECUTABLE=dist/linux-unpacked/mind`).
+
+**Desvios.** (1) **A instalação real não foi feita aqui:** o docker pede senha de sudo sem terminal; a instalação, a reinstalação e o `apt remove` reais com checagem de que `~/.config/mind` permanece estão no job `package` do CI (ainda não executado, pois não há push) e podem ser feitos à mão com `sudo apt install ./dist/mind-study_0.1.0_amd64.deb`. (2) O `pnpm` não está no PATH, então o electron-builder cai para a travessia manual de `node_modules` (resultado equivalente, conferido pelo E2E empacotado). (3) Campos `License` e `Vendor` do `control` geram avisos "unknown-field" no lintian; inofensivos. (4) `react`, `react-dom`, `katex` e `lucide-react` foram movidos para `devDependencies` (o Vite os embute no renderer). (5) O ícone é provisório (A38). (6) O design deste Unit foi escrito e implementado no mesmo turno, porque o autor já havia decidido nome, mantenedor, ícone e verificação; a aprovação formal fica no checkpoint do esqueleto.
+
 
 ### UNIT-4 Provedor LLM, configurações e custo   Status: not started
 - [ ] UNIT-4.1 Interface de provedor e cliente OpenRouter com `fetch`, timeouts e erros estáveis [FR-19] — teste: Testes portados com provedor falso

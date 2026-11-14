@@ -1,0 +1,52 @@
+# Filename: electron-builder.yml
+# Created on: November 14, 2026
+# Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+
+appId: io.github.mind-study
+productName: MIND
+executableName: mind
+copyright: AGPL-3.0-or-later
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  # Keep only what the app needs at runtime: no native sources and no other platforms' binaries.
+  - "!node_modules/better-sqlite3/{src,deps}/**"
+  - "!node_modules/better-sqlite3/prebuilds/{win32-*,darwin-*,linuxmusl-*,linux-arm64}.node"
+  - "!node_modules/better-sqlite3/lib/{win32-*,darwin-*,linuxmusl-*,linux-arm64}.js"
+
+asar: true
+# The native SQLite binding cannot be loaded from inside the asar archive.
+asarUnpack:
+  - node_modules/better-sqlite3/**
+
+linux:
+  target:
+    - target: deb
+      arch:
+        - x64
+  category: Education
+  icon: build/icons
+  syncDesktopName: true
+  maintainer: Lucas Araújo <araujolucas@dcc.ufmg.br>
+  vendor: MIND
+  synopsis: Study tool with flashcards and questions that cite your own materials
+  description: Generates flashcards and questions that quote your own study materials.
+  desktop:
+    entry:
+      Name: MIND
+      Comment: Study with flashcards and questions that cite your materials
+      Keywords: study;flashcards;spaced repetition;questions;
+      StartupWMClass: mind
+
+deb:
+  packageName: mind-study
+  compression: xz
+  priority: optional
+  packageCategory: education
+  fpm:
+    - build/copyright=/usr/share/doc/mind-study/copyright

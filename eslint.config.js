@@ -18,6 +18,7 @@ export default tseslint.config(
       "dist/**",
       "coverage/**",
       "out/**",
+      "dist/**",
       "test-results/**",
       "playwright-report/**",
       "fixtures/**",

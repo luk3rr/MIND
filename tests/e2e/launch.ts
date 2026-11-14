@@ -24,6 +24,12 @@ export interface Launched {
  * images forbid; `MIND_E2E_NO_SANDBOX=1` passes `--no-sandbox` there. */
 const EXTRA_ARGS = process.env["MIND_E2E_NO_SANDBOX"] === "1" ? ["--no-sandbox"] : [];
 
+/** Set to the path of a packaged executable to run the suite against the built app. */
+export const EXECUTABLE = process.env["MIND_E2E_EXECUTABLE"];
+
+/** The arguments that point Electron at the app: the project folder, or nothing when packaged. */
+export const APP_ARGS = EXECUTABLE ? [] : [ROOT];
+
 export function newProfile(): string {
   return mkdtempSync(join(tmpdir(), "mind-e2e-"));
 }
@@ -35,7 +41,8 @@ export function removeProfile(path: string): void {
 export async function launch(userData: string = newProfile()): Promise<Launched> {
   const started = Date.now();
   const app = await electron.launch({
-    args: [...EXTRA_ARGS, ROOT],
+    ...(EXECUTABLE ? { executablePath: EXECUTABLE } : {}),
+    args: [...EXTRA_ARGS, ...APP_ARGS],
     env: { ...process.env, MIND_USER_DATA_DIR: userData },
   });
   const page = await app.firstWindow();

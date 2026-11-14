@@ -8,7 +8,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { ROOT, launch, newProfile, removeProfile } from "./launch.js";
+import { APP_ARGS, launch, newProfile, removeProfile } from "./launch.js";
 import type { Launched } from "./launch.js";
 
 let current: Launched | undefined;
@@ -114,7 +114,7 @@ test("keeps a single instance and focuses the existing window (FR-26)", async ()
   const executable = await current.app.evaluate(({ app }) => app.getPath("exe"));
   // Playwright starts Electron with --no-sandbox; the same flag keeps the second process alive
   // on machines where the setuid sandbox helper is not configured.
-  const second = spawn(executable, ["--no-sandbox", ROOT], {
+  const second = spawn(executable, ["--no-sandbox", ...APP_ARGS], {
     env: { ...process.env, MIND_USER_DATA_DIR: userData },
     stdio: "ignore",
   });
@@ -179,7 +179,7 @@ test("opens no network port (FR-25, SC-2)", async () => {
     current = undefined;
     return path;
   })();
-  const child = spawn(executable, ["--no-sandbox", ROOT], {
+  const child = spawn(executable, ["--no-sandbox", ...APP_ARGS], {
     env: { ...process.env, MIND_USER_DATA_DIR: userData },
     stdio: "ignore",
   });

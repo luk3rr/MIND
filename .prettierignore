@@ -10,3 +10,4 @@ out
 test-results
 playwright-report
 src/core/db/migrations
+dist

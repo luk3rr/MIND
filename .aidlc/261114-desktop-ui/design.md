@@ -658,3 +658,43 @@ flowchart TB
 
 - A35 (3.1 UNIT-5): Os indicadores de estudo de Hoje só aparecem no UNIT-10; até lá Hoje mostra o resumo da biblioteca. — confirmed: yes
 - A36 (3.1 UNIT-5): O tema é salvo em `localStorage` do renderer, não no banco. — confirmed: yes
+
+### UNIT-6 — Pacote `.deb` (nota de design, inclui 3.4 Infrastructure Design)
+
+**Objetivo.** Gerar e verificar o `.deb` amd64 do MIND com electron-builder: entrada de menu, ícone, dependências de sistema, módulo nativo fora do asar, dados do usuário fora da instalação, sandbox do Chromium configurado, medida de tamanho e teste de instalação, atualização e remoção. [src: FR-30, NFR-9, NFR-16, NFR-17, ADR-8]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Identidade | Pacote `mind-study`, comando `mind`, nome exibido MIND, `appId` `io.github.mind-study`, categoria Education, licença AGPL-3.0-or-later, Maintainer com o nome e o e-mail do autor (escolha explícita dele; o repositório já os traz nos cabeçalhos de arquivo), homepage no GitHub |
+| Ferramenta | `electron-builder` com `electron-builder.yml`; alvo `deb`, arquitetura x64 (amd64), compressão xz |
+| Conteúdo | `out/**` e `package.json`; só dependências de produção entram em `node_modules` (`better-sqlite3`, `drizzle-orm`, `electron-store`, `zod`); `react`, `react-dom`, `katex` e `lucide-react` passam a `devDependencies`, pois o Vite as embute no renderer |
+| Módulo nativo | `asar: true` com `asarUnpack` de `node_modules/better-sqlite3/**` (binário N-API por plataforma, sem rebuild) |
+| Instalação | App em `/opt/MIND/`, atalho `/usr/bin/mind`, `.desktop` em `/usr/share/applications`, ícones PNG de 16 a 512 px em `/usr/share/icons/hicolor` |
+| Sandbox | O script pós-instalação padrão do electron-builder aplica modo 4755 root ao `chrome-sandbox`; o teste confere isso no pacote (a máquina de desenvolvimento não o tem setuid, por isso o `pnpm dev` e o E2E usam `--no-sandbox`) |
+| Dados | Ficam em `~/.config/mind` (o `userData` do Electron), nunca sob `/opt`; o pacote não declara `conffiles` nem toca em `$HOME`, então `apt remove` e `apt purge` não apagam dados (NFR-17) |
+| Ícone | `build/icon.svg` próprio (quadrado verde arredondado com a letra M) convertido em PNGs por `rsvg-convert`; o autor aprova ou troca |
+| Dependências do sistema | As do electron-builder para Electron (GTK 3, NSS, libnotify, xdg-utils, libsecret etc.); a lista gerada é conferida no teste para aceitar os nomes com `t64` do Ubuntu 24.04 e do Debian 13 |
+| Verificação local | `scripts/verify-deb.sh`: `dpkg-deb` (metadados, arquivos, permissões do `chrome-sandbox`, scripts), `lintian` e limites de tamanho (`.deb` ≤ 500 MB, instalado ≤ 1 GB); E2E do Playwright contra o app empacotado (`MIND_E2E_EXECUTABLE`) |
+| Verificação no CI | Job `package`: build do `.deb`, `verify-deb.sh`, `sudo apt-get install ./mind.deb`, `mind` aparece no PATH e abre sob Xvfb, E2E contra `/usr/bin/mind`, atualização por cima, `apt remove` e conferência de que `~/.config/mind` continua |
+
+```mermaid
+flowchart LR
+  A[pnpm build: out/] --> B[electron-builder: asar + asarUnpack]
+  B --> C[dist/mind-study_0.1.0_amd64.deb]
+  B --> U[dist/linux-unpacked]
+  C --> V[scripts/verify-deb.sh: dpkg-deb, lintian, tamanho]
+  U --> E[Playwright contra o executável empacotado]
+  C --> I[CI: apt install, abrir, atualizar, apt remove]
+  I --> D[dados em ~/.config/mind permanecem]
+```
+
+**NFR (nota).** NFR-9: instalação sem passos manuais, verificada no CI (e à mão pelo autor com `sudo apt install ./dist/*.deb`); NFR-16: `.deb` ≤ 500 MB e instalado ≤ 1 GB, medido e registrado; NFR-17: nenhum arquivo do pacote em `$HOME`, dados em `~/.config/mind`.
+
+**Riscos.** (1) A instalação real em contêiner não é possível nesta máquina (docker exige sudo com terminal): a verificação local é estática mais E2E do binário desempacotado, e a instalação, atualização e remoção reais rodam no CI. (2) O pnpm pode exigir `node-linker=hoisted` para o electron-builder coletar `node_modules`; se necessário, adiciono `.npmrc`. (3) O electron-builder baixa binários auxiliares (fpm) na primeira execução.
+
+### Assumptions & open questions
+
+- A37 (3.4 UNIT-6): O alvo mínimo do `.deb` (Ubuntu 22.04+/Debian 12+) é aceito porque o Electron embute Node e Chromium; a compatibilidade exata de bibliotecas é validada no CI. — confirmed: no
+- A38 (3.4 UNIT-6): O ícone gerado é provisório até o autor aprovar ou trocar. — confirmed: no

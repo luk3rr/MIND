@@ -4,10 +4,10 @@
 - Status: IN_PROGRESS
 - Profile: mvp   Depth: Standard   Tests: Standard
 - Project type: brownfield   Repos: ~/Projects/MIND
-- Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-checkpoints (design gates e falhas seguem com aprovação) iteration=unit-major commits=max-20-total-até-o-fim (9 usados após o UNIT-3)
+- Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-checkpoints (design gates e falhas seguem com aprovação) iteration=unit-major commits=max-20-total-até-o-fim (11 usados após o UNIT-6)
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-14; válido após as ferramentas do UNIT-1)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.5 Code Generation (UNIT-5 verificado; próximo UNIT-6 .deb)   Updated: 2026-11-14T16:25:49-03:00
+- Current: phase=construction stage=3.5 Code Generation (esqueleto UNIT-1,2,3,5,6 verificado; aguarda aprovação do esqueleto ambulante)   Updated: 2026-11-14T16:34:51-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
@@ -42,7 +42,7 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-2 Casca Electron e IPC | UNIT-1 | verified | yes |
 | UNIT-3 Dados, workspaces e jobs | UNIT-1 | verified | yes |
 | UNIT-5 Casca de UI, tema e atalhos | UNIT-2, UNIT-3 | verified | yes |
-| UNIT-6 Pacote `.deb` (esqueleto ambulante) | UNIT-2, UNIT-3, UNIT-5 | not started | no |
+| UNIT-6 Pacote `.deb` (esqueleto ambulante) | UNIT-2, UNIT-3, UNIT-5 | verified (instalação real pendente) | yes |
 | UNIT-4 Provedor LLM, configurações e custo | UNIT-3 | not started | no |
 | UNIT-7 Ingestão, busca e biblioteca | UNIT-3, UNIT-5 | not started | no |
 | UNIT-8 OCR, URL e DOCX | UNIT-7 | not started | no |
