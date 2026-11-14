@@ -197,10 +197,10 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Pendências conhecidas: a conferência visual das telas Estatísticas e Erros no navegador e o ajuste de A52 (se "Difícil" deve contar como acerto) dependem do uso.
 
 ### UNIT-8 OCR, URL e DOCX — Status: pending
-- [ ] T-8.1 Extrator OCR (Tesseract) com confiança e prévia. ≈2 h · FR-3 · teste: `tests/ingestion/test_ocr.py` (Tesseract simulado; versão real em `tests/ingestion/test_ocr_real.py`, marcador opcional)
-- [ ] T-8.2 Detecção de Tesseract ausente (`OCR_UNAVAILABLE`) e mensagem clara. · FR-3, US-3 · teste: `tests/ingestion/test_ocr_missing.py`
-- [ ] T-8.3 `UrlExtractor` (httpx + extração do texto principal); só `http`/`https`. · FR-4 · teste: `tests/ingestion/test_url.py` (HTML de amostra; esquema inválido recusado)
-- [ ] T-8.4 `DocxExtractor` (python-docx). · FR-4 · teste: `tests/ingestion/test_docx.py`
+- [x] T-8.1 Extrator OCR (Tesseract) com confiança e prévia. ≈2 h · FR-3 · teste: `tests/ingestion/test_ocr.py` (Tesseract simulado; versão real em `tests/ingestion/test_ocr_real.py`, marcador opcional) · files: src/mind/ingestion/{ocr,extractors}.py, tests/ingestion/test_ocr.py
+- [x] T-8.2 Detecção de Tesseract ausente (`OCR_UNAVAILABLE`) e mensagem clara. · FR-3, US-3 · teste: `tests/ingestion/test_ocr_missing.py` · files: src/mind/errors.py (OcrUnavailable), src/mind/ingestion/extractors.py, tests/ingestion/test_ocr.py
+- [x] T-8.3 `UrlExtractor` (httpx + extração do texto principal); só `http`/`https`. · FR-4 · teste: `tests/ingestion/test_url.py` (HTML de amostra; esquema inválido recusado) · files: src/mind/ingestion/web.py, tests/ingestion/test_docx_and_web.py
+- [x] T-8.4 `DocxExtractor` (python-docx). · FR-4 · teste: `tests/ingestion/test_docx.py` · files: src/mind/ingestion/extractors.py (DocxExtractor), tests/ingestion/test_docx_and_web.py
 - [ ] T-8.5 Interface de importação para os novos formatos e alerta de OCR de baixa confiança. · US-3 · teste: `tests/web/test_import_formats.py`
 - [ ] T-8.6 API aceita URL e novos arquivos. · FR-24 · teste: `tests/api/test_materials_new_formats.py`
 
