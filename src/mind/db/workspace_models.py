@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from mind.clock import utcnow
@@ -89,6 +89,7 @@ class GenerationRun(WorkspaceBase):
     discarded_no_source: Mapped[int] = mapped_column(Integer, default=0)
     discarded_invalid: Mapped[int] = mapped_column(Integer, default=0)
     discarded_duplicate: Mapped[int] = mapped_column(Integer, default=0)
+    discarded_unsupported: Mapped[int] = mapped_column(Integer, default=0)
     approved: Mapped[int] = mapped_column(Integer, default=0)
     approved_unedited: Mapped[int] = mapped_column(Integer, default=0)
     discarded_review: Mapped[int] = mapped_column(Integer, default=0)
@@ -166,3 +167,18 @@ class Meta(WorkspaceBase):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str] = mapped_column(String)
+
+
+class Attempt(WorkspaceBase):
+    """One answer to a question during practice."""
+
+    __tablename__ = "attempt"
+    __table_args__ = (Index("ix_attempt_item_answered", "item_id", "answered_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("item.id", ondelete="CASCADE"))
+    answer: Mapped[str] = mapped_column(String(8))
+    correct: Mapped[bool] = mapped_column(Boolean)
+    seconds: Mapped[float | None] = mapped_column(Float, default=None)
+    answered_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+    day: Mapped[str] = mapped_column(String(10), index=True)
