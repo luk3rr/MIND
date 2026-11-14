@@ -1,0 +1,21 @@
+MIND
+Copyright (C) 2026 Lucas Araújo
+
+MIND is free software under the GNU Affero General Public License, version 3 or later
+(see LICENSE). It links to PyMuPDF, which is offered under AGPL-3.0 or a commercial license
+from Artifex; MIND uses it under AGPL-3.0.
+
+Third-party software bundled in this repository (src/mind/web/static/vendor):
+
+  htmx 2.0.11                  0BSD
+  KaTeX 0.19.1                 MIT
+  Inter (Fontsource) 5.3.0     SIL Open Font License 1.1
+  JetBrains Mono (Fontsource)  SIL Open Font License 1.1
+  swagger-ui-dist 5.35.0       Apache License 2.0
+
+Each component keeps its own license file next to it. The full list with integrity hashes is in
+src/mind/web/static/vendor/README.md.
+
+Python dependencies are installed from PyPI and keep their own licenses (MIT, BSD, Apache-2.0
+and, for PyMuPDF, AGPL-3.0). The optional extra "embeddings" installs sentence-transformers
+(Apache-2.0) and its model, which is downloaded only when you enable the semantic search.
