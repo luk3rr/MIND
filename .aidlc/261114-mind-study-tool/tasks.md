@@ -138,7 +138,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - **Pendente para fechar o BOLT-2 (gate de SM-1):** o modelo real ainda não foi exercitado. É preciso gerar cards de um PDF real com a chave do OpenRouter, revisar pelo menos 30 cards e rodar `uv run mind sm1`. Meta: ≥ 90% aprovados sem edição. Também confirmar os slugs de modelo (A39), o formato de `usage.cost` (A40), o chunking (A41, A44) e a qualidade da tradução para pt-BR (A43, A45).
 
 ### UNIT-5 Estudo com FSRS e Hoje — Status: pending
-- [ ] T-5.1 Modelos `card_state` e `review_log` e migração. · FR-12 · teste: `tests/db/test_study_migration.py`
+- [x] T-5.1 Modelos `card_state` e `review_log` e migração. · FR-12 · teste: `tests/db/test_study_migration.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0005_*.py, tests/study/test_study_migration.py
 - [ ] T-5.2 `Scheduler` com py-fsrs atrás de interface. · FR-12 · teste: `tests/study/test_scheduler.py` ("Bom" avança o vencimento; "Errei" o reduz)
 - [ ] T-5.3 `StudyService`: fila do dia, avaliação, desfazer. · FR-12, FR-13 · teste: `tests/study/test_study_service.py`
 - [ ] T-5.4 Tela Estudar: revelar, avaliar com 1–4, intervalo previsto por botão, atalhos e botões. ≈2 h · FR-13, US-7 · teste: `tests/web/test_study_page.py` (atalho e botão produzem o mesmo efeito) + verificação manual do teclado

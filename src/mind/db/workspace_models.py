@@ -131,3 +131,29 @@ class Item(WorkspaceBase):
     approved_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
 
     run: Mapped[GenerationRun] = relationship(back_populates="items")
+
+
+class CardState(WorkspaceBase):
+    __tablename__ = "card_state"
+
+    item_id: Mapped[int] = mapped_column(
+        ForeignKey("item.id", ondelete="CASCADE"), primary_key=True
+    )
+    fsrs_json: Mapped[str] = mapped_column(String)
+    due: Mapped[datetime] = mapped_column(UtcDateTime(), index=True)
+    state: Mapped[int] = mapped_column(Integer, default=0)
+    reps: Mapped[int] = mapped_column(Integer, default=0)
+    lapses: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+
+
+class ReviewLog(WorkspaceBase):
+    __tablename__ = "review_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("item.id", ondelete="CASCADE"))
+    rating: Mapped[int] = mapped_column(Integer)
+    reviewed_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+    previous_state_json: Mapped[str | None] = mapped_column(String, default=None)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, default=None)
+    day: Mapped[str] = mapped_column(String(10), index=True)
