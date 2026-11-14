@@ -94,6 +94,12 @@ class ItemNotFound(AppError):
     title = "Item não encontrado"
 
 
+class TopicNotFound(AppError):
+    code = "TOPIC_NOT_FOUND"
+    status = 404
+    title = "Tópico não encontrado"
+
+
 class GenerationRunNotFound(AppError):
     code = "RUN_NOT_FOUND"
     status = 404
