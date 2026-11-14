@@ -440,3 +440,37 @@ class TopicRename(BaseModel):
 
 class TopicMerge(BaseModel):
     target_id: int
+
+
+class ChatAskIn(BaseModel):
+    question: str = Field(description="Up to 1000 characters; every question is independent.")
+
+
+class ChatCitationOut(BaseModel):
+    chunk_id: int
+    material_id: int
+    material_title: str
+    page: int | None = None
+    section: str | None = None
+    quote: str = Field(description="Verified: it appears verbatim in the chunk.")
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    question: str
+    answer: str
+    supported: bool = Field(description="False when the material does not support an answer.")
+    citations: list[ChatCitationOut]
+    cost_usd: float
+    created_at: datetime
+
+
+class EmbeddingsStatusOut(BaseModel):
+    available: bool = Field(description="True when the optional extra is installed.")
+    enabled: bool
+    indexed: int
+    total: int
+
+
+class EmbeddingsEnableOut(BaseModel):
+    job_id: int | None = Field(description="Null when every chunk already has a vector.")

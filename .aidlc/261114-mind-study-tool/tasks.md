@@ -215,7 +215,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-10.2 Tela Chat com citações clicáveis que abrem o trecho. · US-12 · teste: `tests/web/test_chat_page.py`
 - [x] T-10.3 `EmbeddingRetriever` opcional (extra `mind[embeddings]`, cosseno em memória no lugar de sqlite-vec, ver B-13) e fusão por RRF com o BM25. ≈2 h · FR-18 · teste: `tests/retrieval/test_embeddings.py` (embeddings falsos; ignorado se o extra não estiver instalado)
 - [x] T-10.4 Degradação para BM25 quando o extra não está instalado. · FR-18 · teste: `tests/retrieval/test_no_extra.py`
-- [ ] T-10.5 API `chat`. · FR-24 · teste: `tests/api/test_chat_contract.py`
+- [x] T-10.5 API `chat`. · FR-24 · teste: `tests/api/test_chat_contract.py`
 
 ### UNIT-11 Backup e distribuição — Status: pending
 - [ ] T-11.1 `WorkspaceArchive`: exportar e importar `.zip` com `manifest.json`; recusa e migra versões. ≈2 h · FR-22, US-15 · teste: `tests/workspaces/test_archive.py` (ida e volta; `ARCHIVE_INCOMPATIBLE`)

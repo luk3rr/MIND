@@ -10,6 +10,7 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
+from mind.chat.factory import ChatFactory
 from mind.error_notebook.service import NotebookFactory
 from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
@@ -67,6 +68,11 @@ def get_stats(request: Request) -> StatsFactory:
     return factory
 
 
+def get_chat(request: Request) -> ChatFactory:
+    factory: ChatFactory = request.app.state.chat
+    return factory
+
+
 def get_notebook(request: Request) -> NotebookFactory:
     factory: NotebookFactory = request.app.state.notebook
     return factory
@@ -75,6 +81,7 @@ def get_notebook(request: Request) -> NotebookFactory:
 ServicesDep = Annotated[Services, Depends(get_services)]
 StatsDep = Annotated[StatsFactory, Depends(get_stats)]
 NotebookDep = Annotated[NotebookFactory, Depends(get_notebook)]
+ChatDep = Annotated[ChatFactory, Depends(get_chat)]
 PracticeDep = Annotated[PracticeFactory, Depends(get_practice)]
 StudyDep = Annotated[StudyFactory, Depends(get_study)]
 GenerationDep = Annotated[GenerationFactory, Depends(get_generation)]

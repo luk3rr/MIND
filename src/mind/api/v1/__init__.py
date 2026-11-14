@@ -7,6 +7,7 @@
 from fastapi import APIRouter
 
 from mind.api.v1 import (
+    chat,
     costs,
     errors,
     generations,
@@ -31,6 +32,7 @@ router.include_router(study.router)
 router.include_router(practice.router)
 router.include_router(errors.router)
 router.include_router(stats.router)
+router.include_router(chat.router)
 router.include_router(topics.router)
 router.include_router(settings.router)
 router.include_router(costs.router)
