@@ -161,7 +161,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Pendências conhecidas: a conferência visual e de teclado da sessão de estudo no navegador (Espaço, 1 a 4, Z, ligaduras e fórmulas) só você consegue fazer.
 
 ### UNIT-6 Questões verificadas — Status: pending
-- [ ] T-6.1 Prompts e esquema `QuestionBatch`: Certo/Errado e múltipla escolha de 4 ou 5 alternativas; perfil de prova como enum. · FR-9, FR-11 · teste: `tests/generation/test_question_schema.py` (uma correta, 4–5 opções, resposta existente)
+- [x] T-6.1 Prompts e esquema `QuestionBatch`: Certo/Errado e múltipla escolha de 4 ou 5 alternativas; perfil de prova como enum. · FR-9, FR-11 · teste: `tests/generation/test_question_schema.py` (uma correta, 4–5 opções, resposta existente) · files: src/mind/generation/{schemas,prompts}.py, tests/generation/test_question_prompts.py
 - [ ] T-6.2 `QuestionGenerator` reaproveitando `SourceChecker`. ≈2 h · FR-9, FR-7 · teste: `tests/generation/test_question_generator.py`
 - [ ] T-6.3 `Judge` (segunda chamada, modelo configurável) e descarte de gabarito não sustentado. · FR-10 · teste: `tests/verification/test_judge.py`
 - [ ] T-6.4 Modelo `attempt`, migração e `StudyService.answer`. · FR-14 · teste: `tests/study/test_attempts.py` (grava resultado e tempo)
