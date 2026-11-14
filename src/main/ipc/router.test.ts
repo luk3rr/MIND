@@ -13,6 +13,10 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
   return {
     "window:getState": () => ({ route: "/library", contractVersion: CONTRACT_VERSION }),
     "window:setLastRoute": () => ({}),
+    "workspace:list": () => ({ workspaces: [] }),
+    "workspace:create": () => ({ id: 1, name: "x", createdAt: "x" }),
+    "workspace:rename": () => ({ id: 1, name: "x", createdAt: "x" }),
+    "workspace:delete": () => ({}),
     ...overrides,
   };
 }

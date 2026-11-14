@@ -5,6 +5,8 @@
  */
 
 import { execFileSync, spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { ROOT, launch, newProfile, removeProfile } from "./launch.js";
 import type { Launched } from "./launch.js";
@@ -140,6 +142,25 @@ test("remembers the window geometry and the last route (FR-27)", async () => {
   );
   expect(bounds).toMatchObject({ width: 1100, height: 700 });
   await expect(current.page.getByTestId("route")).toHaveText("/library");
+});
+
+test("keeps workspaces across restarts in the user data directory (FR-1, NFR-17)", async () => {
+  const userData = profile();
+  current = await launch(userData);
+  const created = await current.page.evaluate(() =>
+    window.mind.invoke("workspace:create", { name: "Biologia" }),
+  );
+  expect(created).toMatchObject({ ok: true, data: { name: "Biologia" } });
+  const duplicate = await current.page.evaluate(() =>
+    window.mind.invoke("workspace:create", { name: "biologia" }),
+  );
+  expect(duplicate).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+  await current.app.close();
+
+  current = await launch(userData);
+  const listed = await current.page.evaluate(() => window.mind.invoke("workspace:list", {}));
+  expect(listed).toMatchObject({ ok: true, data: { workspaces: [{ name: "Biologia" }] } });
+  expect(existsSync(join(userData, "app.db"))).toBe(true);
 });
 
 test("opens no network port (FR-25, SC-2)", async () => {

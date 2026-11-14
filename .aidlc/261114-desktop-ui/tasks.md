@@ -50,12 +50,17 @@ Ordem: BOLT-1 → BOLT-2 → BOLT-3 → BOLT-4 → BOLT-5 (seguindo o DAG de 2.7
 **Desvios.** (1) **Sandbox do Chromium:** nesta máquina o `chrome-sandbox` do Electron não é setuid, então o app só inicia com `--no-sandbox` (o Playwright já o passa); o `.deb` do UNIT-6 deve instalar o helper com modo 4755 (ou usar perfil do AppArmor), e o E2E de cada instância extra usa `--no-sandbox`. (2) O teste de portas inicia o app direto, porque o Playwright acrescenta portas de depuração ao processo que lança. (3) CSP sem `frame-ancestors` (ignorado em `<meta>`). (4) Rota IPC rejeita `//…` (protocol-relative). (5) E2E e etapa de CI com Xvfb adicionados, fora do verification command.
 
 
-### UNIT-3 Dados, workspaces e jobs   Status: not started
-- [ ] UNIT-3.1 Esquema Drizzle do `app.db` e migrações [NFR-12] — teste: Teste de migração em banco novo e antigo
-- [ ] UNIT-3.2 Esquema do `workspace.db` e migrações [NFR-12] — teste: Teste de migração e de integridade
-- [ ] UNIT-3.3 Registro de workspaces: criar, renomear, trocar e excluir com isolamento [FR-1] — teste: Testes portados de `test_workspace_registry`
-- [ ] UNIT-3.4 Fila de jobs com `worker_threads`, limite de concorrência e recuperação de jobs interrompidos [NFR-18] — teste: Testes portados de `test_jobs`; tarefa longa não bloqueia
-- [ ] UNIT-3.5 Configuração, diretório de dados e canais `workspace:*` [FR-1] — teste: Teste de IPC dos canais
+### UNIT-3 Dados, workspaces e jobs   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-3.1 Esquema Drizzle do `app.db` e migrações [NFR-12] — teste: Teste de migração em banco novo e antigo — files: src/core/db/app-schema.ts, migrations/app/0000_init.sql, migrate.ts, migrations.ts
+- [x] UNIT-3.2 Esquema do `workspace.db` e migrações [NFR-12] — teste: Teste de migração e de integridade — files: src/core/db/workspace-schema.ts, migrations/workspace/0000_init.sql
+- [x] UNIT-3.3 Registro de workspaces: criar, renomear, trocar e excluir com isolamento [FR-1] — teste: Testes portados de `test_workspace_registry` — files: src/core/workspaces/registry.ts (+ registry.test.ts)
+- [x] UNIT-3.4 Fila de jobs com `worker_threads`, limite de concorrência e recuperação de jobs interrompidos [NFR-18] — teste: Testes portados de `test_jobs`; tarefa longa não bloqueia — files: src/core/jobs/{store,queue,worker-pool}.ts (+ testes)
+- [x] UNIT-3.5 Configuração, diretório de dados e canais `workspace:*` [FR-1] — teste: Teste de IPC dos canais — files: src/core/core.ts, src/main/ipc/handlers.ts, src/core/contracts/channels.ts, src/main/index.ts
+
+**Resumo do UNIT-3.** Esquemas Drizzle de `app.db` e `workspace.db` com migrações SQL geradas pelo drizzle-kit (`pnpm db:generate`) e aplicadas por um executor próprio (transação por arquivo, tabela `_migrations`, recusa de banco mais novo); `WorkspaceRegistry` síncrono (criar, listar, obter, renomear, excluir, abrir com recuperação de jobs interrompidos, pastas órfãs removidas, nomes únicos sem diferenciar maiúsculas); `JobQueue` assíncrona com limite de concorrência, cancelamento cooperativo, progresso limitado e eventos; `runInWorker` sobre `worker_threads`; `createCore`; canais IPC `workspace:list/create/rename/delete`; handlers sem Electron; eventos `job:progress` e `job:finished`; fechamento ordenado no `before-quit`. Resultado: verification command exit 0 (65 testes, cobertura 94,87%, limiar de 80% agora imposto) e E2E 9/9 (workspace persiste entre execuções).
+
+**Desvios.** (1) O `better-sqlite3` 13 usa N-API: o mesmo binário carrega no Node 22 e no Node 24 do Electron, então não houve rebuild. (2) Códigos de erro: acrescentado `INTERRUPTED` (A33). (3) Datas em ISO-8601 UTC como texto (A34). (4) Os workers reais (PDF, OCR, embeddings) ficam para os Units 7, 8 e 14; aqui só o pool genérico, testado com workers inline; o mecanismo de empacotamento dos workers (`?nodeWorker` do electron-vite) será validado no UNIT-7. (5) `export`/`import` de workspace ficam no UNIT-15. (6) A regra `security/detect-non-literal-fs-filename` foi desligada: os caminhos vêm do diretório de dados validado.
+
 
 ### UNIT-5 Casca de UI, tema e atalhos   Status: not started
 - [ ] UNIT-5.1 Projeto React + Vite, tokens CSS e fontes locais [FR-28, FR-29] — teste: Teste de renderização do tema escuro e claro

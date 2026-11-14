@@ -12,5 +12,5 @@ import type { Result } from "./result.js";
 export interface MindApi {
   invoke<C extends ChannelName>(channel: C, payload: InputOf<C>): Promise<Result<OutputOf<C>>>;
   /** Subscribes to an event pushed by the main process; returns the unsubscribe function. */
-  on(event: EventName, handler: () => void): () => void;
+  on(event: EventName, handler: (payload: unknown) => void): () => void;
 }

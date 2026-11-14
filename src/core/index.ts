@@ -4,4 +4,5 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-export {};
+export { createCore } from "./core.js";
+export type { Core, CoreOptions } from "./core.js";

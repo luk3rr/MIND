@@ -1,5 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
-  "compilerOptions": { "lib": ["ES2023"], "types": ["node"] },
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node", "vite/client"]
+  },
   "include": ["src/preload/**/*.ts", "src/core/**/*.ts"]
 }

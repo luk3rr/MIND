@@ -6,7 +6,9 @@
 
 import { app, BrowserWindow, screen, session } from "electron";
 import { join } from "node:path";
-import { CONTRACT_VERSION } from "../core/contracts/index.js";
+import { createCore } from "../core/index.js";
+import type { Core } from "../core/index.js";
+import { createHandlers } from "./ipc/handlers.js";
 import { createRouter } from "./ipc/router.js";
 import { CSP, isAppUrl, secureWebPreferences } from "./security.js";
 import { MIN_SIZE, resolveBounds } from "./window-bounds.js";
@@ -20,6 +22,7 @@ if (userDataOverride) app.setPath("userData", userDataOverride);
 
 const devServerUrl = process.env["ELECTRON_RENDERER_URL"];
 let mainWindow: BrowserWindow | null = null;
+let core: Core | null = null;
 
 function createWindow(state: WindowState): BrowserWindow {
   const saved = state.saved;
@@ -81,13 +84,13 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     hardenSession();
     const state = new WindowState();
-    const dispatch = createRouter({
-      "window:getState": () => ({ route: state.lastRoute, contractVersion: CONTRACT_VERSION }),
-      "window:setLastRoute": ({ route }) => {
-        state.lastRoute = route;
-        return {};
+    core = createCore({
+      dataDir: process.env["MIND_DATA_DIR"] ?? app.getPath("userData"),
+      onJobEvent: (event) => {
+        mainWindow?.webContents.send(`job:${event.type}`, event);
       },
     });
+    const dispatch = createRouter(createHandlers(core, state));
     ipcMain.handle("mind:invoke", (_event, channel: unknown, payload: unknown) =>
       dispatch(channel, payload),
     );
@@ -99,5 +102,16 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on("window-all-closed", () => {
     app.quit();
+  });
+
+  let closing = false;
+  app.on("before-quit", (event) => {
+    if (!core || closing) return;
+    // Close the databases and stop the jobs before the process goes away.
+    event.preventDefault();
+    closing = true;
+    const closing_ = core.close();
+    core = null;
+    void closing_.finally(() => app.quit());
   });
 }

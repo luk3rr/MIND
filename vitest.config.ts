@@ -19,7 +19,7 @@ export default defineConfig({
         "src/renderer/**",
       ],
       reporter: ["text", "html"],
-      // The 80% threshold is enforced from UNIT-3 on, once there is product code.
+      thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },
     },
   },
 });

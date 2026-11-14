@@ -25,6 +25,7 @@ export const ERROR_CODES = [
   "RUN_NOT_FOUND",
   "ARCHIVE_INCOMPATIBLE",
   "ARCHIVE_INVALID",
+  "INTERRUPTED",
   "INTERNAL_ERROR",
 ] as const;
 

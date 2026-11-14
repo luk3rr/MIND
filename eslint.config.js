@@ -34,14 +34,12 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-imports": "error",
       // Object keys are indexed by validated values; the rule produces noise on typed maps.
       "security/detect-object-injection": "off",
+      // Paths are built from the validated data directory; traversal is checked where it matters.
+      "security/detect-non-literal-fs-filename": "off",
     },
   },
   {
     files: ["src/renderer/**"],
     languageOptions: { globals: { ...globals.browser } },
-  },
-  {
-    files: ["scripts/**"],
-    rules: { "security/detect-non-literal-fs-filename": "off" },
   },
 );

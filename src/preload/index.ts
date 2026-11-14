@@ -21,7 +21,7 @@ const api: MindApi = {
   },
   on: (event: EventName, handler) => {
     if (!events.includes(event)) throw new Error(`Unknown event: ${String(event)}`);
-    const listener = (): void => handler();
+    const listener = (_event: unknown, payload: unknown): void => handler(payload);
     ipcRenderer.on(event, listener);
     return () => {
       ipcRenderer.removeListener(event, listener);

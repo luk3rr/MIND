@@ -555,3 +555,63 @@ flowchart LR
 
 - A31 (3.1 UNIT-2): "Última tela" do FR-27 cobre a última rota e o monitor (pelas coordenadas salvas). — confirmed: no
 - A32 (3.1 UNIT-2): O E2E não entra no verification command; roda como `pnpm e2e` e como etapa de CI. — confirmed: no
+
+### UNIT-3 — Dados, workspaces e jobs (nota de design)
+
+**Objetivo.** Camada de dados do núcleo (sem Electron): dois esquemas SQLite com migrações, registro de workspaces com isolamento, fila de jobs com concorrência limitada e um *pool* de `worker_threads` para o trabalho pesado, e os canais `workspace:*` no IPC. [src: FR-1, NFR-12, NFR-18, ADR-1, ADR-5; Python de referência: `workspaces/registry.py`, `jobs/`, `db/`]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Binário nativo | `better-sqlite3` 13.2.0 traz um binário N-API por plataforma; foi verificado que o mesmo binário carrega no Node 22 (Vitest) e no Node 24 do Electron 45, então não há troca de ABI nem rebuild. No `.deb` ele entra em `asarUnpack` (UNIT-6) |
+| Esquema | Drizzle (`src/core/db/app-schema.ts`, `workspace-schema.ts`) com as mesmas tabelas do kb; datas em texto ISO-8601 UTC; relógio injetável (`Clock`) |
+| Migrações | SQL gerado por drizzle-kit (`pnpm db:generate`) em `src/core/db/migrations/{app,workspace}/NNNN_*.sql`, embutido no bundle com `import.meta.glob(..., { query: "?raw" })`; um executor próprio aplica em ordem, cada arquivo em transação, registrando em `_migrations`; banco com migração desconhecida (mais novo que o app) é recusado |
+| Pragmas | `foreign_keys=ON` e `journal_mode=WAL` em toda conexão |
+| Diretório de dados | O núcleo recebe `dataDir`; o processo principal passa `MIND_DATA_DIR` ou o `userData` do Electron. Layout: `app.db`, `workspaces/<uuid>/workspace.db`, `workspaces/<uuid>/files/` |
+| Registro | `WorkspaceRegistry` síncrono: `create`, `list`, `get`, `rename`, `delete`, `open` (com cache e recuperação de jobs interrompidos), `close`; nomes normalizados (espaços colapsados, até 80 caracteres, unicidade sem diferenciar maiúsculas); pasta de workspace nunca sai de `workspaces/`; pastas órfãs removidas ao iniciar |
+| Jobs | `JobQueue` assíncrona: estados `queued, running, done, failed, cancelled` persistidos na tabela `job`, progresso limitado a 1 escrita por 250 ms, cancelamento cooperativo (`AbortSignal` e `ctx.checkCancelled()`), limite de concorrência, `wait` e `shutdown`; falhas viram código estável (`AppError` ou `INTERNAL_ERROR`); jobs ativos antes de um reinício viram `failed/INTERRUPTED` |
+| Pool de workers | `runInWorker(factory, payload, { signal, onProgress })` sobre `worker_threads`, uma thread por tarefa, com cancelamento e erros propagados; os workers reais (PDF, OCR, embeddings) chegam nos Units 7, 8 e 14 |
+| IPC | `workspace:list`, `workspace:create`, `workspace:rename`, `workspace:delete` (export e import no UNIT-15); eventos `job:progress` e `job:finished` declarados em `EVENT_NAMES` |
+
+```mermaid
+erDiagram
+  APP_DB ||--o{ WORKSPACE : registra
+  APP_DB ||--o{ SETTING : guarda
+  APP_DB ||--o{ CONSENT : guarda
+  APP_DB ||--o{ COST_LEDGER : soma
+  APP_DB ||--o{ MODEL_PRICE : cacheia
+  WORKSPACE ||--|| WORKSPACE_DB : "pasta workspaces/uuid"
+  WORKSPACE_DB ||--o{ JOB : executa
+  WORKSPACE_DB ||--o{ MATERIAL : tem
+  MATERIAL ||--o{ CHUNK : contem
+  GENERATION_RUN ||--o{ ITEM : produz
+  ITEM ||--o| CARD_STATE : agenda
+  ITEM ||--o{ REVIEW_LOG : registra
+  ITEM ||--o{ ATTEMPT : responde
+  CHUNK ||--o| CHUNK_EMBEDDING : indexa
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> queued: submit
+  queued --> running: vaga na concorrência
+  queued --> cancelled: cancelado antes de iniciar
+  running --> done: trabalho concluído
+  running --> failed: AppError ou erro inesperado
+  running --> cancelled: cancelamento cooperativo
+  queued --> failed: reinício do app (INTERRUPTED)
+  running --> failed: reinício do app (INTERRUPTED)
+  done --> [*]
+  failed --> [*]
+  cancelled --> [*]
+```
+
+**NFR (nota).** NFR-12: migração a partir de banco vazio, repetida (idempotente) e rejeição de banco mais novo, testadas. NFR-18: teste mede que uma tarefa pesada em worker não atrasa o laço de eventos do processo principal acima de um limite. Sem `sentence-transformers` nem PDF neste Unit.
+
+**Riscos.** (1) `import.meta.glob` com `?raw` depende do Vite; vale no Vitest e no electron-vite, e o teste de migração roda sobre o mesmo mecanismo. (2) `better-sqlite3` é síncrono: consultas longas bloqueiam o processo principal, então operações pesadas (importação, embeddings) usam o pool de workers com conexão própria, e o WAL permite leitura concorrente.
+
+### Assumptions & open questions
+
+- A33 (3.1 UNIT-3): O código de erro `INTERRUPTED` de jobs passa para a lista estável de códigos. — confirmed: yes
+- A34 (3.1 UNIT-3): Datas em texto ISO-8601 UTC (o formato do Python era de datetime com fuso), sem necessidade de compatibilidade com bancos antigos (A1). — confirmed: yes

@@ -5,10 +5,17 @@
  */
 
 /** Names of the invoke channels. Kept free of imports so the sandboxed preload can bundle it. */
-export const CHANNEL_NAMES = ["window:getState", "window:setLastRoute"] as const;
+export const CHANNEL_NAMES = [
+  "window:getState",
+  "window:setLastRoute",
+  "workspace:list",
+  "workspace:create",
+  "workspace:rename",
+  "workspace:delete",
+] as const;
 
 /** Names of the events pushed from the main process to the window. */
-export const EVENT_NAMES = ["window:focus-requested"] as const;
+export const EVENT_NAMES = ["window:focus-requested", "job:progress", "job:finished"] as const;
 
 export type ChannelName = (typeof CHANNEL_NAMES)[number];
 export type EventName = (typeof EVENT_NAMES)[number];
