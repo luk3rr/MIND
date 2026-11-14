@@ -339,3 +339,90 @@ class PracticeSummaryOut(BaseModel):
     to_practice: int
     answered_today: int
     correct_today: int
+
+
+class ErrorCardOut(BaseModel):
+    item_id: int = Field(description="The card made from the question.")
+    created: bool = Field(description="False when the card already existed.")
+
+
+class ErrorEntryOut(BaseModel):
+    item_id: int
+    front: str
+    topic: str | None = None
+    source_title: str
+    source_page: int | None = None
+    from_question: bool
+    failures: int
+    last_error_at: datetime
+
+
+class ErrorCountsOut(BaseModel):
+    total: int
+    from_questions: int
+    failed_cards: int
+
+
+class ErrorNotebookOut(BaseModel):
+    counts: ErrorCountsOut
+    entries: list[ErrorEntryOut]
+
+
+class TopicStatOut(BaseModel):
+    topic_id: int | None = Field(description="Null for items without a topic.")
+    name: str | None = None
+    card_reviews: int
+    card_passes: int
+    question_attempts: int
+    question_correct: int
+    events: int
+    accuracy: float | None = None
+    card_accuracy: float | None = None
+    question_accuracy: float | None = None
+    small_sample: bool
+
+
+class RetentionDayOut(BaseModel):
+    day: str
+    reviews: int
+    passes: int
+    rate: float | None = None
+
+
+class RetentionOut(BaseModel):
+    days: list[RetentionDayOut]
+    reviews: int
+    rate: float | None = None
+
+
+class ActivityDayOut(BaseModel):
+    day: str
+    reviews: int
+    attempts: int
+    total: int
+
+
+class StatsSummaryOut(BaseModel):
+    reviewed_today: int
+    answered_today: int
+    goal: int
+    goal_met: bool
+    current_streak: int
+    longest_streak: int
+    total_reviews: int
+    total_attempts: int
+
+
+class TopicOut(BaseModel):
+    id: int
+    name: str
+    cards: int
+    questions: int
+
+
+class TopicRename(BaseModel):
+    name: str
+
+
+class TopicMerge(BaseModel):
+    target_id: int

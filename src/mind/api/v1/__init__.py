@@ -8,13 +8,16 @@ from fastapi import APIRouter
 
 from mind.api.v1 import (
     costs,
+    errors,
     generations,
     items,
     jobs,
     materials,
     practice,
     settings,
+    stats,
     study,
+    topics,
     workspaces,
 )
 
@@ -26,5 +29,8 @@ router.include_router(generations.router)
 router.include_router(items.router)
 router.include_router(study.router)
 router.include_router(practice.router)
+router.include_router(errors.router)
+router.include_router(stats.router)
+router.include_router(topics.router)
 router.include_router(settings.router)
 router.include_router(costs.router)
