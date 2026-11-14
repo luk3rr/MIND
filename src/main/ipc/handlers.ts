@@ -11,6 +11,7 @@ import { todaySummary } from "../../core/today/summary.js";
 import { cardSides } from "../../core/study/rendering.js";
 import { Rating } from "../../core/study/scheduler.js";
 import { downloadName, exportWorkspace, importWorkspace } from "../../core/workspaces/archive.js";
+import { testConnection } from "../../core/llm/connection.js";
 import type { Handlers } from "./router.js";
 import { AppError } from "../../core/contracts/errors.js";
 import { basename } from "node:path";
@@ -279,6 +280,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "settings:refreshModels": async () => ({
       refreshed: await core.llm.catalog.refresh(core.llm.fetch, true),
     }),
+    "settings:testConnection": () => testConnection(core.llm.secrets, core.llm.fetch),
     "settings:getCost": ({ year, month }) => ({
       total: core.llm.ledger.monthTotal(year, month),
       lines: core.llm.ledger.monthLines(year, month),

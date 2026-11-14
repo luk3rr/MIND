@@ -66,7 +66,11 @@ export function Shell({
           {children}
         </SettingsStatusContext.Provider>
       </main>
-      <StatusBar theme={theme} onToggleTheme={toggleTheme} />
+      <StatusBar
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        keyConfigured={status.status === "ready" && status.data.keyConfigured}
+      />
       {quick && <QuickSwitcher workspaceId={workspaceId} onClose={() => setQuick(false)} />}
     </div>
   );

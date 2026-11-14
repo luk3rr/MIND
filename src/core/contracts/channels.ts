@@ -665,6 +665,10 @@ export const channels = {
     input: z.object({}).strict(),
     output: z.object({ refreshed: z.boolean() }),
   },
+  "settings:testConnection": {
+    input: z.object({}).strict(),
+    output: z.object({ ok: z.boolean(), message: z.string() }),
+  },
   "settings:getCost": {
     input: z
       .object({

@@ -122,6 +122,7 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "settings:clearKey": () => ({}),
     "settings:setConsent": () => ({}),
     "settings:refreshModels": () => ({ refreshed: true }),
+    "settings:testConnection": () => ({ ok: true, message: "ok" }),
     "settings:getCost": () => ({ total: 0, lines: [] }),
     ...overrides,
   };

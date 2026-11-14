@@ -75,6 +75,8 @@ export interface FakeState {
     knownModels: string[];
     lines: OutputOf<"settings:getCost">["lines"];
     refreshWorks: boolean;
+    /** What the connection test answers; null means it works. */
+    connectionError?: string | null;
   };
 }
 
@@ -613,6 +615,12 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       case "settings:setConsent":
         state.provider.consentGiven = (payload as InputOf<"settings:setConsent">).given;
         return ok({});
+      case "settings:testConnection":
+        return ok(
+          state.provider.connectionError
+            ? { ok: false, message: state.provider.connectionError }
+            : { ok: true, message: "Conexão com o OpenRouter funcionando." },
+        );
       case "settings:refreshModels":
         return ok({ refreshed: state.provider.refreshWorks });
       case "settings:getCost":

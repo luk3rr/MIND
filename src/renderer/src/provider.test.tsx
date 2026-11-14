@@ -126,6 +126,40 @@ describe("setup wizard", () => {
   });
 });
 
+describe("key status and connection test", () => {
+  it("shows no key and the footer as not configured, without a test button", async () => {
+    await open("/w/1/settings", { ...base });
+    expect(await screen.findByText("Nenhuma chave configurada")).toBeVisible();
+    expect(screen.getByText("Provedor: não configurado")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Testar conexão" })).toBeNull();
+  });
+
+  it("marks the key as configured and the footer follows when it is saved", async () => {
+    await open("/w/1/settings", { ...base, consentGiven: true });
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("Chave de API do OpenRouter"), "sk-or-novo");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    expect(await screen.findByText("✓ Chave configurada")).toBeVisible();
+    expect(await screen.findByText("Provedor: OpenRouter (chave configurada)")).toBeVisible();
+  });
+
+  it("tests the connection and shows success or the reason of the failure", async () => {
+    const fake = await open("/w/1/settings", {
+      ...base,
+      apiKey: "k",
+      keySource: "stored",
+      consentGiven: true,
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Testar conexão" }));
+    expect(await screen.findByText(/Conexão com o OpenRouter funcionando/)).toBeVisible();
+    fake.state.provider.connectionError =
+      "O OpenRouter recusou a chave. Confira se ela está correta.";
+    await user.click(screen.getByRole("button", { name: "Testar conexão" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("recusou a chave");
+  });
+});
+
 describe("Settings page", () => {
   it("shows the status without ever showing the key, and saves new values", async () => {
     const fake = await open("/w/1/settings", {

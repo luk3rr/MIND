@@ -45,6 +45,8 @@ export function ProviderForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [test, setTest] = useState<{ ok: boolean; message: string } | null>(null);
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -96,7 +98,35 @@ export function ProviderForm({
           {formError}
         </p>
       )}
-      <p className="muted">{keyStatus(view)}</p>
+      <div className="row" style={{ alignItems: "center" }}>
+        <span className={view.keyConfigured ? "pill ok" : "pill"} role="status">
+          {view.keyConfigured ? `✓ ${T.keyOkBadge}` : T.keyMissingBadge}
+        </span>
+        <span className="muted">{keyStatus(view)}</span>
+        {view.keyConfigured && (
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={testing}
+            onClick={() => {
+              setTesting(true);
+              setTest(null);
+              void window.mind.invoke("settings:testConnection", {}).then((result) => {
+                setTesting(false);
+                setTest(result.ok ? result.data : { ok: false, message: result.error.message });
+              });
+            }}
+          >
+            {testing ? T.testing : T.testConnection}
+          </button>
+        )}
+      </div>
+      {test && (
+        <p className={test.ok ? "ok" : "alert"} role={test.ok ? "status" : "alert"}>
+          {test.ok ? "✓ " : ""}
+          {test.message}
+        </p>
+      )}
       {field(
         "apiKey",
         T.apiKey,

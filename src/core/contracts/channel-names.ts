@@ -58,6 +58,7 @@ export const CHANNEL_NAMES = [
   "settings:clearKey",
   "settings:setConsent",
   "settings:refreshModels",
+  "settings:testConnection",
   "settings:getCost",
 ] as const;
 
