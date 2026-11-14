@@ -44,7 +44,7 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-3 Ingestão PDF/MD, busca e biblioteca | UNIT-1 | verified | yes |
 | UNIT-4 Flashcards com fonte e revisão | UNIT-2, UNIT-3 | verified (SM-1 pendente) | yes |
 | UNIT-5 Estudo FSRS e Hoje | UNIT-4 | verified | yes |
-| UNIT-6 Questões verificadas | UNIT-4 | pending | no |
+| UNIT-6 Questões verificadas | UNIT-4 | verified (qualidade com modelo real pendente) | yes |
 | UNIT-7 Caderno de erros e estatísticas | UNIT-5, UNIT-6 | pending | no |
 | UNIT-8 OCR, URL e DOCX | UNIT-3 | pending | no |
 | UNIT-9 Treino de pontos fracos | UNIT-4, UNIT-7 | pending | no |
