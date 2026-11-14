@@ -13,8 +13,12 @@ from the legacy code, never edited by hand. Run it from the repository root:
 from __future__ import annotations
 
 import json
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
+
+import docx
+import pymupdf
 
 from mind.generation.prompts import (
     SUBTYPE_RULES,
@@ -24,7 +28,13 @@ from mind.generation.prompts import (
     render_chunks,
 )
 from mind.ingestion.chunker import chunk_segments
-from mind.ingestion.extractors import markdown_segments
+from mind.ingestion.extractors import (
+    DocxExtractor,
+    PdfExtractor,
+    TextExtractor,
+    markdown_segments,
+    reflow_paragraphs,
+)
 from mind.study.scheduler import CardSchedule, Rating, Scheduler
 from mind.verification.source_checker import SourceChecker, locate_quote, normalize
 
@@ -165,11 +175,136 @@ def prompts_fixture() -> dict[str, object]:
     }
 
 
+PAGE_RECT = pymupdf.Rect(50, 50, 545, 790)
+
+
+def make_pdf(path: Path, pages: list[str], *, fontsize: float = 11) -> Path:
+    """Write a PDF with one page per string (an empty string makes a blank page)."""
+    document = pymupdf.open()
+    for text in pages:
+        page = document.new_page()
+        if text:
+            remaining = page.insert_textbox(PAGE_RECT, text, fontsize=fontsize, fontname="helv")
+            assert remaining >= 0, "test text does not fit on the page"
+    document.save(path)
+    document.close()
+    return path
+
+
+LONG_PAGE_1 = (
+    "O sistema opera com várias camadas inde-\npendentes entre si e cada uma\n"
+    "tem uma função bem definida.\n\nNova ideia começa aqui e segue\n"
+    "por mais uma linha longa também, com acentuação: ção, ã, é, ü.\n"
+    "Termina em ponto final."
+)
+LONG_PAGE_2 = "Segunda página com outro parágrafo.\n\nE mais um parágrafo curto."
+
+
+def extractors_fixture() -> dict[str, object]:
+    """PDFs and the text the Python extractor reads from them, plus reflow and Markdown cases."""
+    pdf_dir = OUT / "pdfs"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+    make_pdf(pdf_dir / "three-pages.pdf", ["Primeira página com função.", "", "Terceira página."])
+    make_pdf(pdf_dir / "long.pdf", [LONG_PAGE_1, LONG_PAGE_2])
+    make_pdf(pdf_dir / "blank.pdf", ["", ""])
+    make_pdf(pdf_dir / "big-100.pdf", [f"Página {i} do documento de teste. " * 12 for i in range(1, 101)])
+    with tempfile.TemporaryDirectory() as temp:
+        plain = make_pdf(Path(temp) / "plain.pdf", ["secret"])
+        document = pymupdf.open(plain)
+        document.save(
+            pdf_dir / "locked.pdf",
+            encryption=getattr(pymupdf, "PDF_ENCRYPT_AES_256"),  # noqa: B009
+            owner_pw="owner",
+            user_pw="user",
+        )
+        document.close()
+    pdfs: dict[str, object] = {}
+    for name in ("three-pages", "long", "big-100"):
+        result = PdfExtractor().extract(pdf_dir / f"{name}.pdf")
+        pdfs[name] = {
+            "page_count": result.page_count,
+            "segments": [{"page": seg.page, "text": seg.text} for seg in result.segments],
+        }
+    reflow_inputs = [
+        "O sistema opera com várias\ncamadas inde-\npendentes entre si e cada uma\n"
+        "tem uma função.\nNova ideia começa aqui e segue\npor mais uma linha longa também.\n",
+        "um\n\ndois\n",
+        "   \n\n  ",
+        "linha curta\noutra curta\n",
+    ]
+    markdown_cases = [
+        "Intro solta.\n\n# Biologia\n\nCélula.\n\n## Núcleo\n\nDNA.\n\n# Química\n\nÁtomo.\n",
+        "# Real\n\n```\n# not a heading\n```\n",
+        "# Título\ncorpo com\nquebra\n\n### Fundo\n\nTexto.\n",
+    ]
+    with tempfile.TemporaryDirectory() as temp:
+        text_file = Path(temp) / "plain.txt"
+        text_file.write_text("# not a heading\nwrapped\nline\n\nSecond paragraph.", encoding="utf-8")
+        plain_result = TextExtractor().extract(text_file)
+    return {
+        "pdfs": pdfs,
+        "reflow": [{"input": text, "output": reflow_paragraphs(text)} for text in reflow_inputs],
+        "markdown": [
+            {
+                "input": text,
+                "segments": [{"section": s.section, "text": s.text} for s in markdown_segments(text)],
+            }
+            for text in markdown_cases
+        ],
+        "plain_text": {
+            "input": "# not a heading\nwrapped\nline\n\nSecond paragraph.",
+            "segments": [{"section": s.section, "text": s.text} for s in plain_result.segments],
+        },
+    }
+
+
+def docx_and_scanned_fixture() -> dict[str, object]:
+    """A Word document and an image-only PDF, with what the Python code reads from the Word file."""
+    docx_dir = OUT / "docx"
+    docx_dir.mkdir(parents=True, exist_ok=True)
+    document = docx.Document()
+    document.add_heading("Biologia", level=1)
+    document.add_paragraph("A fotossíntese ocorre nos cloroplastos.")
+    document.add_heading("Núcleo", level=2)
+    document.add_paragraph("O DNA fica no   núcleo da célula.")
+    table = document.add_table(rows=2, cols=2)
+    table.rows[0].cells[0].text = "Organela"
+    table.rows[0].cells[1].text = "Função"
+    table.rows[1].cells[0].text = "Mitocôndria"
+    table.rows[1].cells[1].text = "Energia"
+    document.add_heading("Química", level=1)
+    document.add_paragraph("O átomo é a menor unidade.")
+    document.save(docx_dir / "sample.docx")
+    (docx_dir / "broken.docx").write_bytes(b"not a zip at all")
+    result = DocxExtractor().extract(docx_dir / "sample.docx")
+    # An image-only PDF: the text is drawn, rendered to a bitmap and placed as a picture.
+    source = pymupdf.open()
+    page = source.new_page()
+    page.insert_textbox(
+        pymupdf.Rect(50, 100, 545, 300),
+        "A fotossintese converte luz em energia quimica nos cloroplastos.",
+        fontsize=20,
+        fontname="helv",
+    )
+    clip = pymupdf.Rect(40, 95, 555, 175)
+    pixmap = page.get_pixmap(dpi=200, clip=clip, colorspace=pymupdf.csGRAY)
+    scanned = pymupdf.open()
+    target = scanned.new_page(width=clip.width, height=clip.height)
+    target.insert_image(target.rect, stream=pixmap.tobytes("png"))
+    scanned.save(OUT / "pdfs" / "scanned.pdf")
+    return {
+        "docx": [{"section": seg.section, "text": seg.text} for seg in result.segments],
+        "scanned_terms": ["fotossintese", "luz", "energia", "cloroplastos"],
+    }
+
+
 def main() -> None:
     write("fsrs", fsrs_fixture())
     write("chunker", chunker_fixture())
     write("source-checker", source_checker_fixture())
     write("prompts", prompts_fixture())
+    write("extractors", extractors_fixture())
+    write("docx-and-scanned", docx_and_scanned_fixture())
 
 
 if __name__ == "__main__":

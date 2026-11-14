@@ -23,6 +23,10 @@ asar: true
 # The native SQLite binding cannot be loaded from inside the asar archive.
 asarUnpack:
   - node_modules/better-sqlite3/**
+  # The OCR engine starts its own worker and reads language data from real files.
+  - node_modules/tesseract.js/**
+  - node_modules/tesseract.js-core/**
+  - node_modules/@tesseract.js-data/**
 
 linux:
   target:

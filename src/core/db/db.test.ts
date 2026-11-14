@@ -18,6 +18,7 @@ function tables(sqlite: { prepare(sql: string): { all(): unknown[] } }): string[
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
     .all()
     .map((row) => (row as { name: string }).name)
+    .filter((name) => !name.startsWith("chunk_fts_"))
     .sort();
 }
 
@@ -40,6 +41,7 @@ describe("migrations", () => {
         "chat_message",
         "chunk",
         "chunk_embedding",
+        "chunk_fts",
         "generation_run",
         "item",
         "job",
@@ -63,7 +65,11 @@ describe("migrations", () => {
 
   it("applies every migration file in name order", () => {
     expect(appMigrations.map((m) => m.id)).toEqual(["0000_init.sql"]);
-    expect(workspaceMigrations.map((m) => m.id)).toEqual(["0000_init.sql"]);
+    expect(workspaceMigrations.map((m) => m.id)).toEqual([
+      "0000_init.sql",
+      "0001_chunk_index.sql",
+      "0002_chunk_fts.sql",
+    ]);
   });
 
   it("refuses a database written by a newer version", () => {

@@ -18,6 +18,16 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "workspace:rename": () => ({ id: 1, name: "x", createdAt: "x" }),
     "workspace:delete": () => ({}),
     "today:summary": () => ({ materials: 0, cards: 0, questions: 0 }),
+    "material:list": () => ({ materials: [] }),
+    "material:import": () => ({ materials: [], errors: [] }),
+    "material:importUrl": () => {
+      throw new Error("unused");
+    },
+    "material:delete": () => ({}),
+    "material:chunks": () => {
+      throw new Error("unused");
+    },
+    "material:search": () => ({ hits: [] }),
     "settings:get": () => ({
       provider: "openrouter",
       generationModel: "a",

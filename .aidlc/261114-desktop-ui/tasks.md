@@ -100,18 +100,22 @@ Ordem: BOLT-1 → BOLT-2 → BOLT-3 → BOLT-4 → BOLT-5 (seguindo o DAG de 2.7
 **Desvios.** (1) A origem da chave é `stored` (cifrada) em vez de `file`, pois o `.env` não existe mais. (2) A UI não restaura rotas de setup após reiniciar (só seções). (3) `settings:getCost` recebe ano e mês explícitos (a UI usa o mês corrente). (4) O custo estimado antes de gerar (`PriceCatalog.estimate`) existe no núcleo, mas a tela Gerar que o mostra é do UNIT-9. (5) Aviso de design: o catálogo de modelos só é buscado quando o usuário pede (botão), como no Python; sem rede o campo de modelo continua livre.
 
 
-### UNIT-7 Ingestão, busca e biblioteca   Status: not started
-- [ ] UNIT-7.1 Extração de PDF com mupdf em worker [FR-2] — teste: PDF de amostra com texto por página
-- [ ] UNIT-7.2 Importar Markdown e texto [FR-2] — teste: Testes portados
-- [ ] UNIT-7.3 Divisão em trechos com metadados e busca por palavras [FR-5] — teste: Trechos iguais às fixtures
-- [ ] UNIT-7.4 Tela Biblioteca com importação, progresso e exclusão [FR-2] — teste: Testing Library e E2E
-- [ ] UNIT-7.5 Medir importação de PDF de 100 páginas [NFR-1] — teste: Teste `perf` < 60 s
+### UNIT-7 Ingestão, busca e biblioteca   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-7.1 Extração de PDF com mupdf em worker [FR-2] — teste: PDF de amostra com texto por página — files: src/core/ingestion/pdf.ts, pdf.worker.ts, src/main/extract-worker.ts
+- [x] UNIT-7.2 Importar Markdown e texto [FR-2] — teste: Testes portados — files: src/core/ingestion/text.ts
+- [x] UNIT-7.3 Divisão em trechos com metadados e busca por palavras [FR-5] — teste: Trechos iguais às fixtures — files: src/core/ingestion/chunker.ts, db/migrations/workspace/0001_chunk_index.sql, 0002_chunk_fts.sql, src/core/retrieval/retriever.ts
+- [x] UNIT-7.4 Tela Biblioteca com importação, progresso e exclusão [FR-2] — teste: Testing Library e E2E — files: src/renderer/src/pages/LibraryPage.tsx, MaterialPreviewPage.tsx, canais material:*
+- [x] UNIT-7.5 Medir importação de PDF de 100 páginas [NFR-1] — teste: Teste `perf` < 60 s — files: tests/e2e/library.spec.ts (100 páginas em ~2 s, janela responsiva)
 
-### UNIT-8 OCR, URL e DOCX   Status: not started
-- [ ] UNIT-8.1 OCR com tesseract.js e dados de idioma embutidos, com confiança [FR-3] — teste: Amostra escaneada importada
-- [ ] UNIT-8.2 Importação de URL com Readability + jsdom [FR-4] — teste: Páginas de amostra
-- [ ] UNIT-8.3 Importação de DOCX [FR-4] — teste: Amostra DOCX
-- [ ] UNIT-8.4 Comparar a qualidade com a do Python e registrar desvios [R-2] — teste: Relatório de comparação
+**Resumo do UNIT-7.** `Segment`, `reflowParagraphs`, `markdownSegments`, `extractText`, `extractPdf` (mupdf em `worker_threads`), `chunkSegments` e `MaterialService` (nome saneado, limite de 200 MB, job `import`, cancelamento, exclusão completa), índice FTS5 com gatilhos e `Bm25Retriever`, canais `material:*`, diálogo nativo no processo principal (o renderer nunca informa caminhos) e as telas Biblioteca e Prévia (progresso, busca com realce do trecho, paginação, exclusão com confirmação). Conferência por fixtures: texto de 3 PDFs, reflow, Markdown e trechos idênticos aos que o Python produz. **Desvios.** (1) Páginas com menos de 20 caracteres contam como "sem texto" no aviso, como no Python. (2) O `?nodeWorker` do electron-vite funcionou também no app empacotado.
+
+### UNIT-8 OCR, URL e DOCX   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-8.1 OCR com tesseract.js e dados de idioma embutidos, com confiança [FR-3] — teste: Amostra escaneada importada — files: src/core/ingestion/ocr.ts (tesseract.js + dados por e eng), pdf.worker.ts
+- [x] UNIT-8.2 Importação de URL com Readability + jsdom [FR-4] — teste: Páginas de amostra — files: src/core/ingestion/web.ts (fetchPage, validateUrl, Readability + linkedom), blocks.ts
+- [x] UNIT-8.3 Importação de DOCX [FR-4] — teste: Amostra DOCX — files: src/core/ingestion/docx.ts (mammoth), blocks.ts
+- [x] UNIT-8.4 Comparar a qualidade com a do Python e registrar desvios [R-2] — teste: Relatório de comparação — files: docx-web-ocr.test.ts, tests/e2e/library.spec.ts
+
+**Resumo do UNIT-8.** OCR embutido com tesseract.js 7 (dados `por` e `eng` copiados uma vez para `userData/cache/tessdata`, confiança média por página, página escaneada de exemplo lida em ~0,4 s), Word por mammoth + linkedom (mesmas seções e linhas de tabela do Python, conferido com o `.docx` gerado), páginas web por `fetch` com limites do Python (5 MB, 20 s, 5 redirecionamentos validados um a um) e Readability, importação de URL com diálogo e erro de validação inline. **Resultado do esqueleto completo até aqui:** verification command exit 0 (299 testes, 95,5% de linhas, 86,4% de ramos), E2E 21/21 no código e 6/6 da biblioteca contra o app empacotado, `.deb` de 143 MB e 385 MB instalado (limites 500 MB e 1 GB), verify-deb e lintian sem erros. **Desvios.** (1) OCR e extração web não têm valor dourado exato (motores diferentes), o critério é ler as amostras com os termos esperados (R-2). (2) Readability remove o título repetido no corpo, então o primeiro bloco de uma página não tem seção. (3) `tesseract.js`, `tesseract.js-core` e os dados entram em `asarUnpack`.
 
 ### UNIT-9 Flashcards com fonte e revisão   Status: not started
 - [ ] UNIT-9.1 Prompts e esquemas de geração de cards (4 tipos) [FR-6] — teste: Testes portados

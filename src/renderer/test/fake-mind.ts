@@ -17,12 +17,18 @@ interface Workspace {
 }
 
 export type ProviderState = FakeState["provider"];
+export type FakeMaterial = OutputOf<"material:list">["materials"][number];
+type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
 
 export interface FakeState {
   workspaces: Workspace[];
   route: string | null;
   summary: OutputOf<"today:summary"> | ErrorInfo;
   nextId: number;
+  materials: FakeMaterial[];
+  chunks: FakeChunk[];
+  importResult: OutputOf<"material:import">;
+  searchHits: OutputOf<"material:search">["hits"];
   provider: {
     apiKey: string | null;
     keySource: "environment" | "stored" | null;
@@ -44,6 +50,10 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     route: null,
     summary: { materials: 0, cards: 0, questions: 0 },
     nextId: 1,
+    materials: [],
+    chunks: [],
+    importResult: { materials: [], errors: [] },
+    searchHits: [],
     provider: {
       apiKey: "sk-or-already",
       keySource: "stored",
@@ -105,6 +115,48 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         state.workspaces = state.workspaces.filter((w) => w.id !== id);
         return ok({});
       }
+      case "material:list":
+        return ok({ materials: [...state.materials] });
+      case "material:import":
+        state.materials = [...state.importResult.materials, ...state.materials];
+        return ok(state.importResult);
+      case "material:importUrl": {
+        const { url } = payload as InputOf<"material:importUrl">;
+        if (!/^https?:\/\//.test(url)) {
+          return failure(
+            "VALIDATION_ERROR",
+            "Use um endereço que comece com http:// ou https://.",
+            "url",
+          );
+        }
+        const created = state.importResult.materials[0];
+        if (!created) return failure("INTERNAL_ERROR", "unscripted");
+        state.materials = [created, ...state.materials];
+        return ok(created);
+      }
+      case "material:delete": {
+        const { id } = payload as InputOf<"material:delete">;
+        state.materials = state.materials.filter((m) => m.id !== id);
+        return ok({});
+      }
+      case "material:chunks": {
+        const input = payload as InputOf<"material:chunks">;
+        const found = state.materials.find((m) => m.id === input.materialId);
+        if (!found) return failure("MATERIAL_NOT_FOUND", "Material não encontrado.");
+        const size = input.limit ?? 20;
+        const start = input.offset ?? 0;
+        const total = state.chunks.length;
+        return ok({
+          material: found,
+          chunks: state.chunks.slice(start, start + size),
+          total,
+          offset: start,
+          previousOffset: start > 0 ? Math.max(start - size, 0) : null,
+          nextOffset: start + size < total ? start + size : null,
+        });
+      }
+      case "material:search":
+        return ok({ hits: state.searchHits });
       case "settings:get": {
         const p = state.provider;
         return ok({

@@ -39,16 +39,20 @@ export const material = sqliteTable("material", {
   createdAt: text("created_at").notNull().$defaultFn(now),
 });
 
-export const chunk = sqliteTable("chunk", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  materialId: integer("material_id")
-    .notNull()
-    .references(() => material.id, { onDelete: "cascade" }),
-  ordinal: integer("ordinal").notNull(),
-  page: integer("page"),
-  section: text("section"),
-  text: text("text").notNull(),
-});
+export const chunk = sqliteTable(
+  "chunk",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    materialId: integer("material_id")
+      .notNull()
+      .references(() => material.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    page: integer("page"),
+    section: text("section"),
+    text: text("text").notNull(),
+  },
+  (table) => [index("ix_chunk_material_page").on(table.materialId, table.page, table.ordinal)],
+);
 
 export const topic = sqliteTable("topic", {
   id: integer("id").primaryKey({ autoIncrement: true }),

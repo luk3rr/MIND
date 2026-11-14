@@ -35,6 +35,34 @@ const costLine = z.object({
   costUsd: z.number(),
 });
 
+const materialInfo = z.object({
+  id: z.number().int(),
+  title: z.string(),
+  kind: z.string(),
+  filename: z.string(),
+  status: z.string(),
+  pageCount: z.number().int().nullable(),
+  charCount: z.number().int().nullable(),
+  ocrConfidence: z.number().nullable(),
+  jobId: z.number().int().nullable(),
+  errorCode: z.string().nullable(),
+  errorDetail: z.string().nullable(),
+  createdAt: z.string(),
+  sourceUrl: z.string().nullable(),
+  /** Progress (0 to 1) of an active import, otherwise null. */
+  progress: z.number().nullable(),
+  chunkCount: z.number().int(),
+});
+
+const chunkInfo = z.object({
+  id: z.number().int(),
+  materialId: z.number().int(),
+  ordinal: z.number().int(),
+  page: z.number().int().nullable(),
+  section: z.string().nullable(),
+  text: z.string(),
+});
+
 export const channels = {
   "window:getState": {
     input: z.object({}).strict(),
@@ -62,6 +90,66 @@ export const channels = {
       materials: z.number().int().nonnegative(),
       cards: z.number().int().nonnegative(),
       questions: z.number().int().nonnegative(),
+    }),
+  },
+  "material:list": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ materials: z.array(materialInfo) }),
+  },
+  "material:import": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({
+      materials: z.array(materialInfo),
+      errors: z.array(z.object({ file: z.string(), message: z.string() })),
+    }),
+  },
+  "material:importUrl": {
+    input: z.object({ workspaceId, url: z.string().max(3000) }).strict(),
+    output: materialInfo,
+  },
+  "material:delete": {
+    input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),
+    output: z.object({}).strict(),
+  },
+  "material:chunks": {
+    input: z
+      .object({
+        workspaceId,
+        materialId: z.number().int().positive(),
+        offset: z.number().int().min(0).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+        chunkId: z.number().int().positive().optional(),
+      })
+      .strict(),
+    output: z.object({
+      material: materialInfo,
+      chunks: z.array(chunkInfo),
+      total: z.number().int(),
+      offset: z.number().int(),
+      previousOffset: z.number().int().nullable(),
+      nextOffset: z.number().int().nullable(),
+    }),
+  },
+  "material:search": {
+    input: z
+      .object({
+        workspaceId,
+        query: z.string().max(500),
+        limit: z.number().int().min(1).max(100).optional(),
+      })
+      .strict(),
+    output: z.object({
+      hits: z.array(
+        z.object({
+          chunkId: z.number().int(),
+          materialId: z.number().int(),
+          materialTitle: z.string(),
+          page: z.number().int().nullable(),
+          section: z.string().nullable(),
+          text: z.string(),
+          score: z.number(),
+        }),
+      ),
     }),
   },
   "settings:get": {

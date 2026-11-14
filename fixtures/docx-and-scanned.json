@@ -1,0 +1,22 @@
+{
+  "docx": [
+    {
+      "section": "Biologia",
+      "text": "A fotossíntese ocorre nos cloroplastos."
+    },
+    {
+      "section": "Biologia > Núcleo",
+      "text": "O DNA fica no núcleo da célula.\n\nOrganela | Função\n\nMitocôndria | Energia"
+    },
+    {
+      "section": "Química",
+      "text": "O átomo é a menor unidade."
+    }
+  ],
+  "scanned_terms": [
+    "fotossintese",
+    "luz",
+    "energia",
+    "cloroplastos"
+  ]
+}

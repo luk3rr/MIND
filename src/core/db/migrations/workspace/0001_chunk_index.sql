@@ -1,0 +1,1 @@
+CREATE INDEX `ix_chunk_material_page` ON `chunk` (`material_id`,`page`,`ordinal`);

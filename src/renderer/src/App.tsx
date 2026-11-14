@@ -6,6 +6,8 @@
 
 import { useEffect, useState } from "react";
 import { Shell } from "./components/Shell.js";
+import { LibraryPage } from "./pages/LibraryPage.js";
+import { MaterialPreviewPage } from "./pages/MaterialPreviewPage.js";
 import { PlaceholderPage } from "./pages/PlaceholderPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { SetupPage } from "./pages/SetupPage.js";
@@ -39,7 +41,18 @@ function Screen() {
       <Shell workspaceId={route.workspaceId} section={route.section}>
         {route.section === "today" && <TodayPage workspaceId={route.workspaceId} />}
         {route.section === "settings" && <SettingsPage />}
-        {route.section !== "today" && route.section !== "settings" && (
+        {route.section === "library" && route.materialId === undefined && (
+          <LibraryPage workspaceId={route.workspaceId} />
+        )}
+        {route.section === "library" && route.materialId !== undefined && (
+          <MaterialPreviewPage
+            key={`${route.materialId}-${route.chunkId ?? ""}`}
+            workspaceId={route.workspaceId}
+            materialId={route.materialId}
+            {...(route.chunkId !== undefined ? { chunkId: route.chunkId } : {})}
+          />
+        )}
+        {!["today", "settings", "library"].includes(route.section) && (
           <PlaceholderPage section={route.section} />
         )}
       </Shell>

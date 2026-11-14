@@ -4,10 +4,10 @@
 - Status: IN_PROGRESS
 - Profile: mvp   Depth: Standard   Tests: Standard
 - Project type: brownfield   Repos: ~/Projects/MIND
-- Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-checkpoints (design gates e falhas seguem com aprovação) iteration=unit-major commits=max-20-total-até-o-fim (12 usados após o UNIT-4)
+- Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-checkpoints (design gates e falhas seguem com aprovação) iteration=unit-major commits=max-20-total-até-o-fim (13 usados após o UNIT-8)
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-14; válido após as ferramentas do UNIT-1)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.5 Code Generation (UNIT-4 verificado; próximo UNIT-7)   Updated: 2026-11-14T16:45:47-03:00
+- Current: phase=construction stage=3.5 Code Generation (UNIT-7 e 8 verificados; próximo UNIT-9)   Updated: 2026-11-14T17:14:21-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
@@ -44,8 +44,8 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-5 Casca de UI, tema e atalhos | UNIT-2, UNIT-3 | verified | yes |
 | UNIT-6 Pacote `.deb` (esqueleto ambulante) | UNIT-2, UNIT-3, UNIT-5 | verified (instalação real pendente) | yes |
 | UNIT-4 Provedor LLM, configurações e custo | UNIT-3 | verified | yes |
-| UNIT-7 Ingestão, busca e biblioteca | UNIT-3, UNIT-5 | not started | no |
-| UNIT-8 OCR, URL e DOCX | UNIT-7 | not started | no |
+| UNIT-7 Ingestão, busca e biblioteca | UNIT-3, UNIT-5 | verified | yes |
+| UNIT-8 OCR, URL e DOCX | UNIT-7 | verified | yes |
 | UNIT-9 Flashcards com fonte e revisão | UNIT-4, UNIT-7 | not started | no |
 | UNIT-10 Estudo FSRS | UNIT-9 | not started | no |
 | UNIT-11 Questões verificadas e prática | UNIT-9 | not started | no |

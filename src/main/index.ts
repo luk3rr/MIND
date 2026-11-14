@@ -4,12 +4,13 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { app, BrowserWindow, screen, session } from "electron";
+import { app, BrowserWindow, dialog, screen, session } from "electron";
 import { join } from "node:path";
 import { createCore } from "../core/index.js";
 import { FakeProvider } from "../core/llm/fake.js";
 import { installLogRedaction } from "../core/redaction.js";
 import type { Core } from "../core/index.js";
+import { extractWithWorker } from "./extract-worker.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { createRouter } from "./ipc/router.js";
 import { CSP, isAppUrl, secureWebPreferences } from "./security.js";
@@ -89,6 +90,8 @@ if (!app.requestSingleInstanceLock()) {
     const state = new WindowState();
     core = createCore({
       dataDir: process.env["MIND_DATA_DIR"] ?? app.getPath("userData"),
+      extract: extractWithWorker,
+      tessdataDir: join(app.getPath("userData"), "cache", "tessdata"),
       // Offline end-to-end runs only; a packaged app always talks to the real provider.
       ...(process.env["MIND_E2E_FAKE_LLM"] === "1" && !app.isPackaged
         ? { provider: new FakeProvider() }
@@ -98,7 +101,23 @@ if (!app.requestSingleInstanceLock()) {
       },
     });
     uninstallRedaction = installLogRedaction(core.llm.secrets);
-    const dispatch = createRouter(createHandlers(core, state));
+    const dispatch = createRouter(
+      createHandlers(core, state, {
+        pickFiles: async () => {
+          const options = {
+            properties: ["openFile", "multiSelections"] as ("openFile" | "multiSelections")[],
+            filters: [
+              { name: "Materiais", extensions: ["pdf", "docx", "md", "markdown", "txt"] },
+              { name: "Todos os arquivos", extensions: ["*"] },
+            ],
+          };
+          const result = mainWindow
+            ? await dialog.showOpenDialog(mainWindow, options)
+            : await dialog.showOpenDialog(options);
+          return result.canceled ? [] : result.filePaths;
+        },
+      }),
+    );
     ipcMain.handle("mind:invoke", (_event, channel: unknown, payload: unknown) =>
       dispatch(channel, payload),
     );

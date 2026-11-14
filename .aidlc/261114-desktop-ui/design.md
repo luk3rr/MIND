@@ -747,3 +747,77 @@ sequenceDiagram
 
 - A39 (3.1 UNIT-4): O `maxRetries` e a nova tentativa em 429/5xx seguem os valores do Python (2 e 1). — confirmed: yes
 - A40 (3.1 UNIT-4): O E2E usa o `FakeProvider` por `MIND_E2E_FAKE_LLM=1`, só fora do app empacotado. — confirmed: yes
+
+### UNIT-7 — Ingestão, busca e biblioteca (nota de design)
+
+**Objetivo.** Importar PDF (com mupdf), Markdown e texto; dividir em trechos; buscar por palavras; tela Biblioteca com progresso, prévia dos trechos e exclusão. OCR, URL e DOCX ficam no UNIT-8. Porta `ingestion/` e `retrieval/retriever.py` do Python, que servem de especificação. [src: FR-2, FR-5, NFR-1, ADR-7, R-2]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Extração | `Segment` e `ExtractionResult` iguais aos do Python; `reflowParagraphs`, `markdownSegments`, `TextExtractor` e `PdfExtractor` portados; o PDF usa o pacote `mupdf` (WASM) e a extração de texto por página com `toStructuredText().asText()`; a conferência é por fixtures: PDFs gerados pelo Python e o texto que o `PdfExtractor` do Python leu deles (`fixtures/extractors.json`) |
+| Execução | A extração de PDF roda em `worker_threads` (ADR-5, NFR-18) por meio de `runInWorker`; o worker é empacotado com o `?nodeWorker` do electron-vite; nos testes de unidade a extração roda no mesmo processo por uma estratégia injetável |
+| Trechos | `chunkSegments` portado (alvo 1200 e máximo 1500 caracteres, nunca cruza página nem seção); conferido com `fixtures/chunker.json` |
+| Busca | Índice FTS5 `chunk_fts` (conteúdo externo, `unicode61 remove_diacritics 2`) com gatilhos de inserção, atualização e exclusão, numa migração escrita à mão; `Bm25Retriever` com consulta de termos entre aspas unidos por OR, filtros de material e página, limite 20 |
+| Importação | `MaterialService`: nome de arquivo saneado, cópia em blocos com limite de 200 MB para `files/<uuid>/`, formato por extensão, job `import` (estados do material: queued, importing, indexed, failed), cancelamento, erros estáveis (`UNSUPPORTED_FILE`, `EXTRACTION_FAILED`); exclusão remove linha, trechos, índice e arquivos |
+| Arquivos | O renderer nunca informa caminhos: `material:import` abre o diálogo nativo no processo principal e importa o que o usuário escolheu (a UI não pode ler arquivos arbitrários); os testes E2E substituem o diálogo no processo principal |
+| IPC | `material:list`, `material:import`, `material:delete`, `material:chunks` (prévia paginada, com realce de um trecho) e `material:search` |
+| UI | Rota `/w/:id/library` com botão Importar, tabela (nome, tipo, páginas, status com barra de progresso, trechos), busca por termo com resultados citando arquivo e página, e prévia `/w/:id/library/:materialId`; progresso por eventos `job:progress` com recarga a cada segundo enquanto houver importação ativa |
+
+```mermaid
+sequenceDiagram
+  participant UI as Biblioteca (React)
+  participant M as Main: material:import
+  participant D as Diálogo nativo
+  participant S as MaterialService
+  participant Q as JobQueue
+  participant W as Worker (mupdf)
+  UI->>M: invoke material:import {workspaceId}
+  M->>D: escolher arquivos
+  D-->>M: caminhos
+  M->>S: importFile(caminho)
+  S->>S: copia para files/uuid e cria material
+  S->>Q: submit job import
+  M-->>UI: materiais (status queued)
+  Q->>W: extrai páginas
+  W-->>Q: progresso por página
+  Q-->>UI: evento job:progress
+  W-->>S: segmentos
+  S->>S: chunkSegments e grava trechos (índice FTS pelos gatilhos)
+  S-->>UI: status indexed
+```
+
+**NFR (nota).** NFR-1: o PDF de 100 páginas (`fixtures/pdfs/big-100.pdf`) é importado e indexado em menos de 60 s (teste de desempenho no conjunto normal). NFR-18: a importação não bloqueia o processo principal.
+
+**Riscos.** (1) O texto que o mupdf.js devolve pode diferir do PyMuPDF (ordem, espaços): os testes contra as fixtures revelam e a normalização de reflow absorve a maior parte. (2) O `?nodeWorker` do electron-vite precisa ser validado no `.deb` (E2E empacotado). (3) O WASM do mupdf aumenta o pacote (a medir).
+
+### Assumptions & open questions
+
+- A41 (3.1 UNIT-7): A importação de arquivos só aceita caminhos escolhidos no diálogo nativo; arrastar e soltar fica fora. — confirmed: yes
+- A42 (3.1 UNIT-7): Divergências pequenas de espaçamento entre mupdf e PyMuPDF são aceitas se o texto normalizado (espaços colapsados) coincidir. — confirmed: yes
+
+### UNIT-8 — OCR, URL e DOCX (nota de design)
+
+**Objetivo.** Completar a ingestão: PDFs escaneados por OCR embutido (sem instalar nada), páginas web e documentos Word, com a confiança do OCR exibida. Porta `ocr.py`, `web.py` e o `DocxExtractor` do Python. [src: FR-3, FR-4, T-7, R-2]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| OCR | `tesseract.js` 7 (WASM, Apache-2.0) com os dados de idioma `@tesseract.js-data/por` e `eng` (MIT) lidos do disco, sem baixar nada; o motor roda dentro do worker do PDF (cria seu próprio worker), reconhece só as páginas com menos de 20 caracteres de texto nativo, rasteriza a 200 dpi e devolve texto e confiança média (0 a 100); se o motor não iniciar, o PDF volta ao comportamento "OCR indisponível" |
+| Word | `mammoth` converte o `.docx` em HTML; `linkedom` lê o HTML: títulos viram seções (mesma regra de níveis do Python), parágrafos viram texto e linhas de tabela viram `célula \| célula` sem repetir células iguais |
+| Página web | Download com `fetch` (limite de 5 MB, 20 s, até 5 redirecionamentos acompanhados à mão, só `text/html`, `application/xhtml+xml` e `text/plain`) e extração do texto principal com `@mozilla/readability` sobre `linkedom`; títulos viram seções como no Markdown; o `<title>` da página vira o título do material; validação de URL idêntica à do Python (só http/https, sem usuário e senha, até 2048 caracteres) |
+| Paridade | OCR e página web não têm valor dourado exato (motores diferentes de PyMuPDF/Tesseract binário e trafilatura): o critério é ler as amostras com os termos esperados; DOCX é comparado com a extração do Python sobre um `.docx` gerado pelo script de fixtures |
+| IPC | `material:importUrl` (`workspaceId`, `url`) devolve o material; erros de URL voltam como `VALIDATION_ERROR` com o campo `url` |
+| UI | Botão "Importar URL" que abre um diálogo de uma linha com o erro de validação no campo; a confiança do OCR já aparece na tabela |
+| Empacotamento | `tesseract.js`, `tesseract.js-core` e os dados de idioma ficam em `asarUnpack` (o worker do Tesseract precisa de arquivos reais); o tamanho é conferido pelo `verify-deb.sh` |
+
+**NFR (nota).** O OCR e o `fetch` não bloqueiam a janela: o OCR roda em worker, o download é assíncrono. NFR-5 (offline): só a importação de URL exige rede.
+
+**Riscos.** (1) O desempenho do tesseract.js é menor que o do binário; páginas escaneadas demoram mais (progresso por página). (2) Readability pode extrair menos que trafilatura em páginas incomuns (R-2); a mensagem de falha continua orientando. (3) O worker aninhado do Tesseract dentro do worker do PDF precisa funcionar no `.deb` (E2E empacotado).
+
+### Assumptions & open questions
+
+- A43 (3.1 UNIT-8): Os modelos de idioma `por` e `eng` são suficientes para o OCR do MVP; outros idiomas ficam fora. — confirmed: yes
+- A44 (3.1 UNIT-8): A importação de URL aceita endereços locais (127.0.0.1), pois é uma ação do próprio usuário no próprio computador. — confirmed: yes

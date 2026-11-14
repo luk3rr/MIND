@@ -12,27 +12,49 @@ import type { SectionSlug } from "./sections.js";
 export type Route =
   | { name: "welcome" }
   | { name: "setup"; step: 1 | 2 }
-  | { name: "section"; workspaceId: number; section: SectionSlug }
+  | {
+      name: "section";
+      workspaceId: number;
+      section: SectionSlug;
+      materialId?: number;
+      chunkId?: number;
+    }
   | { name: "unknown" };
 
-const SECTION_PATH = /^\/w\/(\d+)\/([a-z]+)$/;
+const isNumber = (text: string | undefined): text is string =>
+  text !== undefined && /^\d+$/.test(text);
 
 export function parseRoute(path: string): Route {
   if (path === "/welcome") return { name: "welcome" };
   if (path === "/setup/1") return { name: "setup", step: 1 };
   if (path === "/setup/2") return { name: "setup", step: 2 };
-  const match = SECTION_PATH.exec(path);
-  if (match) {
-    const section = match[2] as SectionSlug;
-    if (SECTION_SLUGS.includes(section)) {
-      return { name: "section", workspaceId: Number(match[1]), section };
-    }
-  }
-  return { name: "unknown" };
+  const [pathname = "", query] = path.split("?");
+  const [empty, prefix, workspace, section, material, ...extra] = pathname.split("/");
+  const valid =
+    empty === "" &&
+    prefix === "w" &&
+    isNumber(workspace) &&
+    SECTION_SLUGS.includes(section as SectionSlug) &&
+    (material === undefined || isNumber(material)) &&
+    extra.length === 0;
+  const chunk = query?.startsWith("chunk=") ? query.slice("chunk=".length) : undefined;
+  if (!valid || (query !== undefined && !isNumber(chunk))) return { name: "unknown" };
+  return {
+    name: "section",
+    workspaceId: Number(workspace),
+    section: section as SectionSlug,
+    ...(material !== undefined ? { materialId: Number(material) } : {}),
+    ...(chunk !== undefined ? { chunkId: Number(chunk) } : {}),
+  };
 }
 
 export function sectionPath(workspaceId: number, section: SectionSlug): string {
   return `/w/${workspaceId}/${section}`;
+}
+
+export function materialPath(workspaceId: number, materialId: number, chunkId?: number): string {
+  const base = `/w/${workspaceId}/library/${materialId}`;
+  return chunkId === undefined ? base : `${base}?chunk=${chunkId}`;
 }
 
 interface RouterValue {
