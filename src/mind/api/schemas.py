@@ -135,3 +135,85 @@ class SearchHitOut(BaseModel):
     section: str | None = None
     text: str
     score: float
+
+
+class GenerationIn(BaseModel):
+    material_id: int
+    subtype: str = Field(description="qa, cloze, compare or true_false.")
+    quantity: int = Field(default=20, description="1 to 60.")
+    page_from: int | None = None
+    page_to: int | None = None
+
+
+class GenerationEstimateOut(BaseModel):
+    estimated_usd: float | None = Field(description="Null when the model price is unknown.")
+    chunks: int
+    batches: int
+    prompt_chars: int
+
+
+class DiscardLogEntry(BaseModel):
+    reason: str
+    front: str
+
+
+class RunOut(BaseModel):
+    id: int
+    kind: str
+    subtype: str
+    material_id: int | None = None
+    page_from: int | None = None
+    page_to: int | None = None
+    model: str
+    requested: int
+    generated: int
+    discarded_no_source: int
+    discarded_invalid: int
+    discarded_duplicate: int
+    approved: int
+    approved_unedited: int
+    discarded_review: int
+    cost_usd: float
+    status: str = Field(description="queued, running, done, partial or cancelled.")
+    discard_log: list[DiscardLogEntry]
+    error_code: str | None = None
+    error_detail: str | None = None
+    job_id: int | None = Field(default=None, description="Follow it under /jobs.")
+    created_at: datetime
+    finished_at: datetime | None = None
+
+
+class ItemOut(BaseModel):
+    id: int
+    run_id: int
+    kind: str
+    subtype: str
+    front: str
+    back: str
+    status: str = Field(description="draft, approved or discarded.")
+    topic: str | None = None
+    source_title: str
+    source_page: int | None = None
+    quote: str
+    chunk_id: int | None = None
+    edited: bool
+    origin: str
+    created_at: datetime
+    approved_at: datetime | None = None
+
+
+class ItemEdit(BaseModel):
+    front: str
+    back: str = ""
+    topic: str | None = None
+
+
+class ReviewIn(BaseModel):
+    approve: list[int] = []
+    discard: list[int] = []
+
+
+class ReviewOut(BaseModel):
+    approved: int
+    discarded: int
+    skipped: int

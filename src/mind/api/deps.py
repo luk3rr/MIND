@@ -10,8 +10,10 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
+from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
 from mind.jobs.queue import JobQueue
+from mind.review.service import ReviewFactory
 from mind.services import Services
 from mind.workspaces.registry import WorkspaceRegistry
 
@@ -36,7 +38,19 @@ def get_materials(request: Request) -> MaterialsFactory:
     return factory
 
 
+def get_generation(request: Request) -> GenerationFactory:
+    factory: GenerationFactory = request.app.state.generation
+    return factory
+
+
+def get_review(request: Request) -> ReviewFactory:
+    factory: ReviewFactory = request.app.state.review
+    return factory
+
+
 ServicesDep = Annotated[Services, Depends(get_services)]
+GenerationDep = Annotated[GenerationFactory, Depends(get_generation)]
+ReviewDep = Annotated[ReviewFactory, Depends(get_review)]
 MaterialsDep = Annotated[MaterialsFactory, Depends(get_materials)]
 Registry = Annotated[WorkspaceRegistry, Depends(get_registry)]
 Queue = Annotated[JobQueue, Depends(get_queue)]
