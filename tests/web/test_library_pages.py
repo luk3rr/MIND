@@ -2,12 +2,11 @@
 # Created on: November 14, 2026
 # Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
 
-import time
-from collections.abc import Callable
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from tests.helpers import wait_for
 from tests.ingestion.pdfs import make_pdf
 
 MARKDOWN = b"# Biologia\n\nA mitoc\xc3\xb4ndria produz energia.\n"
@@ -24,15 +23,6 @@ def upload(client: TestClient, workspace_id: int, name: str, data: bytes) -> int
         files={"file": (name, data, "application/octet-stream")},
     )
     return int(response.status_code)
-
-
-def wait_for(check: Callable[[], bool], seconds: float = 5.0) -> None:
-    deadline = time.monotonic() + seconds
-    while time.monotonic() < deadline:
-        if check():
-            return
-        time.sleep(0.05)
-    raise AssertionError("condition not reached in time")
 
 
 def test_empty_library_shows_the_empty_message_and_the_form(client: TestClient) -> None:

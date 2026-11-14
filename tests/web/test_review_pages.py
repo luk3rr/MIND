@@ -6,9 +6,7 @@ import re
 
 from fastapi.testclient import TestClient
 
-from tests.web.test_generate_pages import generate, prepare, ready
-
-__all__ = ["ready"]
+from tests.web.test_generate_pages import generate, prepare
 
 
 def draft_ids(page: str) -> list[int]:

@@ -2,41 +2,13 @@
 # Created on: November 14, 2026
 # Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
 
-import time
-from collections.abc import Callable, Iterator
-from pathlib import Path
-
-import pytest
 from fastapi.testclient import TestClient
 
-from mind.config import Settings
-from mind.generation.schemas import CardBatch
-from mind.llm.fake import FakeProvider
-from mind.web.app import create_app
-from tests.generation.fakes import cards_from_prompt
+from tests.helpers import wait_for
 
 TEXT = (
     "# Célula\n\n" + "A mitocôndria produz energia para a célula e participa da respiração. " * 30
 )
-
-
-@pytest.fixture
-def ready(tmp_path: Path) -> Iterator[TestClient]:
-    """An app whose model is a scripted fake that needs no key or consent."""
-    fake = FakeProvider(name="openrouter", requires_consent=False)
-    fake.script(CardBatch, cards_from_prompt)
-    app = create_app(Settings(data_dir=tmp_path), inner_provider=fake)
-    with TestClient(app, base_url="http://127.0.0.1:8000", follow_redirects=False) as client:
-        yield client
-
-
-def wait_for(check: Callable[[], bool], seconds: float = 8.0) -> None:
-    deadline = time.monotonic() + seconds
-    while time.monotonic() < deadline:
-        if check():
-            return
-        time.sleep(0.05)
-    raise AssertionError("condition not reached in time")
 
 
 def prepare(client: TestClient) -> int:
