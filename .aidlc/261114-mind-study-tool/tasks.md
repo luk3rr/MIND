@@ -95,7 +95,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Pendências conhecidas: o cliente OpenRouter só foi exercitado com transporte simulado; a primeira chamada real, a validação dos slugs de modelo (A39) e o formato de `usage.cost` (A40) serão conferidos no gate do BOLT-2 com uma chave de verdade.
 
 ### UNIT-3 Ingestão de PDF/Markdown, busca e biblioteca — Status: pending
-- [ ] T-3.1 Modelos `material` e `chunk`, migração do `workspace.db` e tabela virtual FTS5. · FR-5 · teste: `tests/db/test_migrations_workspace.py`
+- [x] T-3.1 Modelos `material` e `chunk`, migração do `workspace.db` e tabela virtual FTS5. · FR-5 · teste: `tests/db/test_migrations_workspace.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0003_*.py, tests/ingestion/test_workspace_migrations.py
 - [ ] T-3.2 `PdfExtractor` (PyMuPDF; ver A34): texto por página; PDF corrompido gera `EXTRACTION_FAILED`. · FR-2 · teste: `tests/ingestion/test_pdf.py`
 - [ ] T-3.3 Extratores de Markdown e texto. · FR-2 · teste: `tests/ingestion/test_text.py`
 - [ ] T-3.4 `Chunker` por seção e página com metadados (arquivo, página, seção) e tamanho-alvo. · FR-5 · teste: `tests/ingestion/test_chunker.py`

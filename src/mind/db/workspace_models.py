@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Float, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from mind.clock import utcnow
 from mind.db.base import UtcDateTime, WorkspaceBase
@@ -28,3 +28,38 @@ class Job(WorkspaceBase):
     created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
     finished_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
+
+
+class Material(WorkspaceBase):
+    __tablename__ = "material"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(255))
+    kind: Mapped[str] = mapped_column(String(16))
+    filename: Mapped[str] = mapped_column(String(255))
+    stored_path: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    page_count: Mapped[int | None] = mapped_column(Integer, default=None)
+    char_count: Mapped[int | None] = mapped_column(Integer, default=None)
+    ocr_confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    job_id: Mapped[int | None] = mapped_column(Integer, default=None)
+    error_code: Mapped[str | None] = mapped_column(String(64), default=None)
+    error_detail: Mapped[str | None] = mapped_column(String, default=None)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+
+    chunks: Mapped[list[Chunk]] = relationship(
+        back_populates="material", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class Chunk(WorkspaceBase):
+    __tablename__ = "chunk"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    material_id: Mapped[int] = mapped_column(ForeignKey("material.id", ondelete="CASCADE"))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    page: Mapped[int | None] = mapped_column(Integer, default=None)
+    section: Mapped[str | None] = mapped_column(String, default=None)
+    text: Mapped[str] = mapped_column(String)
+
+    material: Mapped[Material] = relationship(back_populates="chunks")
