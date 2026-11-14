@@ -196,7 +196,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Desvios e adições: (1) a seção **Erros** entrou na barra lateral; (2) migração `0007` (coluna `item.origin_item_id`); (3) o card de erro pertence a uma geração especial `notebook`, escondida da lista de gerações e do `mind sm1`; (4) gráficos em SVG gerados no servidor, sem biblioteca; (5) o resumo de estatísticas da API fica em `/stats/summary` (o resumo de estudo continua em `/study/summary`).
 - Pendências conhecidas: a conferência visual das telas Estatísticas e Erros no navegador e o ajuste de A52 (se "Difícil" deve contar como acerto) dependem do uso.
 
-### UNIT-8 OCR, URL e DOCX — Status: pending
+### UNIT-8 OCR, URL e DOCX — Status: verified (2026-11-14)
 - [x] T-8.1 Extrator OCR (Tesseract) com confiança e prévia. ≈2 h · FR-3 · teste: `tests/ingestion/test_ocr.py` (Tesseract simulado; versão real em `tests/ingestion/test_ocr_real.py`, marcador opcional) · files: src/mind/ingestion/{ocr,extractors}.py, tests/ingestion/test_ocr.py
 - [x] T-8.2 Detecção de Tesseract ausente (`OCR_UNAVAILABLE`) e mensagem clara. · FR-3, US-3 · teste: `tests/ingestion/test_ocr_missing.py` · files: src/mind/errors.py (OcrUnavailable), src/mind/ingestion/extractors.py, tests/ingestion/test_ocr.py
 - [x] T-8.3 `UrlExtractor` (httpx + extração do texto principal); só `http`/`https`. · FR-4 · teste: `tests/ingestion/test_url.py` (HTML de amostra; esquema inválido recusado) · files: src/mind/ingestion/web.py, tests/ingestion/test_docx_and_web.py
@@ -204,18 +204,39 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-8.5 Interface de importação para os novos formatos e alerta de OCR de baixa confiança. · US-3 · teste: `tests/web/test_import_formats.py` · files: src/mind/web/{library_pages.py,strings.py,templates/library.html,templates/_library_rows.html}, tests/web/test_library_pages.py
 - [x] T-8.6 API aceita URL e novos arquivos. · FR-24 · teste: `tests/api/test_materials_new_formats.py` · files: src/mind/api/{schemas.py,v1/materials.py}, tests/api/{test_materials_contract.py,openapi_v1.json}
 
-### UNIT-9 Treino de pontos fracos — Status: pending
+**Resumo da UNIT-8 (2026-11-14)**
+
+- Verificação: comando aprovado → exit 0. OCR página a página para PDFs escaneados (Tesseract via subprocesso, com confiança por página e alerta de baixa confiança), importação de `.docx` (títulos viram seções, tabelas viram linhas) e de páginas por URL (`trafilatura`; só `http`/`https`, com limite de tamanho e tempo).
+- Como usar: na Biblioteca, envie um PDF escaneado ou `.docx`, ou cole um endereço no formulário de URL. A API ganhou `POST /materials/url`. Para o OCR real instale `sudo apt install tesseract-ocr tesseract-ocr-por`; sem ele o app mostra o erro `OCR_UNAVAILABLE` com a instrução.
+- Desvios e adições: migração `0008` (`material.source_url`); os avisos de extração ficam em `error_detail`.
+- Pendências conhecidas: o OCR real nunca rodou nesta máquina (A54, A55); páginas que dependem de JavaScript podem falhar (A57).
+
+### UNIT-9 Treino de pontos fracos — Status: verified (2026-11-14)
 - [x] T-9.1 `WeakTopicSelector` com mínimo de tentativas e ordenação por acerto. · FR-17 · teste: `tests/stats/test_weak_topics.py` · files: src/mind/stats/service.py (weakest_topics, reused), tests/stats/test_stats_service.py
 - [x] T-9.2 Recuperação de trechos do tópico e pré-configuração da geração. · FR-17 · teste: `tests/generation/test_weak_topic_generation.py` · files: src/mind/generation/{training,planning,service,cards,questions,prompts}.py, tests/generation/{test_generation_service,test_planning}.py
 - [x] T-9.3 Atalho "Treinar" em Hoje e Estatísticas. · US-11 · teste: `tests/web/test_train_shortcut.py`
 - [x] T-9.4 API `generations:weak-topics`. · FR-24 · teste: `tests/api/test_weak_topics_contract.py`
 
-### UNIT-10 Chat com a base e embeddings opcionais — Status: pending
+**Resumo da UNIT-9 (2026-11-14)**
+
+- Verificação: comando aprovado → exit 0. Treino por tópico fraco: a geração aceita `topic_id` (sem material), usa primeiro os trechos de onde você errou e depois o BM25 pelo nome do tópico (até 30 trechos), passa os enunciados existentes ao modelo para não repetir e força o tópico nos itens novos.
+- Como usar: em **Hoje** e **Estatísticas** a lista "Pontos fracos" mostra os 3 tópicos de menor acerto (mínimo de 5 respostas); **Treinar** abre a tela Gerar já preenchida e nada é gerado até você clicar em Gerar. API: `GET /stats/weak-topics` e `topic_id` em `POST /generations` (e na estimativa); a execução expõe `topic_id`.
+- Desvios e adições: `generation_run.topic_id` (migração `0008`); nas execuções, a lista mostra "Treino: <tópico>".
+- Pendências conhecidas: a qualidade dos itens de treino com o modelo real depende do seu uso (A58, A59).
+
+### UNIT-10 Chat com a base e embeddings opcionais — Status: verified (2026-11-14)
 - [x] T-10.1 `ChatService`: recupera trechos, responde com citações e recusa sem suporte. ≈2 h · FR-18, US-12 · teste: `tests/chat/test_chat_service.py`
 - [x] T-10.2 Tela Chat com citações clicáveis que abrem o trecho. · US-12 · teste: `tests/web/test_chat_page.py`
 - [x] T-10.3 `EmbeddingRetriever` opcional (extra `mind[embeddings]`, cosseno em memória no lugar de sqlite-vec, ver B-13) e fusão por RRF com o BM25. ≈2 h · FR-18 · teste: `tests/retrieval/test_embeddings.py` (embeddings falsos; ignorado se o extra não estiver instalado)
 - [x] T-10.4 Degradação para BM25 quando o extra não está instalado. · FR-18 · teste: `tests/retrieval/test_no_extra.py`
 - [x] T-10.5 API `chat`. · FR-24 · teste: `tests/api/test_chat_contract.py`
+
+**Resumo da UNIT-10 (2026-11-14)**
+
+- Verificação: comando aprovado → exit 0 (626 testes, cobertura 97%). `ChatService`: recupera até 8 trechos (BM25, ou BM25 + semântica por RRF), pede uma resposta estruturada, mantém só as citações que o `SourceChecker` confirma e, sem trechos, sem suporte ou sem citação válida, responde "Não encontrei suporte no material…". Sem trechos recuperados o modelo nem é chamado. Cada pergunta é independente e fica em `chat_message` (pergunta, resposta, citações, custo).
+- Como usar: seção **Chat** da barra lateral; as fontes aparecem sob cada resposta e "Abrir o trecho" leva à prévia do material com o trecho destacado. Embeddings: o bloco "Busca semântica" aparece ativo só com `pip install 'mind-study[embeddings]'`; "Ativar e vetorizar" cria um job que vetoriza os trechos, e "Vetorizar trechos novos" repete para as importações posteriores. API: `POST /chat`, `GET`/`DELETE /chat/messages`, `GET /embeddings/status`, `POST /embeddings/enable` e `/embeddings/disable`.
+- Desvios e adições: (1) similaridade de cosseno em Python puro (vetores `float32` normalizados em BLOB), sem `numpy` nem `sqlite-vec` (B-13); (2) a vetorização é sempre explícita, não ocorre sozinha ao importar (nada baixa modelo sem você pedir); (3) o chat usa o modelo de geração (mais barato), não o do juiz; (4) migração `0009`; (5) a prévia do material aceita `?chunk=ID`.
+- Pendências conhecidas: o modelo real de embeddings não foi baixado nem testado (A62); perguntas só com palavras comuns ainda chamam o modelo, que então recusa (custo pequeno).
 
 ### UNIT-11 Backup e distribuição — Status: pending
 - [ ] T-11.1 `WorkspaceArchive`: exportar e importar `.zip` com `manifest.json`; recusa e migra versões. ≈2 h · FR-22, US-15 · teste: `tests/workspaces/test_archive.py` (ida e volta; `ARCHIVE_INCOMPATIBLE`)

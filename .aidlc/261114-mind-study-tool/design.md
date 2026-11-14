@@ -1208,3 +1208,6 @@ Escritas sem gate por pedido do autor ("implemente até finalizar todo o bolt e 
 - A60: O chat não mantém memória entre perguntas no MVP. (confirmed: no)
 - A61: Os embeddings usam similaridade de cosseno em memória; para dezenas de milhares de trechos isso é suficiente, e o `sqlite-vec` do desenho original fica no backlog. (confirmed: no)
 - A62: O extra de embeddings não será instalado nem testado com um modelo real nesta execução (o `torch` é muito pesado); os testes usam um `Embedder` falso. (confirmed: no)
+- A63: A vetorização de embeddings é sempre iniciada por você (ativar ou "Vetorizar trechos novos"); importar material não dispara download de modelo nem uso de CPU por conta própria. (confirmed: no)
+- A64: O chat usa o modelo de geração configurado (mais barato que o do juiz); a qualidade das respostas é protegida pela verificação determinística das citações, não por um segundo modelo. (confirmed: no)
+- A65: A similaridade vetorial é em Python puro (sem `numpy`); com dezenas de milhares de trechos a busca semântica pode levar alguns segundos, e então vale o B-13. (confirmed: no)

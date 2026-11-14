@@ -46,9 +46,9 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-5 Estudo FSRS e Hoje | UNIT-4 | verified | yes |
 | UNIT-6 Questões verificadas | UNIT-4 | verified (qualidade com modelo real pendente) | yes |
 | UNIT-7 Caderno de erros e estatísticas | UNIT-5, UNIT-6 | verified | yes |
-| UNIT-8 OCR, URL e DOCX | UNIT-3 | pending | no |
-| UNIT-9 Treino de pontos fracos | UNIT-4, UNIT-7 | pending | no |
-| UNIT-10 Chat e embeddings opcionais | UNIT-2, UNIT-3 | pending | no |
+| UNIT-8 OCR, URL e DOCX | UNIT-3 | verified (OCR real pendente) | yes |
+| UNIT-9 Treino de pontos fracos | UNIT-4, UNIT-7 | verified | yes |
+| UNIT-10 Chat e embeddings opcionais | UNIT-2, UNIT-3 | verified (embeddings reais pendentes) | yes |
 | UNIT-11 Backup e distribuição | UNIT-1, UNIT-4 | pending | no |
 
 ## Open assumptions
