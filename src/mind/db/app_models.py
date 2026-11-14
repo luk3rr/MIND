@@ -6,16 +6,13 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
+from mind.clock import utcnow
 from mind.db.base import AppBase
-
-
-def utcnow() -> datetime:
-    return datetime.now(UTC)
 
 
 class Workspace(AppBase):
