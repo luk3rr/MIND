@@ -176,35 +176,42 @@ class StudyService:
             new_studied_today=new_today,
         )
 
-    def next_card(self, now: datetime | None = None) -> StudyCard | None:
-        """The next card: due learning cards, then reviews due today, then new cards."""
+    def queue(self, limit: int = 20, now: datetime | None = None) -> list[StudyCard]:
+        """Upcoming cards: due learning cards, reviews due today, then new cards in the quota."""
         moment = now or self._clock()
         end = day_end(moment, self._tz)
         ahead = moment + LEARN_AHEAD
+        cards: list[StudyCard] = []
         with self._sessions() as session:
             approved = (Item.status == "approved") & (Item.kind == "card")
-            row = session.scalars(
-                select(CardState).join(Item, Item.id == CardState.item_id)
-                .where(approved, CardState.state.in_(LEARNING_STATES), CardState.due <= ahead)
-                .order_by(CardState.due).limit(1)
-            ).first()  # fmt: skip
-            if row is None:
-                row = session.scalars(
+            for states, cutoff in ((LEARNING_STATES, ahead), ((REVIEW_STATE,), end)):
+                remaining = limit - len(cards)
+                if remaining <= 0:
+                    break
+                rows = session.scalars(
                     select(CardState).join(Item, Item.id == CardState.item_id)
-                    .where(approved, CardState.state == REVIEW_STATE, CardState.due <= end)
-                    .order_by(CardState.due).limit(1)
-                ).first()  # fmt: skip
-            if row is not None:
-                return StudyCard(self._review.get(row.item_id), self._schedule(row))
-            if self._new_studied_today(session, self._today(moment)) >= self.settings().new_per_day:
-                return None
-            fresh = session.scalars(
-                select(Item).where(approved, ~Item.id.in_(select(CardState.item_id)))
-                .order_by(Item.approved_at, Item.id).limit(1)
-            ).first()  # fmt: skip
-            if fresh is None:
-                return None
-            return StudyCard(self._review.get(fresh.id), None)
+                    .where(approved, CardState.state.in_(states), CardState.due <= cutoff)
+                    .order_by(CardState.due).limit(remaining)
+                ).all()  # fmt: skip
+                cards.extend(
+                    StudyCard(self._review.get(r.item_id), self._schedule(r)) for r in rows
+                )
+            allowance = self.settings().new_per_day - self._new_studied_today(
+                session, self._today(moment)
+            )
+            room = min(limit - len(cards), allowance)
+            if room > 0:
+                fresh = session.scalars(
+                    select(Item).where(approved, ~Item.id.in_(select(CardState.item_id)))
+                    .order_by(Item.approved_at, Item.id).limit(room)
+                ).all()  # fmt: skip
+                cards.extend(StudyCard(self._review.get(i.id), None) for i in fresh)
+        return cards
+
+    def next_card(self, now: datetime | None = None) -> StudyCard | None:
+        """The next card to study, or `None` when the session is over."""
+        upcoming = self.queue(1, now)
+        return upcoming[0] if upcoming else None
 
     def card(self, item_id: int) -> StudyCard:
         """A specific card with its current state (used after an undo)."""
