@@ -37,13 +37,18 @@ Ordem: BOLT-1 → BOLT-2 → BOLT-3 → BOLT-4 → BOLT-5 (seguindo o DAG de 2.7
 **Desvios.** (1) TypeScript fixado em 6.0 porque o typescript-eslint não suporta o 7.0 ainda; `@types/node` em 22. (2) As fixtures de estatísticas ficam para o UNIT-12, pois dependem de banco semeado; o script de extração será estendido lá. (3) Alvos de tipagem: um `tsconfig` por alvo e um para ferramentas, rodados em cadeia (sem `tsc -b`). (4) Nada commitado além do squash e do move; as mudanças do UNIT-1 aguardam seu aval para commit.
 
 
-### UNIT-2 Casca Electron e IPC   Status: not started
-- [ ] UNIT-2.1 Janela principal com barra de título nativa e mínimo 960x600 [FR-25] — teste: Teste Playwright lê o tamanho mínimo
-- [ ] UNIT-2.2 Instância única com foco na janela existente [FR-26] — teste: Teste lança duas instâncias e confere uma só janela
-- [ ] UNIT-2.3 Persistir tamanho, posição e última rota [FR-27] — teste: Teste fecha e reabre e compara
-- [ ] UNIT-2.4 Preload `window.mind` mínimo e roteador IPC com zod [FR-31] — teste: Teste de canal válido e inválido (`VALIDATION_ERROR`)
-- [ ] UNIT-2.5 Opções seguras da janela e CSP [NFR-15] — teste: Teste automatizado das opções e bloqueio de navegação externa
-- [ ] UNIT-2.6 Garantir nenhuma porta de rede e medir o tempo de abertura [FR-25, NFR-14] — teste: Teste `perf` mede < 3 s; `ss -ltnp` sem listener
+### UNIT-2 Casca Electron e IPC   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-2.1 Janela principal com barra de título nativa e mínimo 960x600 [FR-25] — teste: Teste Playwright lê o tamanho mínimo — files: src/main/index.ts, electron.vite.config.ts, src/renderer/*
+- [x] UNIT-2.2 Instância única com foco na janela existente [FR-26] — teste: Teste lança duas instâncias e confere uma só janela — files: src/main/index.ts (requestSingleInstanceLock, second-instance)
+- [x] UNIT-2.3 Persistir tamanho, posição e última rota [FR-27] — teste: Teste fecha e reabre e compara — files: src/main/window-state.ts, src/main/window-bounds.ts
+- [x] UNIT-2.4 Preload `window.mind` mínimo e roteador IPC com zod [FR-31] — teste: Teste de canal válido e inválido (`VALIDATION_ERROR`) — files: src/core/contracts/*, src/main/ipc/router.ts, src/preload/index.ts
+- [x] UNIT-2.5 Opções seguras da janela e CSP [NFR-15] — teste: Teste automatizado das opções e bloqueio de navegação externa — files: src/main/security.ts, electron.vite.config.ts (CSP meta)
+- [x] UNIT-2.6 Garantir nenhuma porta de rede e medir o tempo de abertura [FR-25, NFR-14] — teste: Teste `perf` mede < 3 s; `ss -ltnp` sem listener — files: tests/e2e/shell.spec.ts, tests/e2e/launch.ts
+
+**Resumo do UNIT-2.** Electron 45.3.2 com electron-vite 6 (main ESM, preload CJS sandboxado, renderer React 19); janela nativa com mínimo 960x600, instância única, estado da janela e da última rota via electron-store 12 com validação contra os monitores; segurança (`contextIsolation`, `sandbox`, sem `nodeIntegration`, CSP, navegação e janelas externas bloqueadas, permissões negadas); IPC tipado com `Result<T>`, canais `window:getState` e `window:setLastRoute`, roteador sem Electron e preload mínimo (`window.mind.invoke/on`). Como rodar: `pnpm dev` (usa `--no-sandbox`), `pnpm build`, `xvfb-run -a pnpm e2e`. Resultado: verification command exit 0 (24 testes, cobertura 100% do código medido) e E2E 8/8 em 9 s (janela abre em < 1 s).
+
+**Desvios.** (1) **Sandbox do Chromium:** nesta máquina o `chrome-sandbox` do Electron não é setuid, então o app só inicia com `--no-sandbox` (o Playwright já o passa); o `.deb` do UNIT-6 deve instalar o helper com modo 4755 (ou usar perfil do AppArmor), e o E2E de cada instância extra usa `--no-sandbox`. (2) O teste de portas inicia o app direto, porque o Playwright acrescenta portas de depuração ao processo que lança. (3) CSP sem `frame-ancestors` (ignorado em `<meta>`). (4) Rota IPC rejeita `//…` (protocol-relative). (5) E2E e etapa de CI com Xvfb adicionados, fora do verification command.
+
 
 ### UNIT-3 Dados, workspaces e jobs   Status: not started
 - [ ] UNIT-3.1 Esquema Drizzle do `app.db` e migrações [NFR-12] — teste: Teste de migração em banco novo e antigo

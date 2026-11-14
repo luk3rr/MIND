@@ -6,3 +6,6 @@ coverage
 fixtures
 samples
 pnpm-lock.yaml
+out
+test-results
+playwright-report

@@ -497,3 +497,61 @@ flowchart LR
 
 - A29 (3.1 UNIT-1): Mover o Python inteiro para `legacy/` e deixar uma cópia de `samples/` na raiz. — confirmed: no
 - A30 (3.1 UNIT-1): O limiar de cobertura de 80% só é imposto a partir do UNIT-3. — confirmed: no
+
+### UNIT-2 — Casca Electron e IPC (nota de design)
+
+**Objetivo.** Janela nativa do MIND com instância única, estado de janela lembrado, canal IPC tipado e validado, opções de segurança do Electron e nenhuma porta de rede. A UI real vem no UNIT-5; aqui o renderer é um React mínimo que prova o IPC. [src: FR-25, FR-26, FR-27, FR-31, NFR-14, NFR-15, ADR-5]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Versões | Electron 45.3.2 (fixado com `~`), electron-vite 6.0.0, Vite 8.3.8, React 19.3.1, zod 4.6.7, Playwright 1.65.1 (versões do npm em 2026-11-14) |
+| Build | electron-vite: `src/main/index.ts`, `src/preload/index.ts`, `src/renderer/index.html` em `out/` |
+| Janela | `BrowserWindow` com barra de título nativa, `minWidth` 960, `minHeight` 600, padrão 1280x800, `show: false` até `ready-to-show` |
+| Instância única | `app.requestSingleInstanceLock()`; a segunda instância sai e a primeira restaura e foca a janela (evento `second-instance`) |
+| Estado | electron-store (`window-state`): `bounds`, `maximized`, `lastRoute`; os limites são validados contra os monitores conectados, e se estiverem fora de qualquer um a janela abre centralizada no padrão |
+| Segurança | `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, `webSecurity: true`; `setWindowOpenHandler` nega tudo; `will-navigate` bloqueia fora do próprio app; pedidos de permissão negados; CSP por cabeçalho e `<meta>` |
+| IPC | `src/core/contracts` (zod): `Result<T>`, `ErrorCode`, tabela de canais com esquema de entrada e saída, `CONTRACT_VERSION`; o roteador (`src/main/ipc/router.ts`, sem importar Electron) valida entrada e saída e converte exceções em `INTERNAL_ERROR`; o preload só encaminha canais da lista permitida |
+| Canais deste Unit | `window:getState` → `{ route, contractVersion }`, `window:setLastRoute` ← `{ route }` |
+| Preload | `window.mind.invoke(channel, payload)` e `window.mind.on(event, handler)`; nada de `ipcRenderer` exposto |
+| Diretório de dados | Definido no UNIT-3; aqui o electron-store usa o `userData` padrão do Electron |
+| Rede | Nenhum servidor no app; o servidor de desenvolvimento do electron-vite só existe em `pnpm dev` |
+
+```mermaid
+sequenceDiagram
+  participant R as Renderer (React)
+  participant P as Preload (window.mind)
+  participant M as Main (roteador IPC)
+  participant S as electron-store
+  R->>P: invoke("window:getState", {})
+  P->>P: canal na lista permitida?
+  P->>M: ipcRenderer.invoke
+  M->>M: zod valida a entrada
+  M->>S: lê lastRoute
+  M->>M: zod valida a saída
+  M-->>P: Result ok com a rota
+  P-->>R: Result tipado
+```
+
+```mermaid
+flowchart LR
+  A[app.whenReady] --> B{Trava de instância única}
+  B -- não obteve --> Q[app.quit]
+  B -- obteve --> C[Ler estado da janela]
+  C --> D[Validar limites nos monitores]
+  D --> E[Criar BrowserWindow seguro]
+  E --> F[ready-to-show: exibir]
+  G[second-instance] --> H[Restaurar e focar]
+```
+
+**NFR (nota).** NFR-14: tempo até a janela visível medido pelo E2E (alvo 3 s); NFR-15: teste confere as `webPreferences` e o bloqueio de navegação e de novas janelas; C-8/SC-2: o E2E confere que o processo do app não escuta em nenhuma porta TCP.
+
+**Testes.** Vitest (puro, sem Electron): roteador IPC (entrada inválida, saída inválida, exceção, canal desconhecido), esquemas, ajuste de limites da janela. Playwright para Electron (`pnpm e2e`, fora do verification command): abre a janela, tamanho mínimo, instância única, `webPreferences`, nenhuma porta, tempo de abertura.
+
+**Riscos.** (1) Ubuntu com restrição de user namespaces pode exigir `--no-sandbox` no E2E local; no `.deb` o `chrome-sandbox` é tratado no UNIT-6. (2) O pnpm 10 bloqueia scripts de build: `electron` e `esbuild` entram em `pnpm.onlyBuiltDependencies`. (3) O E2E precisa de display (Xvfb no CI).
+
+### Assumptions & open questions
+
+- A31 (3.1 UNIT-2): "Última tela" do FR-27 cobre a última rota e o monitor (pelas coordenadas salvas). — confirmed: no
+- A32 (3.1 UNIT-2): O E2E não entra no verification command; roda como `pnpm e2e` e como etapa de CI. — confirmed: no

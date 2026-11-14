@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 const FIXTURES = join(import.meta.dirname, "..", "..", "fixtures");
 
 function load<T>(name: string): T {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed test fixtures
   return JSON.parse(readFileSync(join(FIXTURES, `${name}.json`), "utf8")) as T;
 }
 

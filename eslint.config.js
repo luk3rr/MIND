@@ -17,6 +17,9 @@ export default tseslint.config(
       "node_modules/**",
       "dist/**",
       "coverage/**",
+      "out/**",
+      "test-results/**",
+      "playwright-report/**",
       "fixtures/**",
       "samples/**",
     ],
@@ -32,6 +35,10 @@ export default tseslint.config(
       // Object keys are indexed by validated values; the rule produces noise on typed maps.
       "security/detect-object-injection": "off",
     },
+  },
+  {
+    files: ["src/renderer/**"],
+    languageOptions: { globals: { ...globals.browser } },
   },
   {
     files: ["scripts/**"],
