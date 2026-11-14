@@ -90,7 +90,7 @@ def _percent(value: float | None) -> str:
     return "n/d" if value is None else f"{value * 100:.1f}%"
 
 
-def format_report(name: str, report: Sm1Report) -> str:
+def format_report(name: str, report: Sm1Report, *, kind: str = "card") -> str:
     verdicts = {
         "met": f"META ATINGIDA (≥ {TARGET * 100:.0f}%)",
         "not_met": f"META NÃO ATINGIDA (< {TARGET * 100:.0f}%)",
@@ -98,9 +98,9 @@ def format_report(name: str, report: Sm1Report) -> str:
     }
     per_approved = report.cost_per_approved
     lines = [
-        f"SM-1 · workspace: {name}",
+        f"SM-1 · workspace: {name}" + (" · questões" if kind == "question" else ""),
         f"  gerações: {report.runs}",
-        f"  cards gerados (válidos): {report.generated}",
+        f"  {'questões' if kind == 'question' else 'cards'} gerados (válidos): {report.generated}",
         f"  descartados automaticamente: {report.discarded_automatically}"
         f" (rendimento do pipeline: {_percent(report.pipeline_yield)})",
         f"  revisados: {report.reviewed} (aprovados {report.approved},"

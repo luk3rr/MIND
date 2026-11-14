@@ -115,3 +115,31 @@ def test_the_sm1_command_handles_an_empty_installation(
     monkeypatch.chdir(tmp_path)
     cli.main(["sm1", "--data-dir", str(tmp_path / "data")])
     assert "Nenhum workspace" in capsys.readouterr().out
+
+
+def test_the_kind_flag_reports_on_questions(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    registry = WorkspaceRegistry(Settings(data_dir=tmp_path / "data"))
+    sessions = registry.open(registry.create("Quest").id).sessions
+    with sessions() as session:
+        session.add(
+            GenerationRun(
+                kind="question", subtype="certo_errado", model="m", requested=5, generated=5,
+                approved=4, approved_unedited=4, discarded_review=1, cost_usd=0.05,
+            )
+        )  # fmt: skip
+        session.add(
+            GenerationRun(
+                kind="card", subtype="qa", model="m", requested=5, generated=9, approved=9
+            )
+        )
+        session.commit()
+    registry.close()
+
+    cli.main(["sm1", "--kind", "question", "--data-dir", str(tmp_path / "data")])
+    out = capsys.readouterr().out
+    assert "· questões" in out
+    assert "questões gerados (válidos): 5" in out
+    assert "taxa SM-1: 80.0%" in out

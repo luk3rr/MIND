@@ -29,6 +29,9 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command")
     sm1 = commands.add_parser("sm1", help="Report the share of cards approved without edits.")
     sm1.add_argument("--workspace", type=int, help="Only this workspace id (default: all).")
+    sm1.add_argument(
+        "--kind", choices=("card", "question"), default="card", help="What to report on."
+    )
     # SUPPRESS keeps a value given before the subcommand from being overwritten by the default.
     sm1.add_argument("--data-dir", type=Path, default=argparse.SUPPRESS, help="App data directory.")
     return parser
@@ -54,7 +57,11 @@ def run_sm1(args: argparse.Namespace, settings: Settings) -> None:
             print("Nenhum workspace encontrado.")
         for workspace in workspaces:
             sessions = registry.open(workspace.id).sessions
-            print(format_report(workspace.name, compute_report(sessions)))
+            print(
+                format_report(
+                    workspace.name, compute_report(sessions, kind=args.kind), kind=args.kind
+                )
+            )
     finally:
         registry.close()
 
