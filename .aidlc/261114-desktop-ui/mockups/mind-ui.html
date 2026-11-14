@@ -1,0 +1,156 @@
+<!--
+  Filename: mind-ui.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+-->
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIND — mockup refinado</title>
+<style>
+  :root {
+    --bg: #1e1f29; --panel: #282a36; --panel-2: #303243; --line: #44475a;
+    --fg: #f8f8f2; --muted: #a4a9c3; --accent: #50fa7b; --accent-ink: #10231a;
+    --side: #2f9e5b; --side-ink: #f4fff8; --side-active: rgba(255,255,255,.18);
+    --danger: #ff5555; --warn: #ffb86c; --info: #8be9fd; --purple: #bd93f9;
+    --radius: 12px; --shadow: 0 1px 0 rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.25);
+  }
+  [data-theme="light"] {
+    --bg: #f3f5f7; --panel: #ffffff; --panel-2: #eef1f4; --line: #d8dde3;
+    --fg: #1f2328; --muted: #5b6472; --accent: #1f8f4f; --accent-ink: #ffffff;
+    --side: #2f9e5b; --side-ink: #ffffff; --side-active: rgba(255,255,255,.22);
+    --danger: #c62828; --warn: #b26a00; --info: #0b6e99; --purple: #6f42c1;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 Inter, "Segoe UI", system-ui, sans-serif; }
+  .titlebar { height: 36px; background: #181920; color: #cfd2e4; display: flex; align-items: center;
+    justify-content: center; font-weight: 600; font-size: 13px; position: relative; }
+  .titlebar .ctl { position: absolute; right: 10px; display: flex; gap: 8px; }
+  .titlebar .ctl i { width: 14px; height: 14px; border-radius: 50%; background: #4a4d63; display: block; }
+  .app { display: grid; grid-template-columns: 220px 1fr; height: calc(100vh - 36px - 28px); min-height: 560px; }
+  .sidebar { background: var(--side); color: var(--side-ink); padding: 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .brand { font-weight: 800; letter-spacing: .06em; font-size: 18px; padding: 4px 10px 10px; }
+  .ws { background: var(--side-active); border-radius: 10px; padding: 8px 10px; font-size: 13px; margin-bottom: 8px; }
+  .nav button { all: unset; display: flex; gap: 10px; align-items: center; width: 100%; box-sizing: border-box;
+    padding: 10px 12px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+  .nav button:hover { background: rgba(255,255,255,.1); }
+  .nav button[aria-current="page"] { background: var(--side-active); box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  .nav .ico { width: 20px; text-align: center; }
+  .spacer { flex: 1; }
+  main { padding: 20px 24px; overflow: auto; }
+  h1 { margin: 0 0 16px; font-size: 22px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+  .stat { flex: 1 1 150px; border-left: 4px solid var(--accent); }
+  .stat b { display: block; font-size: 28px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .btn { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 999px; padding: 9px 18px; font-weight: 700; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+  .bar { height: 10px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin: 10px 0 6px; }
+  .bar > span { display: block; height: 100%; width: 70%; background: linear-gradient(90deg, var(--accent), var(--info)); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .pill { padding: 2px 10px; border-radius: 999px; font-size: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+  .pill.ok { color: var(--accent); }
+  .study { max-width: 720px; margin: 0 auto; text-align: center; padding: 36px; }
+  .q { font-size: 22px; margin: 12px 0 26px; }
+  .source { text-align: left; background: var(--panel-2); border-left: 4px solid var(--purple); padding: 10px 14px; border-radius: 8px; font-size: 13px; color: var(--muted); }
+  .rate { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+  .rate button { flex: 1; max-width: 140px; }
+  .r1 { background: var(--danger); color: #fff; } .r2 { background: var(--warn); color: #1d1300; }
+  .r3 { background: var(--accent); color: var(--accent-ink); } .r4 { background: var(--info); color: #06222b; }
+  .rate button { border: 0; border-radius: 10px; padding: 12px; font-weight: 700; cursor: pointer; }
+  .statusbar { height: 28px; background: #181920; color: #9a9fb8; font-size: 12px; display: flex; gap: 18px; align-items: center; padding: 0 14px; }
+  .statusbar button { all: unset; cursor: pointer; }
+  .hint { position: fixed; right: 14px; bottom: 40px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 12px; color: var(--muted); }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="titlebar">MIND<div class="ctl"><i></i><i></i><i></i></div></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">MIND</div>
+    <div class="ws">Workspace: Estudos gerais ▾</div>
+    <nav class="nav" aria-label="Principal">
+      <button data-screen="today" aria-current="page"><span class="ico">⌂</span>Hoje</button>
+      <button data-screen="library"><span class="ico">▤</span>Biblioteca</button>
+      <button data-screen="generate"><span class="ico">✦</span>Gerar</button>
+      <button data-screen="study"><span class="ico">▶</span>Estudar</button>
+      <button data-screen="stats"><span class="ico">▥</span>Estatísticas</button>
+      <button data-screen="errors"><span class="ico">⚠</span>Erros</button>
+      <button data-screen="chat"><span class="ico">✉</span>Chat</button>
+    </nav>
+    <div class="spacer"></div>
+    <nav class="nav"><button data-screen="settings"><span class="ico">⚙</span>Configurações</button></nav>
+  </aside>
+  <main>
+    <section id="today">
+      <div class="row" style="justify-content:space-between;align-items:center"><h1>Hoje</h1><button class="btn">Estudar agora (23)</button></div>
+      <div class="row">
+        <div class="card stat"><b>12</b><span class="muted">Vencidos</span></div>
+        <div class="card stat" style="border-left-color:var(--warn)"><b>5</b><span class="muted">Aprendendo</span></div>
+        <div class="card stat" style="border-left-color:var(--info)"><b>6</b><span class="muted">Novos</span></div>
+        <div class="card stat" style="border-left-color:var(--purple)"><b>14</b><span class="muted">Feitos hoje</span></div>
+      </div>
+      <div class="card" style="margin-top:16px"><strong>Meta diária</strong><div class="bar"><span></span></div><span class="muted">14 / 20 cards</span></div>
+      <div class="row" style="margin-top:16px">
+        <div class="card" style="flex:1 1 300px"><strong>Questões para praticar</strong><p class="muted">8 questões aguardam.</p><button class="btn ghost">Praticar</button></div>
+        <div class="card" style="flex:1 1 300px"><strong>Pontos fracos</strong>
+          <p class="muted">Tópico A · 42% <button class="btn ghost" style="padding:3px 12px">Treinar</button></p>
+          <p class="muted">Tópico B · 55% <button class="btn ghost" style="padding:3px 12px">Treinar</button></p></div>
+      </div>
+    </section>
+    <section id="library" hidden>
+      <div class="row" style="justify-content:space-between;align-items:center"><h1>Biblioteca</h1><div><button class="btn ghost">Importar URL</button> <button class="btn">Importar arquivo</button></div></div>
+      <div class="card"><table><thead><tr><th>Material</th><th>Tipo</th><th>Páginas</th><th>Status</th><th>Cards</th></tr></thead><tbody>
+        <tr><td>apostila.pdf</td><td>PDF</td><td>120</td><td><span class="pill ok">indexado</span></td><td>34</td></tr>
+        <tr><td>notas.md</td><td>MD</td><td>—</td><td><span class="pill ok">indexado</span></td><td>12</td></tr>
+        <tr><td>scan-capitulo.pdf</td><td>PDF (OCR)</td><td>40</td><td><span class="pill">OCR 87%</span></td><td>0</td></tr></tbody></table></div>
+    </section>
+    <section id="generate" hidden>
+      <h1>Gerar</h1>
+      <div class="card"><p class="muted">Material · Intervalo · Tipo (Pergunta/Resposta, Lacuna, Comparativo, Certo/Errado) · Quantidade</p>
+      <p>Custo estimado: <strong>~US$ 0,02</strong></p><button class="btn">Gerar</button></div>
+    </section>
+    <section id="study" hidden>
+      <div class="card study">
+        <div class="muted">Estudar · 12 restantes</div>
+        <div class="q">Qual é a complexidade média da busca binária?</div>
+        <button class="btn" id="reveal">Mostrar resposta (Espaço)</button>
+        <p id="answer" hidden class="q" style="color:var(--accent)">O(log n)</p>
+        <div class="source">Fonte: apostila.pdf, p. 12 — "…a busca binária divide o intervalo ao meio a cada passo…"</div>
+        <div class="rate"><button class="r1">Errei · 1</button><button class="r2">Difícil · 2</button><button class="r3">Bom · 3</button><button class="r4">Fácil · 4</button></div>
+      </div>
+    </section>
+    <section id="stats" hidden><h1>Estatísticas</h1><div class="row"><div class="card stat"><b>91%</b><span class="muted">Retenção</span></div><div class="card stat"><b>9 dias</b><span class="muted">Sequência</span></div><div class="card stat"><b>78%</b><span class="muted">Acerto geral</span></div></div></section>
+    <section id="errors" hidden><h1>Erros</h1><div class="card"><p class="muted">Lista de itens errados com a fonte ao lado e ação "Virar card".</p></div></section>
+    <section id="chat" hidden><h1>Chat</h1><div class="card"><p class="muted">Conversa à esquerda; citações da fonte no painel lateral. Sem fonte: "não encontrei suporte".</p></div></section>
+    <section id="settings" hidden><h1>Configurações</h1><div class="card"><p class="muted">Provedor · Workspace (backup) · Aparência · Meta diária</p><button class="btn ghost" id="theme">Alternar tema (claro/escuro)</button></div></section>
+  </main>
+</div>
+<div class="statusbar"><span>v0.1.0</span><span>Provedor: ok</span><span class="spacer"></span><button id="theme2">Tema ◐</button><span>Ctrl+K buscar</span></div>
+<div class="hint">Protótipo estático: clique na barra lateral; Espaço revela o card em Estudar.</div>
+<script>
+  const screens = document.querySelectorAll("main section");
+  const buttons = document.querySelectorAll("[data-screen]");
+  function show(id) {
+    screens.forEach(s => s.hidden = s.id !== id);
+    buttons.forEach(b => b.dataset.screen === id ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  }
+  buttons.forEach(b => b.addEventListener("click", () => show(b.dataset.screen)));
+  function toggle() { const r = document.documentElement; r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark"; }
+  document.getElementById("theme").addEventListener("click", toggle);
+  document.getElementById("theme2").addEventListener("click", toggle);
+  const reveal = () => { document.getElementById("answer").hidden = false; };
+  document.getElementById("reveal").addEventListener("click", reveal);
+  document.addEventListener("keydown", e => { if (e.code === "Space" && !document.getElementById("study").hidden) { e.preventDefault(); reveal(); } });
+</script>
+</body>
+</html>
