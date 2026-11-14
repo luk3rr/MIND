@@ -720,6 +720,73 @@
         "title": "Problem",
         "type": "object"
       },
+      "RatingIn": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "rating": {
+            "description": "1 again, 2 hard, 3 good, 4 easy.",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_id",
+          "rating"
+        ],
+        "title": "RatingIn",
+        "type": "object"
+      },
+      "RatingOut": {
+        "properties": {
+          "due": {
+            "format": "date-time",
+            "title": "Due",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "lapses": {
+            "title": "Lapses",
+            "type": "integer"
+          },
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "state": {
+            "title": "State",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_id",
+          "state",
+          "due",
+          "reps",
+          "lapses"
+        ],
+        "title": "RatingOut",
+        "type": "object"
+      },
       "ReviewIn": {
         "properties": {
           "approve": {
@@ -1091,6 +1158,198 @@
           }
         },
         "title": "SettingsPatch",
+        "type": "object"
+      },
+      "StudyCardOut": {
+        "properties": {
+          "back_display": {
+            "title": "Back Display",
+            "type": "string"
+          },
+          "due": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due"
+          },
+          "front_display": {
+            "description": "What the front shows (cloze gaps appear as [...]).",
+            "title": "Front Display",
+            "type": "string"
+          },
+          "intervals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Label of the next interval per rating (1-4).",
+            "title": "Intervals",
+            "type": "object"
+          },
+          "is_new": {
+            "title": "Is New",
+            "type": "boolean"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ItemOut"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FSRS state: 1 learning, 2 review, 3 relearning.",
+            "title": "State"
+          }
+        },
+        "required": [
+          "item",
+          "is_new",
+          "front_display",
+          "back_display",
+          "intervals"
+        ],
+        "title": "StudyCardOut",
+        "type": "object"
+      },
+      "StudySettingsOut": {
+        "properties": {
+          "daily_goal": {
+            "title": "Daily Goal",
+            "type": "integer"
+          },
+          "desired_retention": {
+            "title": "Desired Retention",
+            "type": "number"
+          },
+          "new_per_day": {
+            "title": "New Per Day",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "new_per_day",
+          "daily_goal",
+          "desired_retention"
+        ],
+        "title": "StudySettingsOut",
+        "type": "object"
+      },
+      "StudySettingsPatch": {
+        "properties": {
+          "daily_goal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Goal"
+          },
+          "desired_retention": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desired Retention"
+          },
+          "new_per_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Per Day"
+          }
+        },
+        "title": "StudySettingsPatch",
+        "type": "object"
+      },
+      "StudySummaryOut": {
+        "properties": {
+          "daily_goal": {
+            "title": "Daily Goal",
+            "type": "integer"
+          },
+          "learning": {
+            "title": "Learning",
+            "type": "integer"
+          },
+          "new_available": {
+            "title": "New Available",
+            "type": "integer"
+          },
+          "new_per_day": {
+            "title": "New Per Day",
+            "type": "integer"
+          },
+          "new_studied_today": {
+            "title": "New Studied Today",
+            "type": "integer"
+          },
+          "review": {
+            "title": "Review",
+            "type": "integer"
+          },
+          "reviewed_today": {
+            "title": "Reviewed Today",
+            "type": "integer"
+          },
+          "to_study": {
+            "title": "To Study",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "learning",
+          "review",
+          "new_available",
+          "reviewed_today",
+          "new_studied_today",
+          "to_study",
+          "daily_goal",
+          "new_per_day"
+        ],
+        "title": "StudySummaryOut",
+        "type": "object"
+      },
+      "UndoOut": {
+        "properties": {
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The card whose rating was undone, or null.",
+            "title": "Item Id"
+          }
+        },
+        "required": [
+          "item_id"
+        ],
+        "title": "UndoOut",
         "type": "object"
       },
       "ValidationError": {
@@ -2903,6 +3162,342 @@
         "summary": "Search the chunks of the workspace (BM25)",
         "tags": [
           "materials"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/study/queue": {
+      "get": {
+        "operationId": "queue_v1_workspaces__workspace_id__study_queue_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StudyCardOut"
+                  },
+                  "title": "Response Queue V1 Workspaces  Workspace Id  Study Queue Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid rating or settings."
+          }
+        },
+        "summary": "Upcoming cards",
+        "tags": [
+          "study"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/study/reviews": {
+      "post": {
+        "operationId": "rate_v1_workspaces__workspace_id__study_reviews_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid rating or settings."
+          }
+        },
+        "summary": "Rate a card (1 to 4)",
+        "tags": [
+          "study"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/study/reviews/undo": {
+      "post": {
+        "operationId": "undo_v1_workspaces__workspace_id__study_reviews_undo_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Undo the last rating",
+        "tags": [
+          "study"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/study/settings": {
+      "get": {
+        "operationId": "get_settings_v1_workspaces__workspace_id__study_settings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudySettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid rating or settings."
+          }
+        },
+        "summary": "Study settings",
+        "tags": [
+          "study"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_settings_v1_workspaces__workspace_id__study_settings_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudySettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudySettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid rating or settings."
+          }
+        },
+        "summary": "Change study settings",
+        "tags": [
+          "study"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/study/summary": {
+      "get": {
+        "operationId": "summary_v1_workspaces__workspace_id__study_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudySummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid rating or settings."
+          }
+        },
+        "summary": "Numbers of the day",
+        "tags": [
+          "study"
         ]
       }
     }
