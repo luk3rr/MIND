@@ -117,7 +117,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 
 ### UNIT-4 Flashcards com fonte e revisão — Status: pending
 - [x] T-4.1 Modelos `item`, `topic`, `generation_run` e migração. · FR-6 · teste: `tests/db/test_items_migration.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0004_*.py, tests/generation/test_generation_migration.py
-- [ ] T-4.2 Prompts e esquema `CardBatch` para P/R, cloze, comparativo e V/F, com orientação de LaTeX. ≈2 h · FR-6, FR-23 · teste: `tests/generation/test_card_prompts.py`
+- [x] T-4.2 Prompts e esquema `CardBatch` para P/R, cloze, comparativo e V/F, com orientação de LaTeX. ≈2 h · FR-6, FR-23 · teste: `tests/generation/test_card_prompts.py` · files: src/mind/generation/{schemas,prompts}.py, tests/generation/test_prompts.py
 - [x] T-4.3 `SourceChecker`: citação como substring normalizada (espaços, quebras, hifenização). · FR-7 · teste: `tests/verification/test_source_checker.py` · files: src/mind/verification/source_checker.py, tests/verification/test_source_checker.py
 - [ ] T-4.4 `CardGenerator`: seleciona trechos por material e intervalo, gera em lotes, descarta sem fonte e produz o relatório. ≈2 h · FR-6, FR-7 · teste: `tests/generation/test_card_generator.py` (item inventado é descartado e contado)
 - [ ] T-4.5 Job de geração: estimativa de custo antes, registro no `CostLedger`, progresso e cancelamento. · FR-6, FR-21, US-4 · teste: `tests/generation/test_generation_job.py`
