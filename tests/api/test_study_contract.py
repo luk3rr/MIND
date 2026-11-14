@@ -99,3 +99,36 @@ def test_rating_errors_are_problem_json(ready: TestClient) -> None:
         f"{base}/study/reviews", json={"item_id": draft[0]["id"], "rating": 3}
     )
     assert not_approved.status_code == 422
+
+
+def test_queue_and_summary_accept_the_selector_and_facets_describe_it(ready: TestClient) -> None:
+    base = studied_workspace(ready)
+    run_generation(ready, base, subtype="cloze")
+    ids = [i["id"] for i in ready.get(f"{base}/items", params={"status": "draft"}).json()]
+    ready.post(f"{base}/items/review", json={"approve": ids})
+
+    facets = ready.get(f"{base}/study/facets").json()
+    assert (facets["cards"], facets["questions"]) == (10, 0)
+    assert [(f["key"], f["count"]) for f in facets["subtypes"]] == [("cloze", 5), ("qa", 5)]
+    topic = facets["topics"][0]
+    assert topic["label"] == "Biologia"
+    assert facets["materials"][0]["label"] == "aula"
+
+    cloze = ready.get(f"{base}/study/queue", params={"subtype": "cloze", "limit": 50}).json()
+    assert len(cloze) == 5
+    assert {c["item"]["subtype"] for c in cloze} == {"cloze"}
+    by_topic = ready.get(f"{base}/study/queue", params={"topic_id": topic["key"], "limit": 50})
+    assert len(by_topic.json()) == 10
+    assert ready.get(f"{base}/study/queue", params={"topic_id": 999}).json() == []
+    assert ready.get(f"{base}/study/queue", params={"kind": "question"}).json() == []
+
+    summary = ready.get(f"{base}/study/summary", params={"subtype": "qa"}).json()
+    assert (summary["new_available"], summary["to_study"]) == (5, 5)
+    material = facets["materials"][0]["key"]
+    assert (
+        ready.get(f"{base}/study/summary", params={"material_id": material}).json()["to_study"]
+        == 10
+    )
+
+    for bad in ({"subtype": "essay"}, {"kind": "weird"}):
+        assert ready.get(f"{base}/study/queue", params=bad).status_code == 422
