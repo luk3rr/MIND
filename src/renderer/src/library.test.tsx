@@ -48,13 +48,13 @@ describe("library routes", () => {
       name: "section",
       workspaceId: 1,
       section: "library",
-      materialId: 5,
+      detailId: 5,
     });
     expect(parseRoute(materialPath(1, 5, 12))).toEqual({
       name: "section",
       workspaceId: 1,
       section: "library",
-      materialId: 5,
+      detailId: 5,
       chunkId: 12,
     });
     expect(parseRoute("/w/1/library/x")).toEqual({ name: "unknown" });

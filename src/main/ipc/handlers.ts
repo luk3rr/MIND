@@ -97,6 +97,46 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "material:search": ({ workspaceId, query, limit }) => ({
       hits: core.retriever(workspaceId).search(query, { limit: limit ?? 20 }),
     }),
+    "generation:estimate": ({ workspaceId, ...request }) =>
+      core.generation(workspaceId).estimate(request),
+    "generation:start": ({ workspaceId, ...request }) => {
+      const service = core.generation(workspaceId);
+      return service.view(service.start(request));
+    },
+    "generation:cancel": ({ workspaceId, runId }) => ({
+      cancelled: core.generation(workspaceId).cancel(runId),
+    }),
+    "generation:list": ({ workspaceId }) => {
+      const service = core.generation(workspaceId);
+      return { runs: service.listRuns().map((run) => service.view(run)) };
+    },
+    "generation:get": ({ workspaceId, runId }) => {
+      const service = core.generation(workspaceId);
+      return service.view(service.get(runId));
+    },
+    "review:list": ({ workspaceId, runId, status }) => {
+      const review = core.review(workspaceId);
+      const generation = core.generation(workspaceId);
+      return {
+        run: generation.view(generation.get(runId)),
+        items: review.list({ runId, ...(status ? { status } : {}) }),
+        counts: {
+          draft: review.count({ runId, status: "draft" }),
+          approved: review.count({ runId, status: "approved" }),
+          discarded: review.count({ runId, status: "discarded" }),
+        },
+      };
+    },
+    "review:get": ({ workspaceId, itemId }) => {
+      const review = core.review(workspaceId);
+      const found = review.get(itemId);
+      return { item: found, sourceText: review.sourceText(found.chunkId) };
+    },
+    "review:approve": ({ workspaceId, ids }) => core.review(workspaceId).review(ids, []),
+    "review:discard": ({ workspaceId, ids }) => core.review(workspaceId).review([], ids),
+    "review:approveAll": ({ workspaceId, runId }) => core.review(workspaceId).approveAll(runId),
+    "review:edit": ({ workspaceId, itemId, front, back, topic }) =>
+      core.review(workspaceId).edit(itemId, front, back, topic),
     "settings:get": () => settingsView(core),
     "settings:save": (input) => {
       core.llm.settings.update({

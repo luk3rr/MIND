@@ -7,7 +7,7 @@
 import { app, BrowserWindow, dialog, screen, session } from "electron";
 import { join } from "node:path";
 import { createCore } from "../core/index.js";
-import { FakeProvider } from "../core/llm/fake.js";
+import { scriptedCardProvider } from "../core/llm/scripted.js";
 import { installLogRedaction } from "../core/redaction.js";
 import type { Core } from "../core/index.js";
 import { extractWithWorker } from "./extract-worker.js";
@@ -94,7 +94,7 @@ if (!app.requestSingleInstanceLock()) {
       tessdataDir: join(app.getPath("userData"), "cache", "tessdata"),
       // Offline end-to-end runs only; a packaged app always talks to the real provider.
       ...(process.env["MIND_E2E_FAKE_LLM"] === "1" && !app.isPackaged
-        ? { provider: new FakeProvider() }
+        ? { provider: scriptedCardProvider() }
         : {}),
       onJobEvent: (event) => {
         mainWindow?.webContents.send(`job:${event.type}`, event);

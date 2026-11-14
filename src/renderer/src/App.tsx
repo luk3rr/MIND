@@ -6,9 +6,11 @@
 
 import { useEffect, useState } from "react";
 import { Shell } from "./components/Shell.js";
+import { GeneratePage } from "./pages/GeneratePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { MaterialPreviewPage } from "./pages/MaterialPreviewPage.js";
 import { PlaceholderPage } from "./pages/PlaceholderPage.js";
+import { ReviewPage } from "./pages/ReviewPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { SetupPage } from "./pages/SetupPage.js";
 import { TodayPage } from "./pages/TodayPage.js";
@@ -41,18 +43,24 @@ function Screen() {
       <Shell workspaceId={route.workspaceId} section={route.section}>
         {route.section === "today" && <TodayPage workspaceId={route.workspaceId} />}
         {route.section === "settings" && <SettingsPage />}
-        {route.section === "library" && route.materialId === undefined && (
+        {route.section === "library" && route.detailId === undefined && (
           <LibraryPage workspaceId={route.workspaceId} />
         )}
-        {route.section === "library" && route.materialId !== undefined && (
+        {route.section === "library" && route.detailId !== undefined && (
           <MaterialPreviewPage
-            key={`${route.materialId}-${route.chunkId ?? ""}`}
+            key={`${route.detailId}-${route.chunkId ?? ""}`}
             workspaceId={route.workspaceId}
-            materialId={route.materialId}
+            materialId={route.detailId}
             {...(route.chunkId !== undefined ? { chunkId: route.chunkId } : {})}
           />
         )}
-        {!["today", "settings", "library"].includes(route.section) && (
+        {route.section === "generate" && route.detailId === undefined && (
+          <GeneratePage workspaceId={route.workspaceId} />
+        )}
+        {route.section === "generate" && route.detailId !== undefined && (
+          <ReviewPage workspaceId={route.workspaceId} runId={route.detailId} />
+        )}
+        {!["today", "settings", "library", "generate"].includes(route.section) && (
           <PlaceholderPage section={route.section} />
         )}
       </Shell>

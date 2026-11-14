@@ -21,6 +21,7 @@ export default defineConfig({
         "src/renderer/src/env.d.ts",
         "src/renderer/test/**",
         "src/core/test/**",
+        "scripts/**",
       ],
       reporter: ["text", "html"],
       thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },

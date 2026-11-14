@@ -1,0 +1,364 @@
+/*
+ * Filename: service.ts
+ * Created on: November 14, 2026
+ * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+ */
+
+import { desc, eq, ne } from "drizzle-orm";
+import { AppError } from "../contracts/errors.js";
+import type { FieldError } from "../contracts/errors.js";
+import { generationRun, material } from "../db/workspace-schema.js";
+import { JobCancelled } from "../jobs/queue.js";
+import { getJob } from "../jobs/store.js";
+import type { JobContext, JobQueue } from "../jobs/queue.js";
+import type { Llm } from "../core.js";
+import type { OpenWorkspace } from "../workspaces/registry.js";
+import { CardGenerator } from "./cards.js";
+import type { BatchOutcome, DiscardNote } from "./cards.js";
+import { CARDS_PER_BATCH, planBatches, selectChunks } from "./planning.js";
+import type { SourceChunk } from "./planning.js";
+import { SUBTYPE_RULES, SYSTEM } from "./prompts.js";
+import { CARD_SUBTYPES } from "./schemas.js";
+import { isoNow } from "../clock.js";
+
+export const MIN_QUANTITY = 1;
+export const MAX_QUANTITY = { card: 60 } as const;
+export const OUTPUT_TOKENS_PER_CARD = 150;
+export const PROMPT_OVERHEAD_CHARS = 400;
+export const CONCURRENT_BATCHES = 2;
+const LOG_LIMIT = 20;
+
+export interface GenerationRequest {
+  materialId: number;
+  subtype: string;
+  quantity: number;
+  kind: "card";
+  pageFrom?: number;
+  pageTo?: number;
+  topicId?: number | null;
+}
+
+export interface EstimateInfo {
+  estimatedUsd: number | null;
+  chunks: number;
+  batches: number;
+  promptChars: number;
+}
+
+export interface RunInfo {
+  id: number;
+  kind: string;
+  subtype: string;
+  materialId: number | null;
+  pageFrom: number | null;
+  pageTo: number | null;
+  topicId: number | null;
+  model: string;
+  requested: number;
+  generated: number;
+  discardedNoSource: number;
+  discardedInvalid: number;
+  discardedDuplicate: number;
+  discardedUnsupported: number;
+  approved: number;
+  approvedUnedited: number;
+  discardedReview: number;
+  costUsd: number;
+  status: string;
+  discardLog: DiscardNote[];
+  errorCode: string | null;
+  errorDetail: string | null;
+  jobId: number | null;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+export interface RunView extends RunInfo {
+  progress: number | null;
+}
+
+function toInfo(row: typeof generationRun.$inferSelect): RunInfo {
+  return {
+    id: row.id,
+    kind: row.kind,
+    subtype: row.subtype,
+    materialId: row.materialId,
+    pageFrom: row.pageFrom,
+    pageTo: row.pageTo,
+    topicId: row.topicId,
+    model: row.model,
+    requested: row.requested,
+    generated: row.generated,
+    discardedNoSource: row.discardedNoSource,
+    discardedInvalid: row.discardedInvalid,
+    discardedDuplicate: row.discardedDuplicate,
+    discardedUnsupported: row.discardedUnsupported,
+    approved: row.approved,
+    approvedUnedited: row.approvedUnedited,
+    discardedReview: row.discardedReview,
+    costUsd: row.costUsd,
+    status: row.status,
+    discardLog: JSON.parse(row.discardLog) as DiscardNote[],
+    errorCode: row.errorCode,
+    errorDetail: row.errorDetail,
+    jobId: row.jobId,
+    createdAt: row.createdAt,
+    finishedAt: row.finishedAt,
+  };
+}
+
+export function validateRequest(request: GenerationRequest): void {
+  const errors: FieldError[] = [];
+  if (request.kind !== "card") errors.push({ field: "kind", message: "Escolha cards." });
+  if (!(CARD_SUBTYPES as readonly string[]).includes(request.subtype)) {
+    errors.push({ field: "subtype", message: "Tipo de card desconhecido." });
+  }
+  const top = MAX_QUANTITY.card;
+  if (
+    !Number.isInteger(request.quantity) ||
+    request.quantity < MIN_QUANTITY ||
+    request.quantity > top
+  ) {
+    errors.push({ field: "quantity", message: `Peça de ${MIN_QUANTITY} a ${top} cards.` });
+  }
+  if (request.pageFrom !== undefined && request.pageFrom < 1) {
+    errors.push({ field: "pageFrom", message: "A primeira página é 1." });
+  }
+  if (
+    request.pageFrom !== undefined &&
+    request.pageTo !== undefined &&
+    request.pageTo < request.pageFrom
+  ) {
+    errors.push({ field: "pageTo", message: "A página final vem antes da inicial." });
+  }
+  if (errors.length > 0)
+    throw new AppError("VALIDATION_ERROR", "Pedido de geração inválido.", errors);
+}
+
+/** Generates drafts for one workspace: plans batches, calls the model and tracks the run. */
+export class GenerationService {
+  private readonly generator: CardGenerator;
+
+  constructor(
+    private readonly workspace: OpenWorkspace,
+    private readonly queue: JobQueue,
+    private readonly llm: Llm,
+    private readonly concurrency = CONCURRENT_BATCHES,
+  ) {
+    this.generator = new CardGenerator(
+      workspace.connection.db,
+      workspace.connection.sqlite,
+      llm.provider,
+    );
+  }
+
+  private get db() {
+    return this.workspace.connection.db;
+  }
+
+  private chunksFor(request: GenerationRequest): SourceChunk[] {
+    const row = this.db.select().from(material).where(eq(material.id, request.materialId)).get();
+    if (!row) {
+      throw new AppError("MATERIAL_NOT_FOUND", `Não existe material com id ${request.materialId}.`);
+    }
+    if (row.status !== "indexed") {
+      throw new AppError("VALIDATION_ERROR", "O material ainda não foi indexado.", [
+        { field: "materialId", message: "Aguarde a importação terminar." },
+      ]);
+    }
+    const chunks = selectChunks(this.db, request.materialId, request.pageFrom, request.pageTo);
+    if (chunks.length === 0) {
+      throw new AppError("VALIDATION_ERROR", "Não há texto nesse recorte do material.", [
+        { field: "pageFrom", message: "Escolha outro intervalo de páginas." },
+      ]);
+    }
+    return chunks;
+  }
+
+  estimate(request: GenerationRequest): EstimateInfo {
+    validateRequest(request);
+    const plan = planBatches(this.chunksFor(request), request.quantity, CARDS_PER_BATCH, true);
+    const settings = this.llm.settings.get();
+    const chunkChars = plan.reduce(
+      (total, batch) => total + batch.chunks.reduce((sum, c) => sum + c.text.length, 0),
+      0,
+    );
+    const promptChars =
+      plan.length *
+        (SYSTEM.length + (SUBTYPE_RULES[request.subtype]?.length ?? 0) + PROMPT_OVERHEAD_CHARS) +
+      chunkChars;
+    return {
+      estimatedUsd: this.llm.catalog.estimate(
+        settings.generationModel,
+        promptChars,
+        request.quantity * OUTPUT_TOKENS_PER_CARD,
+      ),
+      chunks: plan.reduce((total, batch) => total + batch.chunks.length, 0),
+      batches: plan.length,
+      promptChars,
+    };
+  }
+
+  /** Validates, creates the run and queues the job. */
+  start(request: GenerationRequest): RunInfo {
+    validateRequest(request);
+    this.chunksFor(request);
+    this.llm.ensureReady();
+    const model = this.llm.settings.get().generationModel;
+    const row = this.db
+      .insert(generationRun)
+      .values({
+        kind: request.kind,
+        subtype: request.subtype,
+        materialId: request.materialId,
+        pageFrom: request.pageFrom ?? null,
+        pageTo: request.pageTo ?? null,
+        topicId: request.topicId ?? null,
+        model,
+        requested: request.quantity,
+        status: "queued",
+      })
+      .returning()
+      .get();
+    const job = this.queue.submit(this.workspace.info.id, this.db, "generate_cards", (context) =>
+      this.run(row.id, request, model, context),
+    );
+    this.db.update(generationRun).set({ jobId: job.id }).where(eq(generationRun.id, row.id)).run();
+    return this.get(row.id);
+  }
+
+  cancel(runId: number): boolean {
+    const run = this.get(runId);
+    return run.jobId === null ? false : this.queue.cancel(this.workspace.info.id, run.jobId);
+  }
+
+  private async run(
+    runId: number,
+    request: GenerationRequest,
+    model: string,
+    context: JobContext,
+  ): Promise<void> {
+    this.setStatus(runId, "running");
+    const plan = planBatches(this.chunksFor(request), request.quantity, CARDS_PER_BATCH, true);
+    let accepted = 0;
+    let finished = 0;
+    let active = 0;
+    const waiting: (() => void)[] = [];
+    const acquire = async (): Promise<void> => {
+      if (active < this.concurrency) {
+        active += 1;
+        return;
+      }
+      await new Promise<void>((resolve) => waiting.push(resolve));
+    };
+    const release = (): void => {
+      const next = waiting.shift();
+      if (next) next();
+      else active -= 1;
+    };
+
+    const runBatch = async (chunks: SourceChunk[], count: number): Promise<void> => {
+      await acquire();
+      try {
+        context.checkCancelled();
+        const outcome = await this.generator.generateBatch({
+          runId,
+          subtype: request.subtype,
+          count,
+          chunks,
+          model,
+          remaining: () => request.quantity - accepted,
+          topicId: request.topicId ?? null,
+        });
+        accepted += outcome.accepted;
+        finished += 1;
+        this.addOutcome(runId, outcome);
+        context.update(finished / plan.length, `lote ${finished} de ${plan.length}`);
+      } finally {
+        release();
+      }
+    };
+
+    const results = await Promise.allSettled(
+      plan.map((batch) => runBatch(batch.chunks, batch.count)),
+    );
+    const failure = results.find((result) => result.status === "rejected");
+    if (!failure) {
+      this.finish(runId, "done");
+      return;
+    }
+    const reason = (failure as PromiseRejectedResult).reason as unknown;
+    if (reason instanceof JobCancelled) this.finish(runId, "cancelled");
+    else if (reason instanceof AppError) this.finish(runId, "partial", reason.code, reason.message);
+    else
+      this.finish(
+        runId,
+        "partial",
+        "INTERNAL_ERROR",
+        reason instanceof Error ? reason.message : String(reason),
+      );
+    throw reason;
+  }
+
+  private setStatus(runId: number, status: string): void {
+    this.db.update(generationRun).set({ status }).where(eq(generationRun.id, runId)).run();
+  }
+
+  private finish(runId: number, status: string, errorCode?: string, errorDetail?: string): void {
+    this.db
+      .update(generationRun)
+      .set({
+        status,
+        errorCode: errorCode ?? null,
+        errorDetail: errorDetail ?? null,
+        finishedAt: isoNow(),
+      })
+      .where(eq(generationRun.id, runId))
+      .run();
+  }
+
+  private addOutcome(runId: number, outcome: BatchOutcome): void {
+    const row = this.db.select().from(generationRun).where(eq(generationRun.id, runId)).get();
+    if (!row) return;
+    const log = JSON.parse(row.discardLog) as DiscardNote[];
+    const room = LOG_LIMIT - log.length;
+    this.db
+      .update(generationRun)
+      .set({
+        generated: row.generated + outcome.accepted,
+        discardedNoSource: row.discardedNoSource + outcome.noSource,
+        discardedInvalid: row.discardedInvalid + outcome.invalid,
+        discardedDuplicate: row.discardedDuplicate + outcome.duplicate,
+        discardedUnsupported: row.discardedUnsupported + outcome.unsupported,
+        costUsd: row.costUsd + outcome.costUsd,
+        ...(room > 0
+          ? { discardLog: JSON.stringify([...log, ...outcome.log.slice(0, room)]) }
+          : {}),
+      })
+      .where(eq(generationRun.id, runId))
+      .run();
+  }
+
+  /** A run with the progress of its job while it is active. */
+  view(run: RunInfo): RunView {
+    const active = ["queued", "running"].includes(run.status) && run.jobId !== null;
+    return { ...run, progress: active ? getJob(this.db, run.jobId as number).progress : null };
+  }
+
+  get(runId: number): RunInfo {
+    const row = this.db.select().from(generationRun).where(eq(generationRun.id, runId)).get();
+    if (!row) throw new AppError("RUN_NOT_FOUND", `Não existe geração com id ${runId}.`);
+    return toInfo(row);
+  }
+
+  listRuns(limit = 20): RunInfo[] {
+    return this.db
+      .select()
+      .from(generationRun)
+      .where(ne(generationRun.kind, "notebook"))
+      .orderBy(desc(generationRun.id))
+      .limit(limit)
+      .all()
+      .map(toInfo);
+  }
+}

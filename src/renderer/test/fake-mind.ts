@@ -19,6 +19,8 @@ interface Workspace {
 export type ProviderState = FakeState["provider"];
 export type FakeMaterial = OutputOf<"material:list">["materials"][number];
 type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
+export type FakeRun = OutputOf<"generation:list">["runs"][number];
+export type FakeItem = OutputOf<"review:list">["items"][number];
 
 export interface FakeState {
   workspaces: Workspace[];
@@ -27,6 +29,9 @@ export interface FakeState {
   nextId: number;
   materials: FakeMaterial[];
   chunks: FakeChunk[];
+  runs: FakeRun[];
+  items: FakeItem[];
+  estimateUsd: number | null;
   importResult: OutputOf<"material:import">;
   searchHits: OutputOf<"material:search">["hits"];
   provider: {
@@ -52,6 +57,9 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     nextId: 1,
     materials: [],
     chunks: [],
+    runs: [],
+    items: [],
+    estimateUsd: 0.0123,
     importResult: { materials: [], errors: [] },
     searchHits: [],
     provider: {
@@ -157,6 +165,127 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       }
       case "material:search":
         return ok({ hits: state.searchHits });
+      case "generation:estimate": {
+        const input = payload as InputOf<"generation:estimate">;
+        if (input.quantity > 60) {
+          return failure("VALIDATION_ERROR", "Peça de 1 a 60 cards.", "quantity");
+        }
+        return ok({ estimatedUsd: state.estimateUsd, chunks: 3, batches: 1, promptChars: 4000 });
+      }
+      case "generation:start": {
+        const input = payload as InputOf<"generation:start">;
+        if (input.quantity > 60) {
+          return failure("VALIDATION_ERROR", "Peça de 1 a 60 cards.", "quantity");
+        }
+        const run: FakeRun = {
+          id: state.runs.length + 1,
+          kind: "card",
+          subtype: input.subtype,
+          materialId: input.materialId,
+          pageFrom: input.pageFrom ?? null,
+          pageTo: input.pageTo ?? null,
+          topicId: null,
+          model: "a/gen",
+          requested: input.quantity,
+          generated: 0,
+          discardedNoSource: 0,
+          discardedInvalid: 0,
+          discardedDuplicate: 0,
+          discardedUnsupported: 0,
+          approved: 0,
+          approvedUnedited: 0,
+          discardedReview: 0,
+          costUsd: 0,
+          status: "queued",
+          discardLog: [],
+          errorCode: null,
+          errorDetail: null,
+          jobId: 1,
+          createdAt: "2026-03-01T10:00:00.000Z",
+          finishedAt: null,
+          progress: 0,
+        };
+        state.runs = [run, ...state.runs];
+        return ok(run);
+      }
+      case "generation:cancel": {
+        const { runId } = payload as InputOf<"generation:cancel">;
+        state.runs = state.runs.map((r) =>
+          r.id === runId ? { ...r, status: "cancelled", progress: null } : r,
+        );
+        return ok({ cancelled: true });
+      }
+      case "generation:list":
+        return ok({ runs: state.runs });
+      case "generation:get": {
+        const found = state.runs.find((r) => r.id === (payload as InputOf<"generation:get">).runId);
+        return found ? ok(found) : failure("RUN_NOT_FOUND", "Geração não encontrada.");
+      }
+      case "review:list": {
+        const input = payload as InputOf<"review:list">;
+        const run = state.runs.find((r) => r.id === input.runId);
+        if (!run) return failure("RUN_NOT_FOUND", "Geração não encontrada.");
+        const forRun = state.items.filter((i) => i.runId === input.runId);
+        const count = (status: string) => forRun.filter((i) => i.status === status).length;
+        return ok({
+          run,
+          items: forRun.filter((i) => !input.status || i.status === input.status),
+          counts: {
+            draft: count("draft"),
+            approved: count("approved"),
+            discarded: count("discarded"),
+          },
+        });
+      }
+      case "review:get": {
+        const found = state.items.find((i) => i.id === (payload as InputOf<"review:get">).itemId);
+        return found
+          ? ok({ item: found, sourceText: "Trecho completo." })
+          : failure("ITEM_NOT_FOUND", "Item não encontrado.");
+      }
+      case "review:approve":
+      case "review:discard": {
+        const { ids } = payload as InputOf<"review:approve">;
+        const status = channel === "review:approve" ? "approved" : "discarded";
+        state.items = state.items.map((i) =>
+          ids.includes(i.id) && i.status === "draft" ? { ...i, status } : i,
+        );
+        return ok({
+          approved: status === "approved" ? ids.length : 0,
+          discarded: status === "discarded" ? ids.length : 0,
+          skipped: 0,
+        });
+      }
+      case "review:approveAll": {
+        const { runId } = payload as InputOf<"review:approveAll">;
+        let approved = 0;
+        state.items = state.items.map((i) => {
+          if (i.runId === runId && i.status === "draft") {
+            approved += 1;
+            return { ...i, status: "approved" };
+          }
+          return i;
+        });
+        return ok({ approved, discarded: 0, skipped: 0 });
+      }
+      case "review:edit": {
+        const input = payload as InputOf<"review:edit">;
+        if (!input.front.trim())
+          return failure("VALIDATION_ERROR", "A frente do card não pode ficar vazia.", "front");
+        let edited: FakeItem | undefined;
+        state.items = state.items.map((i) => {
+          if (i.id !== input.itemId) return i;
+          edited = {
+            ...i,
+            front: input.front.trim(),
+            back: input.back.trim(),
+            topic: input.topic,
+            edited: true,
+          };
+          return edited;
+        });
+        return edited ? ok(edited) : failure("ITEM_NOT_FOUND", "Item não encontrado.");
+      }
       case "settings:get": {
         const p = state.provider;
         return ok({

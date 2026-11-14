@@ -63,6 +63,77 @@ const chunkInfo = z.object({
   text: z.string(),
 });
 
+const generationRequest = z
+  .object({
+    workspaceId,
+    materialId: z.number().int().positive(),
+    subtype: z.enum(["qa", "cloze", "compare", "true_false"]),
+    quantity: z.number().int().min(1).max(200),
+    kind: z.literal("card"),
+    pageFrom: z.number().int().min(1).optional(),
+    pageTo: z.number().int().min(1).optional(),
+  })
+  .strict();
+
+const discardNote = z.object({ reason: z.string(), front: z.string() });
+
+const runInfo = z.object({
+  id: z.number().int(),
+  kind: z.string(),
+  subtype: z.string(),
+  materialId: z.number().int().nullable(),
+  pageFrom: z.number().int().nullable(),
+  pageTo: z.number().int().nullable(),
+  topicId: z.number().int().nullable(),
+  model: z.string(),
+  requested: z.number().int(),
+  generated: z.number().int(),
+  discardedNoSource: z.number().int(),
+  discardedInvalid: z.number().int(),
+  discardedDuplicate: z.number().int(),
+  discardedUnsupported: z.number().int(),
+  approved: z.number().int(),
+  approvedUnedited: z.number().int(),
+  discardedReview: z.number().int(),
+  costUsd: z.number(),
+  status: z.string(),
+  discardLog: z.array(discardNote),
+  errorCode: z.string().nullable(),
+  errorDetail: z.string().nullable(),
+  jobId: z.number().int().nullable(),
+  createdAt: z.string(),
+  finishedAt: z.string().nullable(),
+  /** Progress (0 to 1) of an active run, otherwise null. */
+  progress: z.number().nullable(),
+});
+
+const itemInfo = z.object({
+  id: z.number().int(),
+  runId: z.number().int(),
+  kind: z.string(),
+  subtype: z.string(),
+  front: z.string(),
+  back: z.string(),
+  status: z.string(),
+  topic: z.string().nullable(),
+  sourceTitle: z.string(),
+  sourcePage: z.number().int().nullable(),
+  quote: z.string(),
+  chunkId: z.number().int().nullable(),
+  edited: z.boolean(),
+  origin: z.string(),
+  createdAt: z.string(),
+  approvedAt: z.string().nullable(),
+  options: z.array(z.object({ key: z.string(), text: z.string(), why: z.string() })),
+  answer: z.string().nullable(),
+});
+
+const reviewResult = z.object({
+  approved: z.number().int(),
+  discarded: z.number().int(),
+  skipped: z.number().int(),
+});
+
 export const channels = {
   "window:getState": {
     input: z.object({}).strict(),
@@ -151,6 +222,78 @@ export const channels = {
         }),
       ),
     }),
+  },
+  "generation:estimate": {
+    input: generationRequest,
+    output: z.object({
+      estimatedUsd: z.number().nullable(),
+      chunks: z.number().int(),
+      batches: z.number().int(),
+      promptChars: z.number().int(),
+    }),
+  },
+  "generation:start": { input: generationRequest, output: runInfo },
+  "generation:cancel": {
+    input: z.object({ workspaceId, runId: z.number().int().positive() }).strict(),
+    output: z.object({ cancelled: z.boolean() }),
+  },
+  "generation:list": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ runs: z.array(runInfo) }),
+  },
+  "generation:get": {
+    input: z.object({ workspaceId, runId: z.number().int().positive() }).strict(),
+    output: runInfo,
+  },
+  "review:list": {
+    input: z
+      .object({
+        workspaceId,
+        runId: z.number().int().positive(),
+        status: z.enum(["draft", "approved", "discarded"]).optional(),
+      })
+      .strict(),
+    output: z.object({
+      run: runInfo,
+      items: z.array(itemInfo),
+      counts: z.object({
+        draft: z.number().int(),
+        approved: z.number().int(),
+        discarded: z.number().int(),
+      }),
+    }),
+  },
+  "review:get": {
+    input: z.object({ workspaceId, itemId: z.number().int().positive() }).strict(),
+    output: z.object({ item: itemInfo, sourceText: z.string().nullable() }),
+  },
+  "review:approve": {
+    input: z
+      .object({ workspaceId, ids: z.array(z.number().int().positive()).min(1).max(1000) })
+      .strict(),
+    output: reviewResult,
+  },
+  "review:discard": {
+    input: z
+      .object({ workspaceId, ids: z.array(z.number().int().positive()).min(1).max(1000) })
+      .strict(),
+    output: reviewResult,
+  },
+  "review:approveAll": {
+    input: z.object({ workspaceId, runId: z.number().int().positive() }).strict(),
+    output: reviewResult,
+  },
+  "review:edit": {
+    input: z
+      .object({
+        workspaceId,
+        itemId: z.number().int().positive(),
+        front: z.string().max(5000),
+        back: z.string().max(5000),
+        topic: z.string().max(200).nullable(),
+      })
+      .strict(),
+    output: itemInfo,
   },
   "settings:get": {
     input: z.object({}).strict(),

@@ -821,3 +821,31 @@ sequenceDiagram
 
 - A43 (3.1 UNIT-8): Os modelos de idioma `por` e `eng` são suficientes para o OCR do MVP; outros idiomas ficam fora. — confirmed: yes
 - A44 (3.1 UNIT-8): A importação de URL aceita endereços locais (127.0.0.1), pois é uma ação do próprio usuário no próprio computador. — confirmed: yes
+
+### UNIT-9 — Flashcards com fonte e revisão (nota de design)
+
+**Objetivo.** Gerar cards (4 tipos) a partir de um material, conferir que cada citação existe no trecho de origem, descartar o que não confere, e revisar (aprovar, editar, descartar, aprovar em lote) com a fonte ao lado, mostrando o custo estimado antes de gerar. Porta `generation/` (cards, planning, prompts, topics, service) e `review/` e `verification/source_checker.py`. Perguntas, juiz e treino ficam nos Units 11 e 13. [src: FR-6, FR-7, FR-8, NFR-2, NFR-8, M-1]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Prompts e esquemas | `SYSTEM`, `SUBTYPE_RULES` e `buildCardMessages` portados com o mesmo texto; zod `CardOut`, `CardBatch`, `CardPayload`; as mensagens são conferidas com `fixtures/prompts.json` (texto idêntico ao do Python) |
+| Conferência de fonte | `normalize`, `locateQuote` e `SourceChecker` portados (NFKC, aspas e traços tipográficos, caracteres invisíveis, espaços e caixa), conferidos com `fixtures/source-checker.json`; citação com menos de 15 caracteres normalizados ou ausente do trecho descarta o card |
+| Planejamento | Trechos em lotes de até 6000 caracteres, 5 cards por lote, lotes espalhados de forma uniforme, quantidade repartida; regras do `planning.py` com os mesmos testes |
+| Geração | `CardGenerator.generateBatch` valida forma (cloze com lacuna, V/F com veredito), fonte, duplicidade (contra itens existentes e no lote) e cota restante; tópico limpo e criado uma vez sem diferenciar caixa; `GenerationService` com até 2 lotes em paralelo, progresso por lote, cancelamento, resultado `done`, `partial` ou `cancelled`, contadores de descarte e as 20 primeiras razões |
+| Prontidão | `ensureReady` antes de criar a execução: chave, aceite e limite mensal (erros estáveis, sem criar `generation_run`) |
+| Revisão | `ReviewService`: listar por execução e status, contar, obter com o texto do trecho, editar (valida a forma, marca `edited`, mantém a fonte), aprovar e descartar em lote com os contadores da execução (`approved`, `approved_unedited`, `discarded_review`, base do SM-1), aprovar todos |
+| IPC | `generation:estimate`, `generation:start`, `generation:cancel`, `generation:list`, `generation:get`; `review:list`, `review:get`, `review:approve`, `review:discard`, `review:approveAll`, `review:edit` |
+| Teste sem rede | O E2E usa um provedor falso roteirizado (`MIND_E2E_FAKE_LLM=1`, só fora do app empacotado) que monta cards com citações copiadas do próprio trecho do prompt |
+| UI | Gerar (material, intervalo de páginas, tipo, quantidade, estimativa de custo, lista das últimas execuções com progresso e custo) e Revisar em `/w/:id/generate/:runId` (cartões com frente, verso, tópico, citação e arquivo e página; editar, aprovar, descartar e aprovar todos); fórmulas com `MathText` e lacunas `{{c1::termo}}` como `[termo]` |
+| Script SM-1 | `pnpm sm1` calcula a fração de itens aprovados sem edição por workspace (porta de `sm1.py`), fora do CI |
+
+**NFR (nota).** NFR-2: gerar 20 itens com provedor de latência controlada sem travar a janela e com progresso; NFR-8: o script SM-1 mede a qualidade com um conjunto fixo e o provedor real, fora do CI.
+
+**Riscos.** (1) A normalização de texto (NFKC, casefold) deve coincidir com a do Python; as fixtures cobrem os casos conhecidos. (2) A qualidade da geração com o modelo real só se mede com chave e rede reais (NFR-8, fora do CI).
+
+### Assumptions & open questions
+
+- A45 (3.1 UNIT-9): O tipo `question` do pedido de geração é recusado até o UNIT-11; o contrato muda lá. — confirmed: yes
+- A46 (3.1 UNIT-9): A rota de Revisar é `/w/:id/generate/:runId` e a de prévia de material passa a usar o mesmo campo genérico de detalhe. — confirmed: yes

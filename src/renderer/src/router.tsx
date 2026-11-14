@@ -16,7 +16,7 @@ export type Route =
       name: "section";
       workspaceId: number;
       section: SectionSlug;
-      materialId?: number;
+      detailId?: number;
       chunkId?: number;
     }
   | { name: "unknown" };
@@ -43,7 +43,7 @@ export function parseRoute(path: string): Route {
     name: "section",
     workspaceId: Number(workspace),
     section: section as SectionSlug,
-    ...(material !== undefined ? { materialId: Number(material) } : {}),
+    ...(material !== undefined ? { detailId: Number(material) } : {}),
     ...(chunk !== undefined ? { chunkId: Number(chunk) } : {}),
   };
 }

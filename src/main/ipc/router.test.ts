@@ -28,6 +28,29 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       throw new Error("unused");
     },
     "material:search": () => ({ hits: [] }),
+    "generation:estimate": () => {
+      throw new Error("unused");
+    },
+    "generation:start": () => {
+      throw new Error("unused");
+    },
+    "generation:cancel": () => ({ cancelled: false }),
+    "generation:list": () => ({ runs: [] }),
+    "generation:get": () => {
+      throw new Error("unused");
+    },
+    "review:list": () => {
+      throw new Error("unused");
+    },
+    "review:get": () => {
+      throw new Error("unused");
+    },
+    "review:approve": () => ({ approved: 0, discarded: 0, skipped: 0 }),
+    "review:discard": () => ({ approved: 0, discarded: 0, skipped: 0 }),
+    "review:approveAll": () => ({ approved: 0, discarded: 0, skipped: 0 }),
+    "review:edit": () => {
+      throw new Error("unused");
+    },
     "settings:get": () => ({
       provider: "openrouter",
       generationModel: "a",

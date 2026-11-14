@@ -387,3 +387,25 @@ th {
   padding: 0;
   margin: 0;
 }
+
+.source {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 4px solid var(--purple);
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+select,
+textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+.dialog textarea {
+  resize: vertical;
+}

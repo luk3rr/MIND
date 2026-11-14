@@ -21,6 +21,9 @@ import type { FetchLike as PageFetchLike } from "./ingestion/web.js";
 import type { Provider } from "./llm/provider.js";
 import { SecretStore } from "./secrets.js";
 import { SettingsService } from "./settings/service.js";
+import { AppError } from "./contracts/errors.js";
+import { GenerationService } from "./generation/service.js";
+import { ReviewService } from "./review/service.js";
 import { WorkspaceRegistry } from "./workspaces/registry.js";
 
 export interface CoreOptions {
@@ -35,6 +38,7 @@ export interface CoreOptions {
   /** How files are read; the app uses worker threads, tests read in-process. */
   extract?: ExtractFn;
   maxUploadMb?: number;
+  generationConcurrency?: number;
   /** Folder for the OCR language data (a cache); OCR is off when absent. */
   tessdataDir?: string;
   /** How web pages are downloaded; defaults to the global fetch. */
@@ -50,6 +54,8 @@ export interface Llm {
   ledger: CostLedger;
   provider: Provider;
   fetch: FetchLike;
+  /** Throws a stable error when a model call would be refused (key, consent or limit). */
+  ensureReady(): void;
 }
 
 /** Everything the application needs, built from a data directory. It never imports Electron. */
@@ -58,6 +64,8 @@ export interface Core {
   queue: JobQueue;
   llm: Llm;
   materials(workspaceId: number): MaterialService;
+  generation(workspaceId: number): GenerationService;
+  review(workspaceId: number): ReviewService;
   retriever(workspaceId: number): Bm25Retriever;
   close(): Promise<void>;
 }
@@ -79,10 +87,49 @@ export function createCore(options: CoreOptions): Core {
   const fetchImpl: FetchLike = options.fetch ?? ((url, init) => fetch(url, init));
   const inner = options.provider ?? new OpenRouterProvider(secrets, { fetch: fetchImpl });
   const provider = new GuardedProvider(inner, consent, ledger, settings, clock);
+  const ensureReady = (): void => {
+    if (provider.requiresConsent) {
+      if (!secrets.isConfigured()) {
+        throw new AppError(
+          "PROVIDER_KEY_MISSING",
+          "Configure a chave do OpenRouter em Configurações.",
+        );
+      }
+      if (!consent.isGiven(provider.name)) {
+        throw new AppError(
+          "CONSENT_REQUIRED",
+          "Aceite o envio de trechos ao provedor em Configurações.",
+        );
+      }
+    }
+    const limit = settings.get().monthlyLimitUsd;
+    const spent = ledger.spentThisMonth();
+    if (spent >= limit) {
+      const now = clock.now();
+      const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+      throw new AppError(
+        "MONTHLY_LIMIT_REACHED",
+        `Gasto de US$ ${spent.toFixed(2)} de US$ ${limit.toFixed(2)} em ${now.getUTCFullYear()}-${month}.`,
+      );
+    }
+  };
+  const llm: Llm = {
+    secrets,
+    settings,
+    consent,
+    catalog,
+    ledger,
+    provider,
+    fetch: fetchImpl,
+    ensureReady,
+  };
   return {
     registry,
     queue,
-    llm: { secrets, settings, consent, catalog, ledger, provider, fetch: fetchImpl },
+    llm,
+    generation: (workspaceId) =>
+      new GenerationService(registry.open(workspaceId), queue, llm, options.generationConcurrency),
+    review: (workspaceId) => new ReviewService(registry.open(workspaceId), clock),
     materials: (workspaceId) =>
       new MaterialService(registry.open(workspaceId), queue, {
         maxUploadBytes: (options.maxUploadMb ?? 200) * 1024 * 1024,
