@@ -8,15 +8,17 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from mind.api.deps import Registry, StudyDep
 from mind.api.schemas import (
+    FacetOut,
     ItemOut,
     Problem,
     RatingIn,
     RatingOut,
     StudyCardOut,
+    StudyFacetsOut,
     StudySettingsOut,
     StudySettingsPatch,
     StudySummaryOut,
@@ -25,7 +27,7 @@ from mind.api.schemas import (
 from mind.api.v1.items import to_out as item_out
 from mind.study.rendering import Segment, card_sides
 from mind.study.scheduler import Rating
-from mind.study.service import StudyCard, StudyService
+from mind.study.service import StudyCard, StudyFilter, StudyService
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/study", tags=["study"])
 
@@ -33,6 +35,19 @@ ERRORS: dict[int | str, dict[str, object]] = {
     404: {"model": Problem, "description": "Workspace or item not found."},
     422: {"model": Problem, "description": "Invalid rating or settings."},
 }
+
+
+def selection(
+    kind: Annotated[str | None, Query(pattern="^(card|question)$")] = None,
+    topic_id: int | None = None,
+    material_id: int | None = None,
+    subtype: Annotated[str | None, Query(pattern="^(qa|cloze|compare|true_false)$")] = None,
+) -> StudyFilter:
+    """The optional selector shared by the queue and the summary."""
+    return StudyFilter(kind=kind, topic_id=topic_id, material_id=material_id, subtype=subtype)
+
+
+Selection = Annotated[StudyFilter, Depends(selection)]
 
 
 def _text(segments: list[Segment]) -> str:
@@ -59,11 +74,12 @@ async def queue(
     workspace_id: int,
     study: StudyDep,
     registry: Registry,
+    chosen: Selection,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[StudyCardOut]:
     registry.get(workspace_id)
     service = study.for_workspace(workspace_id)
-    return [card_out(service, card) for card in service.queue(limit)]
+    return [card_out(service, card) for card in service.queue(limit, selection=chosen)]
 
 
 @router.post("/reviews", response_model=RatingOut, responses=ERRORS, summary="Rate a card (1 to 4)")
@@ -90,10 +106,12 @@ async def undo(workspace_id: int, study: StudyDep, registry: Registry) -> UndoOu
 @router.get(
     "/summary", response_model=StudySummaryOut, responses=ERRORS, summary="Numbers of the day"
 )
-async def summary(workspace_id: int, study: StudyDep, registry: Registry) -> StudySummaryOut:
+async def summary(
+    workspace_id: int, study: StudyDep, registry: Registry, chosen: Selection
+) -> StudySummaryOut:
     registry.get(workspace_id)
     service = study.for_workspace(workspace_id)
-    counts, config = service.counts(), service.settings()
+    counts, config = service.counts(selection=chosen), service.settings()
     return StudySummaryOut(
         learning=counts.learning,
         review=counts.review,
@@ -103,6 +121,24 @@ async def summary(workspace_id: int, study: StudyDep, registry: Registry) -> Stu
         to_study=counts.to_study,
         daily_goal=config.daily_goal,
         new_per_day=config.new_per_day,
+    )
+
+
+@router.get(
+    "/facets",
+    response_model=StudyFacetsOut,
+    responses=ERRORS,
+    summary="Selector options with the number of approved items behind each",
+)
+async def facets(workspace_id: int, study: StudyDep, registry: Registry) -> StudyFacetsOut:
+    registry.get(workspace_id)
+    found = study.for_workspace(workspace_id).facets()
+    return StudyFacetsOut(
+        topics=[FacetOut(**f.__dict__) for f in found.topics],
+        materials=[FacetOut(**f.__dict__) for f in found.materials],
+        subtypes=[FacetOut(**f.__dict__) for f in found.subtypes],
+        cards=found.cards,
+        questions=found.questions,
     )
 
 

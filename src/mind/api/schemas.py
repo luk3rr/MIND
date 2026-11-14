@@ -270,3 +270,17 @@ class StudySettingsPatch(BaseModel):
     new_per_day: int | None = None
     daily_goal: int | None = None
     desired_retention: float | None = None
+
+
+class FacetOut(BaseModel):
+    key: int | str
+    label: str
+    count: int
+
+
+class StudyFacetsOut(BaseModel):
+    topics: list[FacetOut]
+    materials: list[FacetOut]
+    subtypes: list[FacetOut]
+    cards: int
+    questions: int
