@@ -536,8 +536,16 @@
             "type": "string"
           },
           "material_id": {
-            "title": "Material Id",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required unless topic_id is given (then the topic's own chunks are used).",
+            "title": "Material Id"
           },
           "page_from": {
             "anyOf": [
@@ -571,10 +579,21 @@
             "description": "Cards: qa, cloze, compare or true_false. Questions (exam profile): certo_errado, multiple_choice_4 or multiple_choice_5.",
             "title": "Subtype",
             "type": "string"
+          },
+          "topic_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Train on a topic; material_id optionally narrows it.",
+            "title": "Topic Id"
           }
         },
         "required": [
-          "material_id",
           "subtype"
         ],
         "title": "GenerationIn",
@@ -1479,6 +1498,18 @@
           "subtype": {
             "title": "Subtype",
             "type": "string"
+          },
+          "topic_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when the run trains a topic.",
+            "title": "Topic Id"
           }
         },
         "required": [
@@ -4637,6 +4668,74 @@
           }
         },
         "summary": "Accuracy by topic (cards and questions)",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/stats/weak-topics": {
+      "get": {
+        "operationId": "weak_topics_v1_workspaces__workspace_id__stats_weak_topics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TopicStatOut"
+                  },
+                  "title": "Response Weak Topics V1 Workspaces  Workspace Id  Stats Weak Topics Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lowest-accuracy topics with enough events (candidates for training)",
         "tags": [
           "stats"
         ]

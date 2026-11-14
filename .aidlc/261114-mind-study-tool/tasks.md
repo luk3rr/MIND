@@ -207,8 +207,8 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 ### UNIT-9 Treino de pontos fracos — Status: pending
 - [x] T-9.1 `WeakTopicSelector` com mínimo de tentativas e ordenação por acerto. · FR-17 · teste: `tests/stats/test_weak_topics.py` · files: src/mind/stats/service.py (weakest_topics, reused), tests/stats/test_stats_service.py
 - [x] T-9.2 Recuperação de trechos do tópico e pré-configuração da geração. · FR-17 · teste: `tests/generation/test_weak_topic_generation.py` · files: src/mind/generation/{training,planning,service,cards,questions,prompts}.py, tests/generation/{test_generation_service,test_planning}.py
-- [ ] T-9.3 Atalho "Treinar" em Hoje e Estatísticas. · US-11 · teste: `tests/web/test_train_shortcut.py`
-- [ ] T-9.4 API `generations:weak-topics`. · FR-24 · teste: `tests/api/test_weak_topics_contract.py`
+- [x] T-9.3 Atalho "Treinar" em Hoje e Estatísticas. · US-11 · teste: `tests/web/test_train_shortcut.py`
+- [x] T-9.4 API `generations:weak-topics`. · FR-24 · teste: `tests/api/test_weak_topics_contract.py`
 
 ### UNIT-10 Chat com a base e embeddings opcionais — Status: pending
 - [ ] T-10.1 `ChatService`: recupera trechos, responde com citações e recusa sem suporte. ≈2 h · FR-18, US-12 · teste: `tests/chat/test_chat_service.py`

@@ -22,7 +22,7 @@ def prepare(client: TestClient) -> str:
 def run_generation(client: TestClient, base: str, **body: object) -> dict[str, object]:
     payload = {"material_id": 1, "subtype": "qa", "quantity": 5, **body}
     response = client.post(f"{base}/generations", json=payload)
-    assert response.status_code == 202
+    assert response.status_code == 202, response.text
     run: dict[str, object] = response.json()
     wait_for(lambda: client.get(f"{base}/generations/{run['id']}").json()["status"] == "done")
     return client.get(f"{base}/generations/{run['id']}").json()  # type: ignore[no-any-return]

@@ -145,7 +145,13 @@ class SearchHitOut(BaseModel):
 
 
 class GenerationIn(BaseModel):
-    material_id: int
+    material_id: int | None = Field(
+        default=None,
+        description="Required unless topic_id is given (then the topic's own chunks are used).",
+    )
+    topic_id: int | None = Field(
+        default=None, description="Train on a topic; material_id optionally narrows it."
+    )
     kind: str = Field(default="card", description="card or question.")
     subtype: str = Field(
         description=(
@@ -175,6 +181,7 @@ class RunOut(BaseModel):
     kind: str
     subtype: str
     material_id: int | None = None
+    topic_id: int | None = Field(default=None, description="Set when the run trains a topic.")
     page_from: int | None = None
     page_to: int | None = None
     model: str

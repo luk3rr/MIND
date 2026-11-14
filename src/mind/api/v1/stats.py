@@ -19,6 +19,7 @@ from mind.api.schemas import (
     StatsSummaryOut,
     TopicStatOut,
 )
+from mind.stats.service import TopicStat
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/stats", tags=["stats"])
 
@@ -26,6 +27,22 @@ ERRORS: dict[int | str, dict[str, object]] = {
     404: {"model": Problem, "description": "Workspace not found."}
 }
 Days = Annotated[int, Query(ge=1, le=365, description="Number of study days, ending today.")]
+
+
+def topic_out(s: TopicStat) -> TopicStatOut:
+    return TopicStatOut(
+        topic_id=s.topic_id,
+        name=s.name,
+        card_reviews=s.card_reviews,
+        card_passes=s.card_passes,
+        question_attempts=s.question_attempts,
+        question_correct=s.question_correct,
+        events=s.events,
+        accuracy=s.accuracy,
+        card_accuracy=s.card_accuracy,
+        question_accuracy=s.question_accuracy,
+        small_sample=s.small_sample,
+    )
 
 
 @router.get(
@@ -45,22 +62,23 @@ async def summary(workspace_id: int, stats: StatsDep, registry: Registry) -> Sta
 )
 async def by_topic(workspace_id: int, stats: StatsDep, registry: Registry) -> list[TopicStatOut]:
     registry.get(workspace_id)
-    return [
-        TopicStatOut(
-            topic_id=s.topic_id,
-            name=s.name,
-            card_reviews=s.card_reviews,
-            card_passes=s.card_passes,
-            question_attempts=s.question_attempts,
-            question_correct=s.question_correct,
-            events=s.events,
-            accuracy=s.accuracy,
-            card_accuracy=s.card_accuracy,
-            question_accuracy=s.question_accuracy,
-            small_sample=s.small_sample,
-        )
-        for s in stats.stats(workspace_id).topic_stats()
-    ]
+    return [topic_out(s) for s in stats.stats(workspace_id).topic_stats()]
+
+
+@router.get(
+    "/weak-topics",
+    response_model=list[TopicStatOut],
+    responses=ERRORS,
+    summary="Lowest-accuracy topics with enough events (candidates for training)",
+)
+async def weak_topics(
+    workspace_id: int,
+    stats: StatsDep,
+    registry: Registry,
+    limit: Annotated[int, Query(ge=1, le=20)] = 5,
+) -> list[TopicStatOut]:
+    registry.get(workspace_id)
+    return [topic_out(s) for s in stats.stats(workspace_id).weakest_topics(limit)]
 
 
 @router.get("/retention", response_model=RetentionOut, responses=ERRORS, summary="Retention by day")
