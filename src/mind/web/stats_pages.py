@@ -29,6 +29,7 @@ def _context(workspace_id: int, stats: StatsDep, study: StudyDep) -> dict[str, A
         "workspace_id": workspace_id,
         "summary": summary,
         "topic_stats": service.topic_stats(),
+        "weak_topics": service.weakest_topics(3),
         "topics": stats.topics(workspace_id).list_topics(),
         "retention": retention,
         "retention_points": retention_points(retention.days),

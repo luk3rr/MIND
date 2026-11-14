@@ -11,12 +11,17 @@
 {% if ready_error %}
 <p class="alert alert-warn" role="status">{{ t.gen_not_ready }} {{ ready_error.detail or ready_error.title }} <a href="/settings">{{ t.gen_go_settings }}</a></p>
 {% endif %}
-{% if not indexed %}
+{% if not indexed and not training_topic %}
 <p class="muted">{{ t.gen_no_material }}</p>
 {% else %}
 <form method="post" action="/w/{{ workspace.id }}/generate" class="card stack"
       hx-post="/w/{{ workspace.id }}/generate/estimate" hx-trigger="change, load" hx-target="#estimate" hx-swap="innerHTML"
       hx-boost="false">
+  {% if training_topic %}
+  <p class="alert alert-warn" role="status">{{ t.train_banner }} <strong>{{ training_topic.name }}</strong>. {{ t.train_hint }}
+    <a href="/w/{{ workspace.id }}/generate">{{ t.train_cancel }}</a></p>
+  <input type="hidden" name="topic_id" value="{{ training_topic.id }}">
+  {% else %}
   <label for="material_id">{{ t.gen_material }}</label>
   <select id="material_id" name="material_id" required>
     {% for m in indexed %}<option value="{{ m.id }}">{{ m.title }}{% if m.page_count %} ({{ m.page_count }} {{ t.col_pages }}){% endif %}</option>{% endfor %}
@@ -25,13 +30,14 @@
   <input id="page_from" name="page_from" type="text" inputmode="numeric">
   <label for="page_to">{{ t.gen_pages_to }}</label>
   <input id="page_to" name="page_to" type="text" inputmode="numeric">
+  {% endif %}
   <label for="subtype">{{ t.gen_type }}</label>
   <select id="subtype" name="subtype">
     <optgroup label="{{ t.gen_group_cards }}">
       {% for s in card_types %}<option value="{{ s }}"{% if s == defaults.subtype %} selected{% endif %}>{{ t['type_' ~ s] }}</option>{% endfor %}
     </optgroup>
     <optgroup label="{{ t.gen_group_questions }}">
-      {% for s in question_profiles %}<option value="{{ s }}">{{ t['type_' ~ s] }}</option>{% endfor %}
+      {% for s in question_profiles %}<option value="{{ s }}"{% if s == defaults.subtype %} selected{% endif %}>{{ t['type_' ~ s] }}</option>{% endfor %}
     </optgroup>
   </select>
   <label for="quantity">{{ t.gen_quantity }}</label>

@@ -35,6 +35,8 @@
   <progress class="goal-bar" max="{{ goal }}" value="{{ [counts.reviewed_today, goal]|min }}" aria-label="{{ t.today_goal }}"></progress>
   <p class="muted">{{ counts.reviewed_today }} / {{ goal }}{% if goal_met %} · {{ t.today_goal_met }}{% endif %}</p>
 </section>
+{% set workspace_id = workspace.id %}
+{% include "_weak_topics.html" %}
 {% if questions.to_practice %}
 <section class="card">
   <h2>{{ t.today_questions }}: {{ questions.to_practice }}</h2>

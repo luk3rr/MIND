@@ -42,6 +42,7 @@ from mind.web.rendering import (
     PracticeDep,
     Registry,
     ReviewDep,
+    StatsDep,
     StudyDep,
     render,
 )
@@ -155,6 +156,7 @@ def create_app(
         materials: MaterialsDep,
         review: ReviewDep,
         practice: PracticeDep,
+        stats: StatsDep,
     ) -> HTMLResponse:
         workspace = current(registry, workspace_id)
         study_service = study.for_workspace(workspace_id)
@@ -169,6 +171,7 @@ def create_app(
             goal=goal,
             goal_met=counts.reviewed_today >= goal,
             questions=practice.for_workspace(workspace_id).counts(),
+            weak_topics=stats.stats(workspace_id).weakest_topics(3),
             has_materials=bool(materials.for_workspace(workspace_id).list_materials()),
             approved_cards=review.for_workspace(workspace_id).count(status="approved", kind="card"),
         )

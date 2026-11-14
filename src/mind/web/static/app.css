@@ -471,6 +471,12 @@ html:not(.js) .study-back[hidden] {
   align-items: center;
 }
 
+.plain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
 .muted {
   color: var(--muted);
 }

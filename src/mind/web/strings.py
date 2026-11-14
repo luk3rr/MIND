@@ -292,5 +292,12 @@ T: dict[str, str] = {
     "stats_manage_topics": "Gerenciar tópicos",
     "stats_merge_into": "Mesclar em",
     "stats_merge": "Mesclar",
+    "weak_title": "Pontos fracos",
+    "weak_train": "Treinar",
+    "weak_hint": "Treinar abre a tela Gerar já preenchida; nada é gerado até você clicar em Gerar.",
+    "train_banner": "Treino do tópico",
+    "train_hint": "Os itens novos usam os trechos de onde você errou.",
+    "train_cancel": "Gerar a partir de um material",
+    "train_run": "Treino",
     "today_setup_step": "Passo 3 de 3: importe seu primeiro material.",
 }

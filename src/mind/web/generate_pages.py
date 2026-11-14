@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from mind.errors import AppError
@@ -21,6 +21,7 @@ from mind.web.rendering import (
     Registry,
     ReviewDep,
     ServicesDep,
+    StatsDep,
     render,
 )
 
@@ -35,10 +36,17 @@ def _optional_int(value: str) -> int | None:
 
 
 def _build_request(
-    material_id: int, page_from: str, page_to: str, subtype: str, quantity: int
+    material_id: int,
+    page_from: str,
+    page_to: str,
+    subtype: str,
+    quantity: int,
+    topic: str = "",
 ) -> GenerationRequest:
+    topic_id = _optional_int(topic)
     return GenerationRequest(
-        material_id=material_id,
+        material_id=None if topic_id is not None else material_id,
+        topic_id=topic_id,
         kind="question" if subtype in PROFILES else "card",
         subtype=subtype,
         quantity=quantity,
@@ -52,9 +60,11 @@ def _runs_context(
     generation: GenerationService,
     review: ReviewService,
     titles: dict[int, str],
+    topic_names: dict[int, str] | None = None,
 ) -> dict[str, Any]:
     runs = generation.list_runs()
     return {
+        "topic_names": topic_names or {},
         "runs": runs,
         "drafts": {r.id: review.count(run_id=r.id, status="draft") for r in runs},
         "titles": titles,
@@ -69,6 +79,8 @@ def _page_context(
     review: ReviewService,
     materials: MaterialsDep,
     services: ServicesDep,
+    topics: StatsDep,
+    training_topic: str = "",
 ) -> dict[str, Any]:
     all_materials = materials.for_workspace(workspace_id).list_materials()
     titles = {m.id: m.title for m in all_materials}
@@ -77,13 +89,18 @@ def _page_context(
         services.ensure_ready()
     except AppError as exc:
         ready_error = exc
+    known_topics = {t.id: t.name for t in topics.topics(workspace_id).list_topics()}
+    wanted = _optional_int(training_topic)
     return {
+        "training_topic": (
+            {"id": wanted, "name": known_topics[wanted]} if wanted in known_topics else None
+        ),
         "indexed": [m for m in all_materials if m.status == "indexed"],
         "card_types": CARD_SUBTYPES,
         "question_profiles": tuple(PROFILES),
         "ready_error": ready_error,
         "defaults": {"quantity": 20, "subtype": "qa"},
-        **_runs_context(workspace_id, generation, review, titles),
+        **_runs_context(workspace_id, generation, review, titles, known_topics),
     }
 
 
@@ -96,6 +113,9 @@ async def generate_page(
     review: ReviewDep,
     materials: MaterialsDep,
     services: ServicesDep,
+    topics: StatsDep,
+    topic: Annotated[str, Query()] = "",
+    subtype: Annotated[str, Query()] = "",
 ) -> HTMLResponse:
     info = registry.get(workspace_id)
     context = _page_context(
@@ -104,7 +124,14 @@ async def generate_page(
         review.for_workspace(workspace_id),
         materials,
         services,
+        topics,
+        topic,
     )
+    if context["training_topic"] is not None:
+        context["defaults"] = {
+            "quantity": 10,
+            "subtype": subtype if subtype in (*CARD_SUBTYPES, *PROFILES) else "qa",
+        }
     return render(request, "generate.html", workspace=info, active="generate", **context)
 
 
@@ -116,14 +143,17 @@ async def runs_partial(
     generation: GenerationDep,
     review: ReviewDep,
     materials: MaterialsDep,
+    topics: StatsDep,
 ) -> HTMLResponse:
     registry.get(workspace_id)
     titles = {m.id: m.title for m in materials.for_workspace(workspace_id).list_materials()}
+    names = {t.id: t.name for t in topics.topics(workspace_id).list_topics()}
     context = _runs_context(
         workspace_id,
         generation.for_workspace(workspace_id),
         review.for_workspace(workspace_id),
         titles,
+        names,
     )
     return render(request, "_runs.html", **context)
 
@@ -139,11 +169,12 @@ async def estimate(
     page_to: Annotated[str, Form()] = "",
     subtype: Annotated[str, Form()] = "qa",
     quantity: Annotated[int, Form()] = 20,
+    topic_id: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
     registry.get(workspace_id)
     try:
         info = generation.for_workspace(workspace_id).estimate(
-            _build_request(material_id, page_from, page_to, subtype, quantity)
+            _build_request(material_id, page_from, page_to, subtype, quantity, topic_id)
         )
     except AppError as exc:
         return render(request, "_estimate.html", estimate=None, estimate_error=exc.detail)
@@ -159,19 +190,27 @@ async def start(
     review: ReviewDep,
     materials: MaterialsDep,
     services: ServicesDep,
+    topics: StatsDep,
     material_id: Annotated[int, Form()] = 0,
     page_from: Annotated[str, Form()] = "",
     page_to: Annotated[str, Form()] = "",
     subtype: Annotated[str, Form()] = "qa",
     quantity: Annotated[int, Form()] = 20,
+    topic_id: Annotated[str, Form()] = "",
 ) -> Response:
     info = registry.get(workspace_id)
     service = generation.for_workspace(workspace_id)
     try:
-        service.start(_build_request(material_id, page_from, page_to, subtype, quantity))
+        service.start(_build_request(material_id, page_from, page_to, subtype, quantity, topic_id))
     except AppError as exc:
         context = _page_context(
-            workspace_id, service, review.for_workspace(workspace_id), materials, services
+            workspace_id,
+            service,
+            review.for_workspace(workspace_id),
+            materials,
+            services,
+            topics,
+            topic_id,
         )
         return render(
             request,

@@ -20,7 +20,7 @@
     <tbody>
       {% for r in runs %}
       <tr>
-        <td>#{{ r.id }} · {{ t['type_' ~ r.subtype] }}<br><span class="muted">{{ titles.get(r.material_id, "–") }}</span></td>
+        <td>#{{ r.id }} · {{ t['type_' ~ r.subtype] }}<br><span class="muted">{% if r.topic_id %}{{ t.train_run }}: {{ topic_names.get(r.topic_id, "–") }}{% else %}{{ titles.get(r.material_id, "–") }}{% endif %}</span></td>
         <td>{{ t['run_' ~ r.status] }}{% if r.error_detail %}<br><span class="alert alert-danger">{{ r.error_detail }}</span>{% endif %}</td>
         <td>
           {{ r.generated }} / {{ r.requested }}
