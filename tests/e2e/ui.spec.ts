@@ -89,9 +89,14 @@ test("restores the last section after a restart and opens the quick switcher (FR
   const userData = profile();
   current = await launch(userData);
   await createWorkspace(current, "Atalhos");
-  await current.page.keyboard.press("Control+s");
   const dialog = current.page.getByRole("dialog", { name: "Ir para" });
-  await expect(dialog).toBeVisible();
+  // A shortcut pressed before the window has keyboard focus is lost, so focus first and retry.
+  await current.page.bringToFront();
+  await current.page.locator("body").click({ position: { x: 5, y: 5 } });
+  await expect(async () => {
+    await current?.page.keyboard.press("Control+s");
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
   await dialog.getByRole("textbox").fill("estat");
   await current.page.keyboard.press("Enter");
   await expect(current.page.getByRole("heading", { name: "Estatísticas" })).toBeVisible();
