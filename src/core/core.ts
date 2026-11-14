@@ -36,6 +36,7 @@ import { PracticeService } from "./practice/service.js";
 import { StatsService } from "./stats/service.js";
 import { TopicService } from "./stats/topics.js";
 import { StudyService } from "./study/service.js";
+import { TimeService } from "./time/service.js";
 import type { TzOffset } from "./study/scheduler.js";
 import { WorkspaceRegistry } from "./workspaces/registry.js";
 
@@ -64,6 +65,8 @@ export interface CoreOptions {
   modelsDir?: string;
   /** Creates the worker thread that runs the model (the app passes the bundled worker). */
   createEmbedWorker?: () => Worker;
+  /** Called with the workspace id whenever its study timer changes. */
+  onTimeEvent?: (event: { workspaceId: number }) => void;
 }
 
 /** Everything the provider layer needs; the guarded provider is the only door to a model. */
@@ -88,6 +91,10 @@ export interface Core {
   generation(workspaceId: number): GenerationService;
   review(workspaceId: number): ReviewService;
   study(workspaceId: number): StudyService;
+  /** The study timer of a workspace; one instance per workspace for the life of the core. */
+  time(workspaceId: number): TimeService;
+  /** Closes and forgets the timer of a workspace (before it is deleted). */
+  releaseTime(workspaceId: number): void;
   practice(workspaceId: number): PracticeService;
   notebook(workspaceId: number): ErrorNotebook;
   stats(workspaceId: number): StatsService;
@@ -158,10 +165,26 @@ export function createCore(options: CoreOptions): Core {
     fetch: fetchImpl,
     ensureReady,
   };
+  const timers = new Map<number, TimeService>();
   return {
     registry,
     queue,
     llm,
+    time: (workspaceId) => {
+      const cached = timers.get(workspaceId);
+      if (cached) return cached;
+      const created = new TimeService(registry.open(workspaceId), {
+        clock,
+        ...(options.tzOffset ? { offset: options.tzOffset } : {}),
+        onChange: () => options.onTimeEvent?.({ workspaceId }),
+      });
+      timers.set(workspaceId, created);
+      return created;
+    },
+    releaseTime: (workspaceId) => {
+      timers.get(workspaceId)?.shutdown();
+      timers.delete(workspaceId);
+    },
     generation: (workspaceId) =>
       new GenerationService(registry.open(workspaceId), queue, llm, options.generationConcurrency),
     review: (workspaceId) => new ReviewService(registry.open(workspaceId), clock),
@@ -212,6 +235,8 @@ export function createCore(options: CoreOptions): Core {
       );
     },
     async close() {
+      for (const timer of timers.values()) timer.shutdown();
+      timers.clear();
       await queue.shutdown();
       if (embedder instanceof TransformersEmbedder) embedder.close();
       registry.close();

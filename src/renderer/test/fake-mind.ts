@@ -27,6 +27,7 @@ export type FakeTopic = OutputOf<"topics:list">["topics"][number];
 export type FakeOverview = OutputOf<"stats:overview">;
 export type FakeReply = OutputOf<"chat:ask">;
 export type FakeEmbeddings = OutputOf<"embeddings:status">;
+export type FakeTime = OutputOf<"time:state">;
 export type FakeQuestion = NonNullable<OutputOf<"practice:next">["question"]>;
 
 export interface FakeState {
@@ -64,6 +65,7 @@ export interface FakeState {
   backupFailure: string | null;
   importResult: OutputOf<"material:import">;
   searchHits: OutputOf<"material:search">["hits"];
+  time: FakeTime;
   provider: {
     apiKey: string | null;
     keySource: "environment" | "stored" | null;
@@ -121,6 +123,23 @@ function practiceCounts(state: FakeState) {
   };
 }
 
+export function idleTime(overrides: Partial<FakeTime> = {}): FakeTime {
+  return {
+    status: "idle",
+    mode: null,
+    source: null,
+    pausedReason: null,
+    startedAt: null,
+    activeSeconds: 0,
+    topicId: null,
+    materialId: null,
+    todaySeconds: 0,
+    goalMinutes: 60,
+    bySource: { cards: 0, practice: 0, reading: 0, manual: 0 },
+    ...overrides,
+  };
+}
+
 /** An in-memory `window.mind` that behaves like the real core for the channels the UI uses. */
 export function installFakeMind(initial: Partial<FakeState> = {}) {
   const state: FakeState = {
@@ -152,6 +171,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     backupFailure: null,
     importResult: { materials: [], errors: [] },
     searchHits: [],
+    time: idleTime(),
     provider: {
       apiKey: "sk-or-already",
       keySource: "stored",
@@ -628,6 +648,36 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           total: state.provider.lines.reduce((sum, line) => sum + line.costUsd, 0),
           lines: state.provider.lines,
         });
+      case "time:state":
+        return ok(state.time);
+      case "time:start": {
+        const { topicId } = payload as InputOf<"time:start">;
+        state.time = {
+          ...state.time,
+          status: "running",
+          mode: "manual",
+          source: "manual",
+          startedAt: "2026-01-01T12:00:00.000Z",
+          topicId: topicId ?? null,
+        };
+        return ok(state.time);
+      }
+      case "time:pause":
+        if (state.time.status === "running") {
+          state.time = { ...state.time, status: "paused", pausedReason: "manual", startedAt: null };
+        }
+        return ok(state.time);
+      case "time:resume":
+        if (state.time.status === "paused") {
+          state.time = { ...state.time, status: "running", pausedReason: null };
+        }
+        return ok(state.time);
+      case "time:stop":
+        state.time = idleTime({
+          todaySeconds: state.time.todaySeconds,
+          bySource: state.time.bySource,
+        });
+        return ok(state.time);
       case "today:summary":
         return "code" in state.summary ? { ok: false, error: state.summary } : ok(state.summary);
     }

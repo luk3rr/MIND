@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { TimerCard } from "../components/TimerCard.js";
 import { WeakTopics } from "../components/WeakTopics.js";
 import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
@@ -20,6 +21,7 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
   return (
     <section aria-labelledby="today-title">
       <h1 id="today-title">{T.today}</h1>
+      <TimerCard workspaceId={workspaceId} />
       {state.status === "loading" && (
         <div className="row" role="status" aria-label={T.loading}>
           <div className="skeleton" />

@@ -11,6 +11,7 @@ import { useHotkeys } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import type { SectionSlug } from "../sections.js";
 import { T } from "../strings.js";
+import { TimeProvider } from "../time.js";
 import { applyTheme, nextTheme, readTheme, saveTheme } from "../theme.js";
 import type { Theme } from "../theme.js";
 import { QuickSwitcher } from "./QuickSwitcher.js";
@@ -48,30 +49,32 @@ export function Shell({
   });
 
   return (
-    <div className="app">
-      <a className="skip-link" href="#main">
-        {T.skipLink}
-      </a>
-      <Sidebar workspaceId={workspaceId} active={section} />
-      <main id="main" className="content" tabIndex={-1}>
-        {needsSetup && (
-          <p className="alert warn" role="status">
-            {T.setupBanner}{" "}
-            <button type="button" className="btn ghost" onClick={() => navigate("/setup/1")}>
-              {T.setupBannerLink}
-            </button>
-          </p>
-        )}
-        <SettingsStatusContext.Provider value={{ state: status, refresh }}>
-          {children}
-        </SettingsStatusContext.Provider>
-      </main>
-      <StatusBar
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        keyConfigured={status.status === "ready" && status.data.keyConfigured}
-      />
-      {quick && <QuickSwitcher workspaceId={workspaceId} onClose={() => setQuick(false)} />}
-    </div>
+    <TimeProvider workspaceId={workspaceId}>
+      <div className="app">
+        <a className="skip-link" href="#main">
+          {T.skipLink}
+        </a>
+        <Sidebar workspaceId={workspaceId} active={section} />
+        <main id="main" className="content" tabIndex={-1}>
+          {needsSetup && (
+            <p className="alert warn" role="status">
+              {T.setupBanner}{" "}
+              <button type="button" className="btn ghost" onClick={() => navigate("/setup/1")}>
+                {T.setupBannerLink}
+              </button>
+            </p>
+          )}
+          <SettingsStatusContext.Provider value={{ state: status, refresh }}>
+            {children}
+          </SettingsStatusContext.Provider>
+        </main>
+        <StatusBar
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          keyConfigured={status.status === "ready" && status.data.keyConfigured}
+        />
+        {quick && <QuickSwitcher workspaceId={workspaceId} onClose={() => setQuick(false)} />}
+      </div>
+    </TimeProvider>
   );
 }

@@ -17,6 +17,21 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "workspace:create": () => ({ id: 1, name: "x", createdAt: "x" }),
     "workspace:rename": () => ({ id: 1, name: "x", createdAt: "x" }),
     "workspace:delete": () => ({}),
+    "time:state": () => {
+      throw new Error("unused");
+    },
+    "time:start": () => {
+      throw new Error("unused");
+    },
+    "time:pause": () => {
+      throw new Error("unused");
+    },
+    "time:resume": () => {
+      throw new Error("unused");
+    },
+    "time:stop": () => {
+      throw new Error("unused");
+    },
     "today:summary": () => ({ materials: 0, cards: 0, questions: 0 }),
     "material:list": () => ({ materials: [] }),
     "material:import": () => ({ materials: [], errors: [] }),

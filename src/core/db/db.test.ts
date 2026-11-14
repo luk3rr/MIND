@@ -48,6 +48,7 @@ describe("migrations", () => {
         "material",
         "meta",
         "review_log",
+        "study_session",
         "topic",
       ].sort(),
     );
@@ -69,6 +70,7 @@ describe("migrations", () => {
       "0000_init.sql",
       "0001_chunk_index.sql",
       "0002_chunk_fts.sql",
+      "0003_study_session.sql",
     ]);
   });
 

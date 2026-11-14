@@ -60,10 +60,20 @@ export const CHANNEL_NAMES = [
   "settings:refreshModels",
   "settings:testConnection",
   "settings:getCost",
+  "time:state",
+  "time:start",
+  "time:pause",
+  "time:resume",
+  "time:stop",
 ] as const;
 
 /** Names of the events pushed from the main process to the window. */
-export const EVENT_NAMES = ["window:focus-requested", "job:progress", "job:finished"] as const;
+export const EVENT_NAMES = [
+  "window:focus-requested",
+  "job:progress",
+  "job:finished",
+  "time:changed",
+] as const;
 
 export type ChannelName = (typeof CHANNEL_NAMES)[number];
 export type EventName = (typeof EVENT_NAMES)[number];

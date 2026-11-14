@@ -251,6 +251,27 @@ const embeddingStatus = z.object({
     .nullable(),
 });
 
+const timeSource = z.enum(["cards", "practice", "reading", "manual"]);
+
+const timeState = z.object({
+  status: z.enum(["idle", "running", "paused"]),
+  mode: z.enum(["auto", "manual"]).nullable(),
+  source: timeSource.nullable(),
+  pausedReason: z.enum(["manual", "idle", "blur"]).nullable(),
+  startedAt: z.string().nullable(),
+  activeSeconds: z.number().int().min(0),
+  topicId: z.number().int().nullable(),
+  materialId: z.number().int().nullable(),
+  todaySeconds: z.number().int().min(0),
+  goalMinutes: z.number().int().min(0),
+  bySource: z.object({
+    cards: z.number().int().min(0),
+    practice: z.number().int().min(0),
+    reading: z.number().int().min(0),
+    manual: z.number().int().min(0),
+  }),
+});
+
 export const channels = {
   "window:getState": {
     input: z.object({}).strict(),
@@ -678,6 +699,14 @@ export const channels = {
       .strict(),
     output: z.object({ total: z.number(), lines: z.array(costLine) }),
   },
+  "time:state": { input: z.object({ workspaceId }).strict(), output: timeState },
+  "time:start": {
+    input: z.object({ workspaceId, topicId: z.number().int().positive().optional() }).strict(),
+    output: timeState,
+  },
+  "time:pause": { input: z.object({ workspaceId }).strict(), output: timeState },
+  "time:resume": { input: z.object({ workspaceId }).strict(), output: timeState },
+  "time:stop": { input: z.object({ workspaceId }).strict(), output: timeState },
   "workspace:delete": {
     input: z.object({ id: workspaceId }).strict(),
     output: z.object({}).strict(),

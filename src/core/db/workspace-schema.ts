@@ -192,3 +192,23 @@ export const chunkEmbedding = sqliteTable("chunk_embedding", {
   dim: integer("dim").notNull(),
   vector: blob("vector", { mode: "buffer" }).notNull(),
 });
+
+/** One closed or open interval of study time; pausing closes it and resuming opens another. */
+export const studySession = sqliteTable(
+  "study_session",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    startedAt: text("started_at").notNull(),
+    endedAt: text("ended_at").notNull(),
+    seconds: integer("seconds").notNull().default(0),
+    /** `cards`, `practice`, `reading` or `manual`. */
+    source: text("source").notNull(),
+    day: text("day").notNull(),
+    materialId: integer("material_id").references(() => material.id, { onDelete: "set null" }),
+    topicId: integer("topic_id").references(() => topic.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    index("ix_study_session_day").on(table.day),
+    index("ix_study_session_source").on(table.source),
+  ],
+);

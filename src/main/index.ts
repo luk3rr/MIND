@@ -114,6 +114,9 @@ if (!app.requestSingleInstanceLock()) {
       ...(process.env["MIND_E2E_FAKE_LLM"] === "1" && !app.isPackaged
         ? { provider: scriptedCardProvider() }
         : {}),
+      onTimeEvent: (event) => {
+        mainWindow?.webContents.send("time:changed", event);
+      },
       onJobEvent: (event) => {
         mainWindow?.webContents.send(`job:${event.type}`, event);
       },

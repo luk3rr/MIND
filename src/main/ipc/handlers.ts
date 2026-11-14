@@ -300,7 +300,13 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       total: core.llm.ledger.monthTotal(year, month),
       lines: core.llm.ledger.monthLines(year, month),
     }),
+    "time:state": ({ workspaceId }) => core.time(workspaceId).state(),
+    "time:start": ({ workspaceId, topicId }) => core.time(workspaceId).start(topicId),
+    "time:pause": ({ workspaceId }) => core.time(workspaceId).pause(),
+    "time:resume": ({ workspaceId }) => core.time(workspaceId).resume(),
+    "time:stop": ({ workspaceId }) => core.time(workspaceId).stop(),
     "workspace:delete": ({ id }) => {
+      core.releaseTime(id);
       core.registry.delete(id);
       return {};
     },
