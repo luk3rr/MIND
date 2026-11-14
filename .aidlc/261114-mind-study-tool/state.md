@@ -28,13 +28,13 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 - [x] 2.8 Contract Design
 - [x] 2.9 Delivery Planning
 ### Construction
-- [>] 3.1 Functional Design (nota de design por Unit, funde 3.1–3.3)
+- [x] 3.1 Functional Design (nota de design por Unit, funde 3.1–3.3)
 - [S] 3.2 NFR Requirements (fundida em 3.1 por Unit)
 - [S] 3.3 NFR Design (fundida em 3.1 por Unit)
 - [S] 3.4 Infrastructure Design (sem nuvem; Docker na UNIT-11)
-- [ ] 3.5 Code Generation
-- [ ] 3.6 Build & Test
-- [ ] 3.7 CI Pipeline
+- [x] 3.5 Code Generation
+- [x] 3.6 Build & Test
+- [x] 3.7 CI Pipeline
 
 ## Units (filled by 2.7)
 | Unit | Depends on | Status | Verified |
@@ -49,7 +49,7 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-8 OCR, URL e DOCX | UNIT-3 | verified (OCR real pendente) | yes |
 | UNIT-9 Treino de pontos fracos | UNIT-4, UNIT-7 | verified | yes |
 | UNIT-10 Chat e embeddings opcionais | UNIT-2, UNIT-3 | verified (embeddings reais pendentes) | yes |
-| UNIT-11 Backup e distribuição | UNIT-1, UNIT-4 | pending | no |
+| UNIT-11 Backup e distribuição | UNIT-1, UNIT-4 | verified (Docker e 2ª plataforma pendentes) | yes |
 
 ## Open assumptions
 

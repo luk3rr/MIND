@@ -238,14 +238,21 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Desvios e adições: (1) similaridade de cosseno em Python puro (vetores `float32` normalizados em BLOB), sem `numpy` nem `sqlite-vec` (B-13); (2) a vetorização é sempre explícita, não ocorre sozinha ao importar (nada baixa modelo sem você pedir); (3) o chat usa o modelo de geração (mais barato), não o do juiz; (4) migração `0009`; (5) a prévia do material aceita `?chunk=ID`.
 - Pendências conhecidas: o modelo real de embeddings não foi baixado nem testado (A62); perguntas só com palavras comuns ainda chamam o modelo, que então recusa (custo pequeno).
 
-### UNIT-11 Backup e distribuição — Status: pending
+### UNIT-11 Backup e distribuição — Status: verified com pendências (2026-11-14)
 - [x] T-11.1 `WorkspaceArchive`: exportar e importar `.zip` com `manifest.json`; recusa e migra versões. ≈2 h · FR-22, US-15 · teste: `tests/workspaces/test_archive.py` (ida e volta; `ARCHIVE_INCOMPATIBLE`)
 - [x] T-11.2 Interface e API de backup. · FR-22, FR-24, US-15 · teste: `tests/api/test_backup_contract.py`
 - [x] T-11.3 README em pt-BR, `.env.example`, instruções com `uv`/`uvx` e Tesseract; aviso sobre a API sem autenticação. · NFR-9, US-16 · teste: revisão por lista de conferência registrada no gate
-- [x] T-11.4 Dockerfile opcional com Tesseract. · NFR-9 · teste: build da imagem e execução do `/api/docs`
+- [ ] T-11.4 Dockerfile opcional com Tesseract. · NFR-9 · teste: build da imagem e execução do `/api/docs` (Dockerfile escrito; build não executado: Docker indisponível nesta máquina)
 - [x] T-11.5 Revisão de licenças (fontes, KaTeX, dependências, A34), `LICENSE` e `NOTICE`. · A21, A34 · teste: lista de conferência registrada
 - [x] T-11.6 Material de amostra para o primeiro baralho. · US-16 · teste: `tests/e2e/test_sample_deck.py` com `FakeProvider`
 - [ ] T-11.7 Instalação limpa em Linux e em uma segunda plataforma. · SM-3, NFR-9 · teste: execução manual registrada em `construction/`
+
+**Resumo da UNIT-11 (2026-11-14)**
+
+- Verificação: comando aprovado → exit 0 (642 testes, cobertura 97%). Backup: `WorkspaceArchive` exporta `manifest.json` + `workspace.db` (cópia consistente pela API de backup do SQLite) + `files/`; a importação cria sempre um workspace novo (sufixo "(importado)" se o nome existir), recusa formatos mais novos ou esquemas desconhecidos (`ARCHIVE_INCOMPATIBLE`), arquivos que não são backup ou com caminhos inseguros (`ARCHIVE_INVALID`) e migra esquemas antigos. A chave da API nunca entra no arquivo.
+- Como usar: **Configurações → Backup → Baixar backup** e **Importar backup** (também na tela de boas-vindas); API `GET /workspaces/{id}/export` e `POST /workspaces/import`. Distribuição: `README.md` em pt-BR, `.env.example`, `LICENSE` (AGPL-3.0), `NOTICE`, `Dockerfile` com Tesseract, `samples/fotossintese.md` e o teste `tests/e2e/test_sample_deck.py` que percorre o caminho do README.
+- Desvios e adições: nenhuma migração; `registry.create_from` para criar o workspace a partir de uma pasta preenchida; o formato do backup tem `format_version` 1.
+- Pendências conhecidas: build do Docker (T-11.4) e instalação limpa numa segunda plataforma (T-11.7) não puderam ser feitos aqui; no Linux o wheel foi instalado em venv novo e serviu interface, API e estáticos (`construction/clean-install.md`).
 
 ### Cobertura de tarefas (rastreabilidade)
 
