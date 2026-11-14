@@ -13,6 +13,7 @@ from fastapi import Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from mind.ingestion.service import MaterialsFactory
 from mind.services import Services
 from mind.web.math import render_math
 from mind.web.strings import APP_NAME, SECTIONS, T
@@ -34,8 +35,14 @@ def get_services(request: Request) -> Services:
     return services
 
 
+def get_materials(request: Request) -> MaterialsFactory:
+    factory: MaterialsFactory = request.app.state.materials
+    return factory
+
+
 Registry = Annotated[WorkspaceRegistry, Depends(get_registry)]
 ServicesDep = Annotated[Services, Depends(get_services)]
+MaterialsDep = Annotated[MaterialsFactory, Depends(get_materials)]
 
 
 def render(

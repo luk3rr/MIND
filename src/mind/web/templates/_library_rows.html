@@ -1,0 +1,27 @@
+{#
+  Filename: _library_rows.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+<tbody id="library-rows"{% if any_active %} hx-get="/w/{{ workspace_id }}/library/rows" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% for m in materials %}
+  <tr>
+    <td><a href="/w/{{ workspace_id }}/library/{{ m.id }}">{{ m.title }}</a></td>
+    <td>{{ t['kind_' ~ m.kind] }}</td>
+    <td>{{ m.page_count if m.page_count is not none else "–" }}</td>
+    <td>
+      {{ t['status_' ~ m.status] }}
+      {% if m.status in ("queued", "importing") %}
+      <progress max="1" value="{{ progress.get(m.id, 0) }}" aria-label="{{ t.import_progress }}"></progress>
+      {% endif %}
+      {% if m.status == "failed" and m.error_detail %}<span class="alert alert-danger">{{ m.error_detail }}</span>{% endif %}
+    </td>
+    <td>
+      <a href="/w/{{ workspace_id }}/library/{{ m.id }}">{{ t.preview }}</a>
+      <form method="post" action="/w/{{ workspace_id }}/library/{{ m.id }}/delete" class="inline-form">
+        <button class="btn btn-ghost" type="submit">{{ t.delete_material }}</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>

@@ -19,12 +19,13 @@ from typing import BinaryIO
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from mind.config import Settings
 from mind.db.workspace_models import Chunk, Material
 from mind.errors import AppError, ExtractionFailed, MaterialNotFound, UnsupportedFile
 from mind.ingestion.chunker import ChunkDraft, chunk_segments
 from mind.ingestion.extractors import EXTRACTORS, Extractor
 from mind.jobs.queue import JobCancelled, JobContext, JobQueue, JobWork
-from mind.workspaces.registry import OpenWorkspace
+from mind.workspaces.registry import OpenWorkspace, WorkspaceRegistry
 
 COPY_BLOCK = 1024 * 1024
 MAX_FILENAME = 120
@@ -276,3 +277,19 @@ class MaterialService:
                 session.commit()
         if stored:
             shutil.rmtree((self._workspace.root / stored).parent, ignore_errors=True)
+
+
+class MaterialsFactory:
+    """Builds the `MaterialService` of a workspace on demand."""
+
+    def __init__(self, registry: WorkspaceRegistry, queue: JobQueue, settings: Settings) -> None:
+        self._registry = registry
+        self._queue = queue
+        self._settings = settings
+
+    def for_workspace(self, workspace_id: int) -> MaterialService:
+        return MaterialService(
+            self._registry.open(workspace_id),
+            self._queue,
+            max_upload_bytes=self._settings.max_upload_mb * 1024 * 1024,
+        )
