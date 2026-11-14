@@ -23,6 +23,7 @@ from mind.jobs.queue import JobQueue
 from mind.llm.provider import Provider
 from mind.redaction import install_log_redaction, uninstall_log_redaction
 from mind.services import Services
+from mind.web.provider_pages import router as provider_router
 from mind.web.rendering import BASE_DIR, Registry, render
 from mind.web.security import install_security
 from mind.web.strings import SECTIONS
@@ -71,6 +72,7 @@ def create_app(
     app.mount("/api", api_app)
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
     install_security(app, resolved)
+    app.include_router(provider_router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> HTMLResponse:

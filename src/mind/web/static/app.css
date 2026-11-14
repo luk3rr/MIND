@@ -233,6 +233,12 @@ input[type="text"] {
   margin-top: auto;
 }
 
+.provider-link {
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 0 0.6rem;
+}
+
 .muted {
   color: var(--muted);
 }

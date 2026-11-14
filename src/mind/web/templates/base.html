@@ -41,9 +41,13 @@
         </ul>
       </nav>
       {% endif %}
+      <a class="provider-link" href="/settings">{{ t.provider_nav }}</a>
       <button id="theme-toggle" class="btn-ghost" type="button" aria-label="{{ t.toggle_theme }}">◐</button>
     </aside>
     <main id="main" class="content" tabindex="-1">
+      {% if needs_setup %}
+      <p class="alert alert-warn" role="status">{{ t.setup_banner }} <a href="/setup">{{ t.setup_banner_link }}</a></p>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
   </div>
