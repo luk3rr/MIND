@@ -4,6 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { logger } from "../logging.js";
+
+const log = logger("workspace");
 import { and, asc, eq, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
@@ -144,6 +147,7 @@ export class WorkspaceRegistry {
         .values({ name, nameKey: key, folder, createdAt: isoNow(this.clock) })
         .returning()
         .get();
+      log.info("workspace created", { workspace: row.id });
       return WorkspaceRegistry.info(row);
     } catch (error) {
       rmSync(root, { recursive: true, force: true });
@@ -215,6 +219,7 @@ export class WorkspaceRegistry {
     const row = this.app.db.select().from(workspace).where(eq(workspace.id, id)).get();
     if (!row) throw notFound(id);
     this.app.db.delete(workspace).where(eq(workspace.id, id)).run();
+    log.info("workspace deleted", { workspace: id });
     this.open_.get(id)?.connection.close();
     this.open_.delete(id);
     try {
@@ -241,6 +246,7 @@ export class WorkspaceRegistry {
       filesDir: join(root, "files"),
     };
     this.open_.set(id, opened);
+    log.info("workspace opened", { workspace: id });
     return opened;
   }
 }

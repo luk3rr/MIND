@@ -4,6 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { logger } from "../logging.js";
+
+const log = logger("generation");
 import { desc, eq, ne } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import type { FieldError } from "../contracts/errors.js";
@@ -283,6 +286,14 @@ export class GenerationService {
     this.llm.ensureReady();
     const configured = this.llm.settings.get();
     const model = configured.generationModel;
+    log.info("generation requested", {
+      kind: request.kind,
+      subtype: request.subtype,
+      quantity: request.quantity,
+      material: request.materialId ?? null,
+      topic: request.topicId ?? null,
+      model,
+    });
     const row = this.db
       .insert(generationRun)
       .values({
@@ -389,6 +400,17 @@ export class GenerationService {
       plan.map((batch) => runBatch(batch.chunks, batch.count)),
     );
     const failure = results.find((result) => result.status === "rejected");
+    const summary = this.db.select().from(generationRun).where(eq(generationRun.id, runId)).get();
+    log.info("generation finished", {
+      run: runId,
+      failed: failure !== undefined,
+      generated: summary?.generated,
+      noSource: summary?.discardedNoSource,
+      invalid: summary?.discardedInvalid,
+      duplicate: summary?.discardedDuplicate,
+      unsupported: summary?.discardedUnsupported,
+      costUsd: summary?.costUsd,
+    });
     if (!failure) {
       this.finish(runId, "done");
       return;

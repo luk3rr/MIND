@@ -6,6 +6,9 @@
 
 import type Database from "better-sqlite3";
 import { AppError } from "../contracts/errors.js";
+import { logger } from "../logging.js";
+
+const log = logger("db");
 
 export interface Migration {
   /** File name without folder, such as `0000_init.sql`; the order is the sort order. */
@@ -55,5 +58,6 @@ export function applyMigrations(sqlite: Database.Database, migrations: readonly 
       }
       record.run(migration.id, new Date().toISOString());
     })();
+    log.info("migration applied", { id: migration.id });
   }
 }

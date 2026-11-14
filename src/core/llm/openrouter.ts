@@ -10,6 +10,9 @@ import type { SecretStore } from "../secrets.js";
 import type { Completion, CompleteOptions, Provider } from "./provider.js";
 import type { Message, Usage } from "./types.js";
 import { emptyUsage } from "./types.js";
+import { logger, since } from "../logging.js";
+
+const log = logger("llm");
 
 export const BASE_URL = "https://openrouter.ai/api/v1";
 const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
@@ -64,7 +67,35 @@ export class OpenRouterProvider implements Provider {
     this.timeoutMs = options.timeoutMs ?? 120_000;
   }
 
+  /** Logs the call (purpose, model, tokens, cost, time) but never the messages or the answer. */
   async complete<T>(
+    messages: readonly Message[],
+    schema: z.ZodType<T>,
+    options: CompleteOptions,
+  ): Promise<Completion<T>> {
+    const started = performance.now();
+    const fields = { purpose: options.purpose ?? "unknown", model: options.model };
+    try {
+      const result = await this.run(messages, schema, options);
+      log.info("model call ok", {
+        ...fields,
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        costUsd: result.usage.costUsd ?? 0,
+        ms: since(started),
+      });
+      return result;
+    } catch (error) {
+      log.warn("model call failed", {
+        ...fields,
+        code: error instanceof AppError ? error.code : "INTERNAL_ERROR",
+        ms: since(started),
+      });
+      throw error;
+    }
+  }
+
+  private async run<T>(
     messages: readonly Message[],
     schema: z.ZodType<T>,
     options: CompleteOptions,
@@ -89,6 +120,9 @@ export class OpenRouterProvider implements Provider {
       const text = await response.text();
       if (response.status === 400 && structured && text.includes("response_format")) {
         structured = false;
+        log.info("model without structured output, retrying with a schema in the prompt", {
+          model: options.model,
+        });
         continue;
       }
       const payload = this.okPayload(response.status, text);
@@ -109,6 +143,11 @@ export class OpenRouterProvider implements Provider {
           },
         ];
         attempt += 1;
+        log.warn("invalid model answer, asking again", {
+          purpose: options.purpose ?? "unknown",
+          attempt,
+          reason: lastError,
+        });
       }
     }
     throw new AppError(
@@ -159,6 +198,7 @@ export class OpenRouterProvider implements Provider {
       } catch (error) {
         problem = `falha de rede (${error instanceof Error ? error.name : "erro"})`;
       }
+      log.warn("provider request failed", { problem, attempt: attempt + 1 });
       if (attempt === 0) await this.sleep(this.retryDelayMs);
     }
     throw new AppError("PROVIDER_ERROR", `O provedor não respondeu: ${problem}.`);

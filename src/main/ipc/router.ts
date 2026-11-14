@@ -4,6 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { logger, since } from "../../core/logging.js";
+
+const ipcLog = logger("ipc");
 import { AppError, channels, fail, ok } from "../../core/contracts/index.js";
 import type { ChannelName, InputOf, OutputOf, Result } from "../../core/contracts/index.js";
 
@@ -38,9 +41,11 @@ export function createRouter(handlers: Handlers, logger: Logger = console) {
         })),
       );
     }
+    const started = performance.now();
     try {
       const handler = handlers[name] as (input: unknown) => unknown;
       const output = schema.output.safeParse(await handler(parsed.data));
+      ipcLog.debug("call", { channel: name, ok: true, ms: since(started) });
       if (!output.success) {
         logger.error(`Invalid output from ${name}`, output.error.issues);
         return fail("INTERNAL_ERROR", "Erro interno.");
@@ -48,6 +53,7 @@ export function createRouter(handlers: Handlers, logger: Logger = console) {
       return ok(output.data);
     } catch (error) {
       if (error instanceof AppError) {
+        ipcLog.info("call refused", { channel: name, code: error.code, ms: since(started) });
         return fail(error.code, error.message, error.fields);
       }
       logger.error(`Unhandled error in ${name}`, error);

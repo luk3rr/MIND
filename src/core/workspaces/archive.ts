@@ -4,7 +4,10 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { createWriteStream, mkdirSync, readdirSync } from "node:fs";
+import { logger } from "../logging.js";
+
+const log = logger("backup");
+import { createWriteStream, mkdirSync, readdirSync, statSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, posix } from "node:path";
@@ -80,6 +83,7 @@ export async function exportWorkspace(
     }
     zip.end();
     await pipeline(zip.outputStream, createWriteStream(target));
+    log.info("workspace exported", { workspace: workspaceId, bytes: statSync(target).size });
     return target;
   } catch (error) {
     await rm(target, { force: true });
@@ -221,7 +225,9 @@ export async function importWorkspace(
     for (let suffix = 0; ; suffix += 1) {
       const name = suffix === 0 ? base : `${base} (importado${suffix === 1 ? "" : ` ${suffix}`})`;
       try {
-        return await registry.createFrom(name, populate);
+        const created = await registry.createFrom(name, populate);
+        log.info("workspace imported", { workspace: created.id, members: entries.length });
+        return created;
       } catch (error) {
         const nameTaken =
           error instanceof AppError && error.fields?.some((field) => field.field === "name");

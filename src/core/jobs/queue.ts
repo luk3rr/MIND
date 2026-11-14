@@ -8,6 +8,7 @@ import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
 import * as store from "./store.js";
+import { logger, since } from "../logging.js";
 import type { JobInfo, WorkspaceDb } from "./store.js";
 
 /** Thrown by `JobContext.checkCancelled` when the job was cancelled. */
@@ -25,6 +26,8 @@ export interface JobEvent {
 }
 
 /** Passed to the job work to report progress and check for cancellation. */
+const log = logger("jobs");
+
 export class JobContext {
   private lastWrite = Number.NEGATIVE_INFINITY;
 
@@ -143,6 +146,9 @@ export class JobQueue {
         return;
       }
       store.setState(db, id, "running", options);
+      const started = performance.now();
+      const type = store.getJob(db, id).type;
+      log.info("job started", { workspace: workspaceId, job: id, type });
       const context = new JobContext(
         id,
         controller.signal,
@@ -154,17 +160,34 @@ export class JobQueue {
       );
       try {
         await work(context);
-        store.setState(db, id, controller.signal.aborted ? "cancelled" : "done", options);
+        const state = controller.signal.aborted ? "cancelled" : "done";
+        store.setState(db, id, state, options);
+        log.info(`job ${state}`, { workspace: workspaceId, job: id, type, ms: since(started) });
       } catch (error) {
         if (error instanceof JobCancelled) {
+          log.info("job cancelled", { workspace: workspaceId, job: id, type, ms: since(started) });
           store.setState(db, id, "cancelled", options);
         } else if (error instanceof AppError) {
+          log.warn("job failed", {
+            workspace: workspaceId,
+            job: id,
+            type,
+            code: error.code,
+            ms: since(started),
+          });
           store.setState(db, id, "failed", {
             ...options,
             errorCode: error.code,
             errorDetail: error.message,
           });
         } else {
+          log.error("job crashed", {
+            workspace: workspaceId,
+            job: id,
+            type,
+            error: error instanceof Error ? error.name : "unknown",
+            ms: since(started),
+          });
           store.setState(db, id, "failed", {
             ...options,
             errorCode: "INTERNAL_ERROR",

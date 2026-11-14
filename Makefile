@@ -7,7 +7,7 @@ PNPM := corepack pnpm
 
 LOG := $(HOME)/.config/mind/logs/mind.log
 
-.PHONY: help install dev logs check test e2e package verify-deb install-deb clean
+.PHONY: help install dev dev-debug logs check test e2e package verify-deb install-deb clean
 
 help: ## Show the available commands
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[35m%-12s\033[0m %s\n", $$1, $$2}'
@@ -17,6 +17,9 @@ install: ## Install the dependencies
 
 dev: ## Run the app with hot reload
 	$(PNPM) dev
+
+dev-debug: ## Run the app with debug logs (SQL statements, every IPC call)
+	MIND_LOG_LEVEL=debug $(PNPM) dev
 
 logs: ## Follow the app log (~/.config/mind/logs/mind.log), also written when opened from the menu
 	@mkdir -p $(dir $(LOG)) && touch $(LOG) && tail -n 100 -f $(LOG)

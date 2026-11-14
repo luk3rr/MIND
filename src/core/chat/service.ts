@@ -4,6 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { logger, since } from "../logging.js";
+
+const log = logger("chat");
 import { desc } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
@@ -86,7 +89,9 @@ export class ChatService {
         { field: "question", message: `Use até ${MAX_QUESTION_CHARS} caracteres.` },
       ]);
     }
+    const started = performance.now();
     const found = await this.retriever.search(clean, { limit: RETRIEVE_LIMIT });
+    log.info("chat retrieval", { chars: clean.length, found: found.length, ms: since(started) });
     if (found.length === 0) return this.store(clean, NO_SUPPORT, false, [], null, 0);
 
     this.llm.ensureReady();
@@ -99,6 +104,12 @@ export class ChatService {
     );
     const citations = this.validCitations(value, found);
     const cost = usage.costUsd ?? 0;
+    log.info("chat answered", {
+      supported: value.supported,
+      citations: citations.length,
+      costUsd: cost,
+      ms: since(started),
+    });
     if (!value.supported || citations.length === 0 || !value.answer.trim()) {
       return this.store(clean, NO_SUPPORT, false, [], model, cost);
     }

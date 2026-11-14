@@ -4,6 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { logger } from "../../core/logging.js";
+
+const log = logger("settings");
 import { CONTRACT_VERSION } from "../../core/contracts/index.js";
 import type { OutputOf } from "../../core/contracts/index.js";
 import type { Core } from "../../core/core.js";
@@ -265,22 +268,34 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         ...(input.monthlyLimitUsd !== undefined ? { monthlyLimitUsd: input.monthlyLimitUsd } : {}),
       });
       if (input.apiKey?.trim()) core.llm.secrets.save(input.apiKey);
+      // Only which settings changed is logged, never the values (the key is one of them).
+      log.info("settings saved", {
+        key: Boolean(input.apiKey?.trim()),
+        models: input.generationModel !== undefined || input.judgeModel !== undefined,
+        limit: input.monthlyLimitUsd !== undefined,
+      });
       return {};
     },
     "settings:clearKey": () => {
       core.llm.secrets.clear();
+      log.info("stored key removed");
       return {};
     },
     "settings:setConsent": ({ given }) => {
       const provider = core.llm.settings.get().provider;
       if (given) core.llm.consent.give(provider);
       else core.llm.consent.revoke(provider);
+      log.info("consent changed", { given, provider });
       return {};
     },
     "settings:refreshModels": async () => ({
       refreshed: await core.llm.catalog.refresh(core.llm.fetch, true),
     }),
-    "settings:testConnection": () => testConnection(core.llm.secrets, core.llm.fetch),
+    "settings:testConnection": async () => {
+      const result = await testConnection(core.llm.secrets, core.llm.fetch);
+      log.info("connection test", { ok: result.ok });
+      return result;
+    },
     "settings:getCost": ({ year, month }) => ({
       total: core.llm.ledger.monthTotal(year, month),
       lines: core.llm.ledger.monthLines(year, month),

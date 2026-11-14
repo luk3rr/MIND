@@ -4,6 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { logger } from "../logging.js";
+
+const log = logger("embeddings");
 import { and, eq, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import type { WorkspaceConnection } from "../db/databases.js";
@@ -163,6 +166,7 @@ export class EmbeddingStore {
       });
       onProgress?.(Math.min(1, (start + batch.length) / pending.length), "vetorizando trechos");
     }
+    if (pending.length > 0) log.info("chunks vectorized", { count: pending.length });
     return pending.length;
   }
 }
@@ -287,6 +291,7 @@ export class EmbeddingsService {
    */
   enable(): number | null {
     this.store.setEnabled(true);
+    log.info("semantic search enabled", { workspace: this.workspaceId });
     const status = this.store.status();
     if (status.modelReady && status.indexed >= status.total) return null;
     const job = this.queue.submit(
@@ -312,6 +317,7 @@ export class EmbeddingsService {
 
   disable(): void {
     this.store.setEnabled(false);
+    log.info("semantic search disabled", { workspace: this.workspaceId });
   }
 
   /** The retriever the chat should use: hybrid when the option is on, BM25 otherwise. */

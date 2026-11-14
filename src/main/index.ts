@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { logLevel, parseLogLevel, setLogLevel } from "../core/logging.js";
 import { app, BrowserWindow, dialog, screen, session } from "electron";
 import { join } from "node:path";
 import { createCore } from "../core/index.js";
@@ -91,7 +92,10 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     hardenSession();
     const log = installFileLog(join(app.getPath("userData"), "logs", "mind.log"));
-    log(`MIND ${app.getVersion()} started (electron ${process.versions.electron})`);
+    setLogLevel(parseLogLevel(process.env["MIND_LOG_LEVEL"], "info"));
+    log(
+      `MIND ${app.getVersion()} started (electron ${process.versions.electron}, log level ${logLevel()})`,
+    );
     process.on("uncaughtException", (error) => console.error("uncaught exception", error));
     process.on("unhandledRejection", (reason) => console.error("unhandled rejection", reason));
     const state = new WindowState();

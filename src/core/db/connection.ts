@@ -4,6 +4,8 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { basename } from "node:path";
+import { logger } from "../logging.js";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -17,6 +19,8 @@ export interface Connection<Schema extends Record<string, unknown>> {
 }
 
 /** Opens a SQLite file (creating its folder) with foreign keys on and WAL journaling. */
+const log = logger("db");
+
 export function openDatabase<Schema extends Record<string, unknown>>(
   path: string,
   schema: Schema,
@@ -25,5 +29,11 @@ export function openDatabase<Schema extends Record<string, unknown>>(
   const sqlite = new Database(path);
   sqlite.pragma("foreign_keys = ON");
   sqlite.pragma("journal_mode = WAL");
-  return { sqlite, db: drizzle(sqlite, { schema }), close: () => sqlite.close() };
+  log.info("database opened", { file: path === ":memory:" ? path : basename(path) });
+  const queryLog = { logQuery: (query: string): void => log.debug("sql", { query }) };
+  return {
+    sqlite,
+    db: drizzle(sqlite, { schema, logger: queryLog }),
+    close: () => sqlite.close(),
+  };
 }

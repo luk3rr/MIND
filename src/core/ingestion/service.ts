@@ -4,6 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { logger, since } from "../logging.js";
+
+const log = logger("ingestion");
 import { and, asc, count, desc, eq, lt } from "drizzle-orm";
 import { copyFileSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -242,6 +245,8 @@ export class MaterialService {
     page?: { url: string; folder: string },
   ): Promise<void> {
     this.setStatus(materialId, "importing");
+    const started = performance.now();
+    log.info("import started", { material: materialId, kind: page ? "url" : kind });
     let url: string | undefined;
     try {
       if (page) {
@@ -259,7 +264,19 @@ export class MaterialService {
       });
       context.checkCancelled();
       this.storeChunks(materialId, result);
+      log.info("import indexed", {
+        material: materialId,
+        pages: result.pageCount,
+        segments: result.segments.length,
+        warnings: result.warnings.length,
+        ms: since(started),
+      });
     } catch (error) {
+      log.warn("import failed", {
+        material: materialId,
+        code: error instanceof AppError ? error.code : "EXTRACTION_FAILED",
+        ms: since(started),
+      });
       if (
         error instanceof JobCancelled ||
         (error instanceof Error && error.name === "AbortError")

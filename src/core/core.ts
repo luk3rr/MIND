@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { loggedFetch } from "./net-log.js";
 import { join } from "node:path";
 import type { Clock } from "./clock.js";
 import { systemClock } from "./clock.js";
@@ -116,7 +117,9 @@ export function createCore(options: CoreOptions): Core {
     (options.createEmbedWorker && options.modelsDir
       ? new TransformersEmbedder(options.modelsDir, options.createEmbedWorker)
       : new UnavailableEmbedder());
-  const fetchImpl: FetchLike = options.fetch ?? ((url, init) => fetch(url, init));
+  const fetchImpl: FetchLike = loggedFetch(options.fetch ?? ((url, init) => fetch(url, init)), {
+    withPath: true,
+  });
   const inner = options.provider ?? new OpenRouterProvider(secrets, { fetch: fetchImpl });
   const provider = new GuardedProvider(inner, consent, ledger, settings, clock);
   const ensureReady = (): void => {
@@ -184,7 +187,9 @@ export function createCore(options: CoreOptions): Core {
         maxUploadBytes: (options.maxUploadMb ?? 200) * 1024 * 1024,
         extract: options.extract ?? extractInProcess,
         ...(options.tessdataDir ? { tessdataDir: options.tessdataDir } : {}),
-        ...(options.pageFetch ? { fetch: options.pageFetch } : {}),
+        fetch: loggedFetch(options.pageFetch ?? ((url, init) => fetch(url, init)), {
+          withPath: false,
+        }),
       }),
     retriever: (workspaceId) => new Bm25Retriever(registry.open(workspaceId).connection),
     embeddings: (workspaceId) => {
