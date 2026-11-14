@@ -181,8 +181,8 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 ### UNIT-7 Caderno de erros e estatísticas — Status: pending
 - [x] T-7.1 `ErrorNotebook`: card (`origin=error_note`) a partir de erro de questão e de avaliação "Errei", com tópico e fonte. · FR-15 · teste: `tests/study/test_error_notebook.py` · files: src/mind/error_notebook/service.py, src/mind/db/{workspace_models.py,migrations/workspace/versions/0007_item_origin_item.py}, src/mind/generation/service.py, tests/error_notebook/test_error_notebook.py
 - [ ] T-7.2 Botão "Virar card" funcional em Questão. · US-9 · teste: `tests/web/test_error_to_card.py`
-- [ ] T-7.3 Tópicos: extração pelo LLM na geração e edição manual. · FR-16 · teste: `tests/topics/test_topics.py`
-- [ ] T-7.4 `StatsService`: acerto por tópico, retenção, meta diária, sequência. ≈2 h · FR-16 · teste: `tests/stats/test_stats.py` (conjunto de tentativas conhecido)
+- [x] T-7.3 Tópicos: extração pelo LLM na geração e edição manual. · FR-16 · teste: `tests/topics/test_topics.py` · files: src/mind/stats/topics.py, src/mind/errors.py, tests/stats/test_topics.py
+- [x] T-7.4 `StatsService`: acerto por tópico, retenção, meta diária, sequência. ≈2 h · FR-16 · teste: `tests/stats/test_stats.py` (conjunto de tentativas conhecido) · files: src/mind/stats/service.py, tests/stats/test_stats_service.py
 - [ ] T-7.5 Tela Estatísticas. · US-10 · teste: `tests/web/test_stats_page.py`
 - [ ] T-7.6 Meta diária configurável e progresso em Hoje. · US-10 · teste: `tests/web/test_daily_goal.py`
 - [ ] T-7.7 API `items/{id}/error-card` e `stats`. · FR-24 · teste: `tests/api/test_stats_contract.py`
