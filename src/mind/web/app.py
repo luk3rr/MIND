@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from mind.api.app import create_api_app
 from mind.config import Settings, load_settings
 from mind.errors import AppError, ValidationFailed, WorkspaceNotFound
 from mind.jobs.queue import JobQueue
@@ -29,6 +30,9 @@ CSP = (
     "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
     "frame-ancestors 'none'"
 )
+
+# Swagger UI sets inline styles, so only the API docs page relaxes `style-src`.
+DOCS_CSP = CSP.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'")
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 templates.env.filters["math"] = render_math
@@ -73,6 +77,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.settings = resolved
         app.state.registry = registry
         app.state.queue = queue
+        api_app.state.registry = registry
+        api_app.state.queue = queue
         try:
             yield
         finally:
@@ -86,6 +92,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
         openapi_url=None,
     )
+    api_app = create_api_app()
+    app.mount("/api", api_app)
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
     @app.middleware("http")
@@ -93,7 +101,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         response = await call_next(request)
-        response.headers["Content-Security-Policy"] = CSP
+        csp = DOCS_CSP if request.url.path == "/api/docs" else CSP
+        response.headers["Content-Security-Policy"] = csp
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         return response

@@ -46,6 +46,12 @@ class JobNotFound(AppError):
     title = "Tarefa não encontrada"
 
 
+class JobNotActive(AppError):
+    code = "JOB_NOT_ACTIVE"
+    status = 409
+    title = "A tarefa não está em execução"
+
+
 @dataclass(frozen=True)
 class ErrorInfo:
     """Serializable representation of an `AppError`."""
