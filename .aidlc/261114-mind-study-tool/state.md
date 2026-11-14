@@ -7,7 +7,7 @@
 - Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-through-BOLT-4 (design gates waived by the user on 2026-11-14) iteration=unit-major
 - Verification command: `uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov --cov-fail-under=80` (approved 2026-11-14)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.1 Functional Design (Inception concluída, aguardando início da Construction)   Updated: 2026-11-14T00:00:00
+- Current: phase=construction stage=concluída (3.1 a 3.7 feitas; pendências humanas no phase-check)   Updated: 2026-11-14T00:00:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
