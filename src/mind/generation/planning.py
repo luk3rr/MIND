@@ -16,6 +16,7 @@ from mind.db.workspace_models import Chunk, Material
 
 BATCH_CHARS = 6000
 CARDS_PER_BATCH = 5
+QUESTIONS_PER_BATCH = 3
 
 
 @dataclass(frozen=True)
@@ -97,12 +98,14 @@ def spread_indices(total: int, wanted: int) -> list[int]:
     return [round(i * (total - 1) / (wanted - 1)) for i in range(wanted)]
 
 
-def plan_batches(chunks: list[SourceChunk], quantity: int) -> list[PlannedBatch]:
+def plan_batches(
+    chunks: list[SourceChunk], quantity: int, per_batch: int = CARDS_PER_BATCH
+) -> list[PlannedBatch]:
     """Group chunks, pick evenly spread batches and split the requested quantity among them."""
     batches = make_batches(chunks)
     if not batches or quantity < 1:
         return []
-    wanted = min(math.ceil(quantity / CARDS_PER_BATCH), len(batches))
+    wanted = min(math.ceil(quantity / per_batch), len(batches))
     chosen = [batches[i] for i in spread_indices(len(batches), wanted)]
     return [
         PlannedBatch(b, n) for b, n in zip(chosen, split_quantity(quantity, wanted), strict=True)

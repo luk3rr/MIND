@@ -25,16 +25,32 @@ from mind.errors import (
     ValidationFailed,
 )
 from mind.generation.cards import BatchOutcome, CardGenerator
-from mind.generation.planning import SourceChunk, plan_batches, select_chunks
-from mind.generation.prompts import SUBTYPE_RULES, SYSTEM
-from mind.generation.schemas import CARD_SUBTYPES
+from mind.generation.planning import (
+    CARDS_PER_BATCH,
+    QUESTIONS_PER_BATCH,
+    SourceChunk,
+    plan_batches,
+    select_chunks,
+)
+from mind.generation.prompts import (
+    JUDGE_SYSTEM,
+    PROFILE_RULES,
+    QUESTION_SYSTEM,
+    SUBTYPE_RULES,
+    SYSTEM,
+)
+from mind.generation.questions import QuestionGenerator
+from mind.generation.schemas import CARD_SUBTYPES, PROFILES
 from mind.jobs.queue import JobCancelled, JobContext, JobQueue, JobWork
 from mind.services import Services
 from mind.workspaces.registry import OpenWorkspace, WorkspaceRegistry
 
 MIN_QUANTITY = 1
-MAX_QUANTITY = 60
+MAX_QUANTITY = {"card": 60, "question": 30}
 OUTPUT_TOKENS_PER_CARD = 150
+OUTPUT_TOKENS_PER_QUESTION = 250
+JUDGE_TOKENS_PER_QUESTION = 60
+ITEM_NAMES = {"card": "cards", "question": "questões"}
 PROMPT_OVERHEAD_CHARS = 400
 CONCURRENT_BATCHES = 2
 
@@ -44,6 +60,7 @@ class GenerationRequest:
     material_id: int
     subtype: str
     quantity: int = 20
+    kind: str = "card"
     page_from: int | None = None
     page_to: int | None = None
 
@@ -70,6 +87,7 @@ class RunInfo:
     discarded_no_source: int
     discarded_invalid: int
     discarded_duplicate: int
+    discarded_unsupported: int
     approved: int
     approved_unedited: int
     discarded_review: int
@@ -97,6 +115,7 @@ def _info(row: GenerationRun) -> RunInfo:
         discarded_no_source=row.discarded_no_source,
         discarded_invalid=row.discarded_invalid,
         discarded_duplicate=row.discarded_duplicate,
+        discarded_unsupported=row.discarded_unsupported,
         approved=row.approved,
         approved_unedited=row.approved_unedited,
         discarded_review=row.discarded_review,
@@ -113,10 +132,20 @@ def _info(row: GenerationRun) -> RunInfo:
 
 def validate_request(request: GenerationRequest) -> None:
     errors: list[FieldError] = []
-    if request.subtype not in CARD_SUBTYPES:
-        errors.append(FieldError("subtype", "Tipo de card desconhecido."))
-    if not MIN_QUANTITY <= request.quantity <= MAX_QUANTITY:
-        errors.append(FieldError("quantity", f"Peça de {MIN_QUANTITY} a {MAX_QUANTITY} cards."))
+    if request.kind not in MAX_QUANTITY:
+        errors.append(FieldError("kind", "Escolha cards ou questões."))
+    else:
+        allowed = CARD_SUBTYPES if request.kind == "card" else tuple(PROFILES)
+        if request.subtype not in allowed:
+            label = "Tipo de card" if request.kind == "card" else "Perfil de questão"
+            errors.append(FieldError("subtype", f"{label} desconhecido."))
+        top = MAX_QUANTITY[request.kind]
+        if not MIN_QUANTITY <= request.quantity <= top:
+            errors.append(
+                FieldError(
+                    "quantity", f"Peça de {MIN_QUANTITY} a {top} {ITEM_NAMES[request.kind]}."
+                )
+            )
     if request.page_from is not None and request.page_from < 1:
         errors.append(FieldError("page_from", "A primeira página é 1."))
     if (
@@ -127,6 +156,10 @@ def validate_request(request: GenerationRequest) -> None:
         errors.append(FieldError("page_to", "A página final vem antes da inicial."))
     if errors:
         raise ValidationFailed("Pedido de geração inválido.", errors=errors)
+
+
+def per_batch(kind: str) -> int:
+    return QUESTIONS_PER_BATCH if kind == "question" else CARDS_PER_BATCH
 
 
 class GenerationService:
@@ -143,6 +176,7 @@ class GenerationService:
         self._services = services
         self._concurrency = concurrency
         self._generator = CardGenerator(workspace.sessions, services.provider)
+        self._question_generator = QuestionGenerator(workspace.sessions, services.provider)
 
     @property
     def _sessions(self) -> sessionmaker[Session]:
@@ -170,18 +204,37 @@ class GenerationService:
 
     def estimate(self, request: GenerationRequest) -> EstimateInfo:
         validate_request(request)
-        plan = plan_batches(self._chunks_for(request), request.quantity)
-        prompt_chars = sum(
-            len(SYSTEM)
-            + len(SUBTYPE_RULES[request.subtype])
-            + PROMPT_OVERHEAD_CHARS
-            + sum(len(c.text) for c in batch.chunks)
-            for batch in plan
-        )
-        model = self._services.settings.get().generation_model
-        estimated = self._services.catalog.estimate(
-            model, prompt_chars, request.quantity * OUTPUT_TOKENS_PER_CARD
-        )
+        plan = plan_batches(self._chunks_for(request), request.quantity, per_batch(request.kind))
+        settings = self._services.settings.get()
+        chunk_chars = sum(len(c.text) for batch in plan for c in batch.chunks)
+        if request.kind == "question":
+            system = len(QUESTION_SYSTEM) + len(PROFILE_RULES[request.subtype])
+            prompt_chars = len(plan) * (system + PROMPT_OVERHEAD_CHARS) + chunk_chars
+            output_tokens = request.quantity * OUTPUT_TOKENS_PER_QUESTION
+            # The judge reads, for each question, its source excerpt (about one chunk).
+            judge_chars = sum(
+                batch.count * (len(JUDGE_SYSTEM) + PROMPT_OVERHEAD_CHARS)
+                + batch.count
+                * (sum(len(c.text) for c in batch.chunks) // max(len(batch.chunks), 1))
+                for batch in plan
+            )
+            generation = self._services.catalog.estimate(
+                settings.generation_model, prompt_chars, output_tokens
+            )
+            judging = self._services.catalog.estimate(
+                settings.judge_model, judge_chars, request.quantity * JUDGE_TOKENS_PER_QUESTION
+            )
+            estimated = None if generation is None or judging is None else generation + judging
+            prompt_chars += judge_chars
+        else:
+            prompt_chars = (
+                len(plan)
+                * (len(SYSTEM) + len(SUBTYPE_RULES[request.subtype]) + PROMPT_OVERHEAD_CHARS)
+                + chunk_chars
+            )
+            estimated = self._services.catalog.estimate(
+                settings.generation_model, prompt_chars, request.quantity * OUTPUT_TOKENS_PER_CARD
+            )
         return EstimateInfo(
             estimated_usd=estimated,
             chunks=sum(len(b.chunks) for b in plan),
@@ -194,10 +247,11 @@ class GenerationService:
         validate_request(request)
         self._chunks_for(request)
         self._services.ensure_ready()
-        model = self._services.settings.get().generation_model
+        configured = self._services.settings.get()
+        model = configured.generation_model
         with self._sessions() as session:
             row = GenerationRun(
-                kind="card",
+                kind=request.kind,
                 subtype=request.subtype,
                 material_id=request.material_id,
                 page_from=request.page_from,
@@ -212,8 +266,8 @@ class GenerationService:
         job = self._queue.submit(
             self._workspace.info.id,
             self._sessions,
-            "generate_cards",
-            self._make_work(run_id, request, model),
+            f"generate_{request.kind}s",
+            self._make_work(run_id, request, model, configured.judge_model),
         )
         with self._sessions() as session:
             queued = session.get(GenerationRun, run_id)
@@ -222,17 +276,24 @@ class GenerationService:
                 session.commit()
         return self.get(run_id)
 
-    def _make_work(self, run_id: int, request: GenerationRequest, model: str) -> JobWork:
+    def _make_work(
+        self, run_id: int, request: GenerationRequest, model: str, judge_model: str
+    ) -> JobWork:
         async def work(ctx: JobContext) -> None:
-            await self._run(run_id, request, model, ctx)
+            await self._run(run_id, request, model, judge_model, ctx)
 
         return work
 
     async def _run(
-        self, run_id: int, request: GenerationRequest, model: str, ctx: JobContext
+        self,
+        run_id: int,
+        request: GenerationRequest,
+        model: str,
+        judge_model: str,
+        ctx: JobContext,
     ) -> None:
         self._set_status(run_id, "running")
-        plan = plan_batches(self._chunks_for(request), request.quantity)
+        plan = plan_batches(self._chunks_for(request), request.quantity, per_batch(request.kind))
         semaphore = asyncio.Semaphore(self._concurrency)
         accepted = 0
         finished = 0
@@ -244,14 +305,25 @@ class GenerationService:
             nonlocal accepted, finished
             async with semaphore:
                 ctx.check_cancelled()
-                outcome = await self._generator.generate_batch(
-                    run_id=run_id,
-                    subtype=request.subtype,
-                    count=count,
-                    chunks=chunks,
-                    model=model,
-                    remaining=remaining,
-                )
+                if request.kind == "question":
+                    outcome = await self._question_generator.generate_batch(
+                        run_id=run_id,
+                        profile=request.subtype,
+                        count=count,
+                        chunks=chunks,
+                        model=model,
+                        judge_model=judge_model,
+                        remaining=remaining,
+                    )
+                else:
+                    outcome = await self._generator.generate_batch(
+                        run_id=run_id,
+                        subtype=request.subtype,
+                        count=count,
+                        chunks=chunks,
+                        model=model,
+                        remaining=remaining,
+                    )
                 accepted += outcome.accepted
                 finished += 1
                 self._add_outcome(run_id, outcome)
@@ -304,6 +376,7 @@ class GenerationService:
             row.discarded_no_source += outcome.no_source
             row.discarded_invalid += outcome.invalid
             row.discarded_duplicate += outcome.duplicate
+            row.discarded_unsupported += outcome.unsupported
             row.cost_usd += outcome.cost_usd
             log: list[Any] = json.loads(row.discard_log)
             room = 20 - len(log)

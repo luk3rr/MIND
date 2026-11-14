@@ -23,7 +23,14 @@ from mind.errors import (
     ProviderKeyMissing,
     ValidationFailed,
 )
-from mind.generation.schemas import CardBatch, CardOut, SourceRef
+from mind.generation.schemas import (
+    CardBatch,
+    CardOut,
+    JudgeBatch,
+    QuestionBatch,
+    SourceRef,
+    Verdict,
+)
 from mind.generation.service import GenerationRequest, GenerationService
 from mind.ingestion.service import MaterialService
 from mind.jobs import store
@@ -32,6 +39,7 @@ from mind.llm.fake import FakeProvider
 from mind.llm.types import Message, Usage
 from mind.services import Services
 from mind.workspaces.registry import OpenWorkspace, WorkspaceRegistry
+from tests.generation.fakes import judge_supports_everything, questions_from_prompt
 
 PARAGRAPH = "A mitocôndria produz energia para a célula e participa da respiração. " * 40
 TEXT = "\n\n".join(f"# Capítulo {i}\n\n{PARAGRAPH}" for i in range(12))
@@ -257,3 +265,132 @@ async def test_estimate_uses_the_cached_price_and_reports_the_plan(env: Env) -> 
 async def test_unknown_run_is_not_found(env: Env) -> None:
     with pytest.raises(GenerationRunNotFound):
         env.generation.get(404)
+
+
+# --- questions ---------------------------------------------------------------------------------
+
+
+def script_question_batches(env: Env) -> None:
+    env.fake.script(QuestionBatch, questions_from_prompt)
+
+
+def script_questions(env: Env) -> None:
+    script_question_batches(env)
+    env.fake.script(JudgeBatch, judge_supports_everything)
+
+
+async def test_a_question_run_generates_and_judges_every_batch(env: Env) -> None:
+    material_id = await env.import_material()
+    script_questions(env)
+    env.fake.usage = Usage(prompt_tokens=10, completion_tokens=10, cost_usd=0.01)
+
+    run = env.generation.start(
+        GenerationRequest(material_id, "multiple_choice_4", 9, kind="question")
+    )
+    assert (run.kind, run.subtype) == ("question", "multiple_choice_4")
+    await wait_run(env, run.id)
+
+    done = env.generation.get(run.id)
+    assert (done.status, done.generated, done.discarded_unsupported) == ("done", 9, 0)
+    with env.workspace.sessions() as session:
+        stored = list(session.scalars(select(Item)))
+    assert {(i.kind, i.subtype, i.status) for i in stored} == {
+        ("question", "multiple_choice", "draft")
+    }
+    generation_calls = [c for c in env.fake.calls if c.schema is QuestionBatch]
+    judge_calls = [c for c in env.fake.calls if c.schema is JudgeBatch]
+    assert len(generation_calls) == len(judge_calls) == 3  # ceil(9 / 3) batches
+    assert {c.model for c in judge_calls} == {env.services.settings.get().judge_model}
+    assert done.cost_usd == pytest.approx(0.01 * len(env.fake.calls))
+
+
+async def test_rejected_questions_are_counted_on_the_run(env: Env) -> None:
+    material_id = await env.import_material()
+    script_question_batches(env)
+    env.fake.script(
+        JudgeBatch,
+        JudgeBatch(
+            verdicts=[
+                Verdict(index=0, supported=False, reason="ambígua"),
+                Verdict(index=1, supported=True),
+                Verdict(index=2, supported=True),
+            ]
+        ),
+    )
+
+    run = env.generation.start(GenerationRequest(material_id, "certo_errado", 3, kind="question"))
+    await wait_run(env, run.id)
+
+    done = env.generation.get(run.id)
+    assert (done.generated, done.discarded_unsupported) == (2, 1)
+    assert done.discard_log[0]["reason"] == "unsupported: ambígua"
+
+
+@pytest.mark.parametrize(
+    "request_kwargs",
+    [
+        {"kind": "essay", "subtype": "qa"},
+        {"kind": "question", "subtype": "qa"},
+        {"kind": "card", "subtype": "certo_errado"},
+        {"kind": "question", "subtype": "certo_errado", "quantity": 31},
+        {"kind": "question", "subtype": "certo_errado", "quantity": 0},
+    ],
+)
+async def test_question_requests_are_validated_against_their_own_limits(
+    env: Env, request_kwargs: dict[str, object]
+) -> None:
+    material_id = await env.import_material()
+    with pytest.raises(ValidationFailed):
+        env.generation.start(GenerationRequest(material_id, **request_kwargs))  # type: ignore[arg-type]
+    assert env.generation.list_runs() == []
+
+
+async def test_the_question_estimate_adds_the_judge_and_needs_both_prices(env: Env) -> None:
+    material_id = await env.import_material()
+    request = GenerationRequest(material_id, "multiple_choice_5", 10, kind="question")
+    assert env.generation.estimate(request).estimated_usd is None
+
+    settings = env.services.settings.get()
+    with env.registry.app_sessions() as session:
+        session.add(
+            ModelPrice(
+                model=settings.generation_model,
+                prompt_usd_per_token=1e-6,
+                completion_usd_per_token=2e-6,
+            )
+        )
+        session.commit()
+    assert env.generation.estimate(request).estimated_usd is None  # the judge price is missing
+
+    with env.registry.app_sessions() as session:
+        session.add(
+            ModelPrice(
+                model=settings.judge_model, prompt_usd_per_token=1e-6, completion_usd_per_token=2e-6
+            )
+        )
+        session.commit()
+    both = env.generation.estimate(request)
+    cards = env.generation.estimate(GenerationRequest(material_id, "qa", 10))
+    assert both.estimated_usd is not None
+    assert cards.estimated_usd is not None
+    assert both.estimated_usd > cards.estimated_usd
+    assert env.fake.calls == []
+
+
+async def test_a_judge_failure_keeps_the_run_partial_and_stores_nothing_from_that_batch(
+    env: Env,
+) -> None:
+    material_id = await env.import_material()
+
+    def broken_judge(messages: Sequence[Message], model: str) -> JudgeBatch:
+        raise ProviderError("juiz indisponível")
+
+    env.fake.script(QuestionBatch, questions_from_prompt)
+    env.fake.script(JudgeBatch, broken_judge)
+    run = env.generation.start(GenerationRequest(material_id, "certo_errado", 3, kind="question"))
+    await wait_run(env, run.id)
+
+    done = env.generation.get(run.id)
+    assert (done.status, done.error_code, done.generated) == ("partial", "PROVIDER_ERROR", 0)
+    with env.workspace.sessions() as session:
+        assert list(session.scalars(select(Item))) == []
