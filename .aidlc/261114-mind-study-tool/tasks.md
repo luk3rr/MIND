@@ -65,7 +65,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-1.8 Tokens Dracula/Alucard, Inter e JetBrains Mono empacotadas com ligaduras, alternância de tema (sistema e manual). · NFR-11, US-17 · teste: `tests/web/test_theme_contrast.py` (contraste ≥ 4,5:1 para os pares de tokens) · files: src/mind/web/static/{app.css,theme.js}, tests/web/test_theme_contrast.py
 - [x] T-1.9 KaTeX empacotado e `render_math` com fallback para texto bruto. · FR-23, US-17, NFR-5 · teste: `tests/web/test_math.py` (delimitadores, escape) + verificação manual no navegador de fórmula válida e inválida, registrada no gate · files: src/mind/web/{math.py,static/math.js}, tests/web/test_math.py (browser check of valid/invalid formulas pending, see unit summary)
 - [ ] T-1.10 `/api/v1`: roteador, OpenAPI em `/api/docs`, manipulador `problem+json`, recursos `workspaces` e `jobs`. · FR-24, US-18 · teste: `tests/api/test_workspaces_contract.py` (snapshot do OpenAPI; `WORKSPACE_NOT_FOUND` em `problem+json`)
-- [ ] T-1.11 Textos da interface em pt-BR, rótulos e foco por teclado (link de salto, foco visível). · NFR-11, NFR-13 · teste: `tests/web/test_a11y_basics.py`
+- [x] T-1.11 Textos da interface em pt-BR, rótulos e foco por teclado (link de salto, foco visível). · NFR-11, NFR-13 · teste: `tests/web/test_a11y_basics.py` · files: tests/web/test_a11y_basics.py
 - [ ] T-1.12 Teste ponta a ponta do esqueleto: sobe o app, cria workspace, abre Hoje. · FR-1, US-1 · teste: `tests/e2e/test_walking_skeleton.py`
 
 ### UNIT-2 Provedor LLM, configurações e custo — Status: pending
