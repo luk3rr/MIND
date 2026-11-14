@@ -818,3 +818,75 @@ sequenceDiagram
 ### Assumptions & open questions
 - A39: Os slugs `anthropic/claude-haiku-5.5` e `anthropic/claude-sonnet-5.5` são suposições sobre o catálogo do OpenRouter; podem diferir (ex.: `claude-5.5-haiku`). A validação contra o catálogo e a opção de editar na tela cobrem o erro. (confirmed: no)
 - A40: O campo `usage.cost` retornado com `usage: {include: true}` é a fonte primária do custo; se o formato divergir, o cálculo por tokens × preço serve de fallback. (confirmed: no)
+
+### UNIT-3 — Ingestão de PDF/Markdown, busca e biblioteca
+
+**Estrutura:** `src/mind/ingestion/` (`extractors.py` com `Extractor` Protocol, `PdfExtractor`, `TextExtractor`; `chunker.py`; `service.py` com `MaterialService`) e `src/mind/retrieval/` (`retriever.py` com o Protocol e `Bm25Retriever`). Telas em `web/library_pages.py`; API em `api/v1/materials.py`.
+
+```mermaid
+flowchart LR
+    UP[Upload] --> SV[MaterialService.import_file]
+    SV --> FS[(files/&lt;uuid&gt;/nome)]
+    SV --> JQ[JobQueue: import]
+    JQ --> EX[Extractor por extensão]
+    EX --> CH[Chunker]
+    CH --> DB[(material + chunk)]
+    DB --> FT[(chunk_fts FTS5)]
+    FT --> RT[Bm25Retriever.search]
+```
+
+**Entidades em `workspace.db`** (migração `0003`): `material(id, title, kind, filename, stored_path, status, page_count, char_count, ocr_confidence, job_id, error_code, error_detail, created_at)`; `chunk(id, material_id, ordinal, page, section, text)` com `ON DELETE CASCADE`; tabela virtual `chunk_fts` (FTS5, `content='chunk'`, `content_rowid='id'`, tokenizador `unicode61 remove_diacritics 2`) mantida por gatilhos de insert, update e delete.
+
+**Regras e comportamentos**
+- **Formatos aceitos nesta Unit:** `.pdf` (texto nativo), `.md`/`.markdown` e `.txt`. Outras extensões: `UNSUPPORTED_FILE` (415). Tamanho máximo 200 MB por arquivo (`MIND_MAX_UPLOAD_MB`, padrão 200), contado durante a gravação em disco; acima disso `UNSUPPORTED_FILE` com mensagem de tamanho.
+- **Importação:** o arquivo é copiado em blocos para `<workspace>/files/<uuid>/<nome saneado>`; cria o `material` com status `queued` e um job `import`; o job roda a extração em uma thread (`asyncio.to_thread`), atualiza o progresso por página, divide em trechos, grava `chunk`, marca `indexed` e `page_count`/`char_count`. Qualquer falha marca `failed` com `EXTRACTION_FAILED` (PDF corrompido, protegido por senha ou sem texto extraível) e deixa o arquivo para inspeção; excluir o material apaga a pasta.
+- **PDF:** PyMuPDF, texto por página (`get_text("text", sort=True)`), normalizando quebras de linha dentro de parágrafos e removendo hifenização de fim de linha. Página sem texto não gera trecho; se **nenhuma** página tiver texto, o material falha com a dica de que pode ser um PDF escaneado (suportado na UNIT-8).
+- **Markdown/texto:** divide por títulos (`#`) mantendo o caminho do título em `section`; texto puro vira um único fluxo sem `section`. `page` é `null`.
+- **Chunker:** nunca atravessa páginas; junta parágrafos curtos consecutivos da mesma página/seção até ~1 200 caracteres e divide parágrafos longos em frases até esse limite (máximo ~1 500). Sem sobreposição, de modo que uma citação exata sempre cabe em um único trecho (premissa do `SourceChecker`, ADR-5). Os trechos preservam o texto original, com quebras de linha normalizadas.
+- **Busca (BM25):** `Bm25Retriever.search(query, *, material_ids, page_from, page_to, limit)` monta uma consulta OR de termos entre aspas (neutraliza a sintaxe do FTS5), ordena por `bm25()` e devolve `RetrievedChunk(chunk_id, material_id, material_title, page, section, text, score)`. Termos com acento casam sem acento. Consulta vazia devolve lista vazia.
+- **Tela Biblioteca** (`/w/{id}/library`): tabela com título, tipo, páginas, status e progresso (HTMX consulta o job a cada 2 s enquanto houver `queued`/`importing`), botão "Importar" (formulário multipart), prévia do texto (`/w/{id}/library/{material_id}`, com paginação por página/trecho) e exclusão com confirmação. Falhas mostram a mensagem do erro e a opção de excluir.
+- **API:** `POST /materials` (multipart, 202 com `material` e `job_id`), `GET /materials`, `GET/DELETE /materials/{id}`, `GET /materials/{id}/chunks?page=&offset=&limit=`, `GET /search?q=&material_id=&limit=`.
+
+**Fluxo: importar um PDF**
+
+```mermaid
+sequenceDiagram
+    participant U as Navegador
+    participant W as web/api
+    participant S as MaterialService
+    participant Q as JobQueue
+    participant X as Extractor (thread)
+    participant D as workspace.db
+    U->>W: POST arquivo
+    W->>S: import_file(stream, nome)
+    S->>S: valida extensão e tamanho, grava em files/
+    S->>D: material(status=queued)
+    S->>Q: submit(import)
+    W-->>U: 202 / redireciona para a Biblioteca
+    Q->>X: extrai página a página
+    X-->>Q: progresso
+    Q->>D: grava chunks e status=indexed
+    U->>W: consulta o job (HTMX)
+    W-->>U: status atualizado
+```
+
+**NFR e mecanismos**
+
+| NFR | Mecanismo | Verificação |
+|---|---|---|
+| NFR-1 | Extração em thread, inserção de trechos em lote, FTS por gatilho | `tests/perf/test_import_100_pages.py` (marcador `perf`): PDF sintético de 100 páginas em < 60 s |
+| NFR-4 | Processar uma página por vez e liberar o documento ao fim; sem carregar o arquivo inteiro em memória | Mesmo teste mede o pico de memória (`ru_maxrss`) ≤ 4 GB |
+| NFR-5 | Biblioteca e busca funcionam sem rede | Testes sem provedor |
+| NFR-7 | Nome de arquivo saneado, pasta derivada de UUID, sem caminhos fornecidos pelo cliente | Teste de nome malicioso (`../../x.pdf`) |
+| NFR-10 | Tipagem estrita; PyMuPDF sem stubs → `ignore_missing_imports` para `fitz`/`pymupdf` | CI |
+
+**Decisões de implementação**
+- Dependência nova: `pymupdf` (AGPL-3.0, compatível com a licença escolhida, C-6). PDFs de teste são gerados com o próprio PyMuPDF; não há PDFs versionados no repositório.
+- A tabela virtual FTS5 e os gatilhos são criados por SQL cru na migração `0003` (o Alembic não modela FTS5).
+- `MaterialService` recebe o `OpenWorkspace`, a `JobQueue` e as configurações; a decisão de executar a extração em thread mantém o laço de eventos livre (NFR-3).
+
+**Critérios de aceitação → comportamento:** US-2 AC1 (progresso e status "indexado") ← job `import` com progresso e `status`; US-2 AC2 (busca devolve trechos com arquivo e página) ← `Bm25Retriever` e `GET /search`.
+
+### Assumptions & open questions
+- A41: PDFs de duas colunas podem sair com ordem de leitura imperfeita mesmo com `sort=True`; avaliado na amostra do BOLT-2 (SM-1) e tratado como melhoria se pesar. (confirmed: no)
+- A42: O limite de 200 MB por arquivo e o chunk de ~1 200 caracteres são valores iniciais ajustáveis por configuração e medição. (confirmed: no)
