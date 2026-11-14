@@ -13,9 +13,11 @@ from fastapi import Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
+from mind.review.service import ReviewFactory
 from mind.services import Services
-from mind.web.math import render_math
+from mind.web.math import cloze_plain, render_math
 from mind.web.strings import APP_NAME, SECTIONS, T
 from mind.workspaces.registry import WorkspaceInfo, WorkspaceRegistry
 
@@ -23,6 +25,7 @@ BASE_DIR = Path(__file__).parent
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 templates.env.filters["math"] = render_math
+templates.env.filters["cloze"] = cloze_plain
 
 
 def get_registry(request: Request) -> WorkspaceRegistry:
@@ -40,9 +43,21 @@ def get_materials(request: Request) -> MaterialsFactory:
     return factory
 
 
+def get_generation(request: Request) -> GenerationFactory:
+    factory: GenerationFactory = request.app.state.generation
+    return factory
+
+
+def get_review(request: Request) -> ReviewFactory:
+    factory: ReviewFactory = request.app.state.review
+    return factory
+
+
 Registry = Annotated[WorkspaceRegistry, Depends(get_registry)]
 ServicesDep = Annotated[Services, Depends(get_services)]
 MaterialsDep = Annotated[MaterialsFactory, Depends(get_materials)]
+GenerationDep = Annotated[GenerationFactory, Depends(get_generation)]
+ReviewDep = Annotated[ReviewFactory, Depends(get_review)]
 
 
 def render(

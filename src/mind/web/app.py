@@ -19,11 +19,14 @@ from fastapi.staticfiles import StaticFiles
 from mind.api.app import create_api_app
 from mind.config import Settings, load_settings
 from mind.errors import AppError, ValidationFailed, WorkspaceNotFound
+from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
 from mind.jobs.queue import JobQueue
 from mind.llm.provider import Provider
 from mind.redaction import install_log_redaction, uninstall_log_redaction
+from mind.review.service import ReviewFactory
 from mind.services import Services
+from mind.web.generate_pages import router as generate_router
 from mind.web.library_pages import router as library_router
 from mind.web.provider_pages import router as provider_router
 from mind.web.rendering import BASE_DIR, Registry, render
@@ -56,6 +59,8 @@ def create_app(
             target.state.queue = queue
             target.state.services = services
             target.state.materials = MaterialsFactory(registry, queue, resolved)
+            target.state.generation = GenerationFactory(registry, queue, services)
+            target.state.review = ReviewFactory(registry)
         try:
             yield
         finally:
@@ -77,6 +82,7 @@ def create_app(
     install_security(app, resolved)
     app.include_router(provider_router)
     app.include_router(library_router)
+    app.include_router(generate_router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> HTMLResponse:

@@ -15,9 +15,10 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from mind.clock import utcnow
-from mind.db.workspace_models import GenerationRun, Item, Topic
+from mind.db.workspace_models import Chunk, GenerationRun, Item, Topic
 from mind.errors import FieldError, ItemNotFound, ValidationFailed
 from mind.generation.cards import clean_topic, payload_problem
+from mind.workspaces.registry import WorkspaceRegistry
 
 PROBLEM_MESSAGES = {
     "empty_front": "A frente do card não pode ficar vazia.",
@@ -127,6 +128,14 @@ class ReviewService:
                 raise ItemNotFound(f"Não existe item com id {item_id}.")
             return self._info(row[0], row[1])
 
+    def source_text(self, chunk_id: int | None) -> str | None:
+        """Text of the source chunk, or `None` when the chunk no longer exists."""
+        if chunk_id is None:
+            return None
+        with self._sessions() as session:
+            chunk = session.get(Chunk, chunk_id)
+            return chunk.text if chunk else None
+
     def edit(self, item_id: int, front: str, back: str, topic: str | None) -> ItemInfo:
         """Change the text and topic of a draft or approved item; the source is kept."""
         with self._sessions() as session:
@@ -194,3 +203,13 @@ class ReviewService:
     def approve_all(self, run_id: int) -> ReviewResult:
         ids = [i.id for i in self.list_items(run_id=run_id, status="draft", limit=10_000)]
         return self.review(approve=ids)
+
+
+class ReviewFactory:
+    """Builds the `ReviewService` of a workspace on demand."""
+
+    def __init__(self, registry: WorkspaceRegistry) -> None:
+        self._registry = registry
+
+    def for_workspace(self, workspace_id: int) -> ReviewService:
+        return ReviewService(self._registry.open(workspace_id).sessions)
