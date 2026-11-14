@@ -80,7 +80,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-2.1 `Provider` (Protocol), `Message`, `Usage` e `FakeProvider` com cenários. · FR-19 · teste: `tests/llm/test_fake_provider.py` · files: src/mind/llm/{__init__,types,provider,fake}.py, tests/llm/test_fake_provider.py
 - [ ] T-2.2 `OpenRouterProvider` (httpx): modo estruturado com fallback de parse, até 2 repetições, `ProviderError`, uso de tokens. ≈2 h · FR-19 · teste: `tests/llm/test_openrouter.py` com transporte HTTP simulado (sucesso, JSON inválido que repete, falha final)
 - [ ] T-2.3 `SettingsService`: provedor, modelos de geração e de juiz; chave só de ambiente/`.env`; nenhum campo de chave no GET/PATCH. · FR-19, NFR-7 · teste: `tests/settings/test_settings.py`
-- [ ] T-2.4 Filtro de redação de segredos nos logs. · NFR-7 · teste: `tests/settings/test_log_redaction.py`
+- [x] T-2.4 Filtro de redação de segredos nos logs. · NFR-7 · teste: `tests/settings/test_log_redaction.py` · files: src/mind/redaction.py, tests/test_log_redaction.py
 - [ ] T-2.5 `ConsentService` e guarda que bloqueia envio sem aceite (`CONSENT_REQUIRED`). · FR-20, US-13, NFR-6 · teste: `tests/llm/test_consent_guard.py` (sem aceite, nenhuma chamada sai)
 - [ ] T-2.6 `CostLedger`: registro por chamada, estimativa antes de gerar, soma mensal, limite com `MONTHLY_LIMIT_REACHED`. · FR-21, US-14 · teste: `tests/llm/test_cost_ledger.py`
 - [ ] T-2.7 Tela Configurações e passos 1–2 do assistente de primeiro uso. · FR-19, FR-20, US-13 · teste: `tests/web/test_settings_pages.py`
