@@ -101,3 +101,37 @@ class EstimateOut(BaseModel):
     estimated_usd: float | None = Field(
         description="Null when the model price is unknown (refresh the catalog)."
     )
+
+
+class MaterialOut(BaseModel):
+    id: int
+    title: str
+    kind: str = Field(description="pdf or text.")
+    filename: str
+    status: str = Field(description="queued, importing, indexed or failed.")
+    page_count: int | None = None
+    char_count: int | None = None
+    ocr_confidence: float | None = None
+    job_id: int | None = Field(default=None, description="Import job; follow it under /jobs.")
+    error_code: str | None = None
+    error_detail: str | None = None
+    created_at: datetime
+
+
+class ChunkOut(BaseModel):
+    id: int
+    material_id: int
+    ordinal: int
+    page: int | None = None
+    section: str | None = None
+    text: str
+
+
+class SearchHitOut(BaseModel):
+    chunk_id: int
+    material_id: int
+    material_title: str
+    page: int | None = None
+    section: str | None = None
+    text: str
+    score: float
