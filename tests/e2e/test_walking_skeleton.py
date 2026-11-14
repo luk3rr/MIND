@@ -15,7 +15,9 @@ def test_walking_skeleton_end_to_end(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path)
     assert settings.host == "127.0.0.1"
 
-    with TestClient(create_app(settings), follow_redirects=True) as client:
+    with TestClient(
+        create_app(settings), base_url="http://127.0.0.1:8000", follow_redirects=True
+    ) as client:
         welcome = client.get("/")
         assert welcome.status_code == 200
         assert "Boas-vindas" in welcome.text

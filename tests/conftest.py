@@ -15,5 +15,5 @@ from mind.web.app import create_app
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
     app = create_app(Settings(data_dir=tmp_path))
-    with TestClient(app, follow_redirects=False) as test_client:
+    with TestClient(app, base_url="http://127.0.0.1:8000", follow_redirects=False) as test_client:
         yield test_client

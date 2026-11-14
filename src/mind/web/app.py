@@ -6,87 +6,62 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
-from fastapi import Depends, FastAPI, Form, Request
+import httpx
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from mind.api.app import create_api_app
 from mind.config import Settings, load_settings
 from mind.errors import AppError, ValidationFailed, WorkspaceNotFound
 from mind.jobs.queue import JobQueue
-from mind.web.math import render_math
-from mind.web.strings import APP_NAME, SECTIONS, T
+from mind.llm.provider import Provider
+from mind.redaction import install_log_redaction, uninstall_log_redaction
+from mind.services import Services
+from mind.web.rendering import BASE_DIR, Registry, render
+from mind.web.security import install_security
+from mind.web.strings import SECTIONS
 from mind.workspaces.registry import WorkspaceInfo, WorkspaceRegistry
 
-BASE_DIR = Path(__file__).parent
-CSP = (
-    "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
-    "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
-    "frame-ancestors 'none'"
-)
 
-# Swagger UI sets inline styles, so only the API docs page relaxes `style-src`.
-DOCS_CSP = CSP.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'")
-
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-templates.env.filters["math"] = render_math
-
-
-def get_registry(request: Request) -> WorkspaceRegistry:
-    registry: WorkspaceRegistry = request.app.state.registry
-    return registry
-
-
-Registry = Annotated[WorkspaceRegistry, Depends(get_registry)]
-
-
-def render(
-    request: Request,
-    template: str,
+def create_app(
+    settings: Settings | None = None,
     *,
-    status_code: int = 200,
-    workspace: WorkspaceInfo | None = None,
-    registry: WorkspaceRegistry | None = None,
-    **context: Any,
-) -> HTMLResponse:
-    base: dict[str, Any] = {
-        "t": T,
-        "app_name": APP_NAME,
-        "sections": SECTIONS,
-        "workspace": workspace,
-        "workspaces": registry.list() if registry is not None else [],
-    }
-    return templates.TemplateResponse(
-        request, template, {**base, **context}, status_code=status_code
-    )
-
-
-def create_app(settings: Settings | None = None) -> FastAPI:
+    http_client: httpx.AsyncClient | None = None,
+    inner_provider: Provider | None = None,
+) -> FastAPI:
+    """Build the application. The optional arguments let tests replace the network layer."""
     resolved = settings or load_settings(env_file=Path(".env"))
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         registry = WorkspaceRegistry(resolved)
         queue = JobQueue(resolved.max_concurrent_jobs)
-        app.state.settings = resolved
-        app.state.registry = registry
-        app.state.queue = queue
-        api_app.state.registry = registry
-        api_app.state.queue = queue
+        services = Services.build(
+            resolved, registry, client=http_client, inner_provider=inner_provider
+        )
+        uninstall_log_redaction()
+        install_log_redaction(services.secrets)
+        for target in (app, api_app):
+            target.state.settings = resolved
+            target.state.registry = registry
+            target.state.queue = queue
+            target.state.services = services
         try:
             yield
         finally:
             await queue.shutdown()
+            await services.aclose()
+            uninstall_log_redaction()
             registry.close()
 
     app = FastAPI(
-        title=APP_NAME,
+        title="MIND",
         lifespan=lifespan,
         docs_url=None,
         redoc_url=None,
@@ -95,28 +70,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_app = create_api_app()
     app.mount("/api", api_app)
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-
-    @app.middleware("http")
-    async def security_headers(
-        request: Request, call_next: Callable[[Request], Awaitable[Response]]
-    ) -> Response:
-        response = await call_next(request)
-        csp = DOCS_CSP if request.url.path == "/api/docs" else CSP
-        response.headers["Content-Security-Policy"] = csp
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Referrer-Policy"] = "no-referrer"
-        return response
+    install_security(app, resolved)
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> HTMLResponse:
-        registry: WorkspaceRegistry = request.app.state.registry
-        return render(
-            request,
-            "error.html",
-            status_code=exc.status,
-            registry=registry,
-            error=exc,
-        )
+        return render(request, "error.html", status_code=exc.status, error=exc)
 
     @app.get("/", response_model=None)
     async def index(registry: Registry) -> RedirectResponse:
@@ -126,8 +84,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return RedirectResponse(f"/w/{workspaces[0].id}/today", status_code=303)
 
     @app.get("/welcome", response_class=HTMLResponse)
-    async def welcome(request: Request, registry: Registry) -> HTMLResponse:
-        return render(request, "welcome.html", registry=registry)
+    async def welcome(request: Request) -> HTMLResponse:
+        return render(request, "welcome.html")
 
     @app.post("/workspaces", response_model=None)
     async def create_workspace(
@@ -140,7 +98,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 request,
                 "welcome.html",
                 status_code=exc.status,
-                registry=registry,
                 form_error=exc.detail,
                 form_name=name,
             )
@@ -152,11 +109,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/w/{workspace_id}/today", response_class=HTMLResponse)
     async def today(request: Request, workspace_id: int, registry: Registry) -> HTMLResponse:
         workspace = current(registry, workspace_id)
-        return render(request, "today.html", workspace=workspace, registry=registry, active="today")
+        return render(request, "today.html", workspace=workspace, active="today")
 
     @app.post("/w/{workspace_id}/rename", response_model=None)
     async def rename_workspace(
-        request: Request,
         workspace_id: int,
         registry: Registry,
         name: Annotated[str, Form()] = "",
@@ -166,7 +122,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/w/{workspace_id}/delete", response_model=None)
     async def delete_workspace(
-        request: Request,
         workspace_id: int,
         registry: Registry,
         confirm: Annotated[str, Form()] = "",
@@ -186,14 +141,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise WorkspaceNotFound("Página não encontrada.")
         workspace = current(registry, workspace_id)
         template = "settings.html" if section == "settings" else "coming_soon.html"
-        label = dict(SECTIONS)[section]
         return render(
             request,
             template,
             workspace=workspace,
-            registry=registry,
             active=section,
-            section_label=label,
+            section_label=dict(SECTIONS)[section],
         )
 
     return app
