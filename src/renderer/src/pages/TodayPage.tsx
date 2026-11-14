@@ -52,7 +52,7 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
       )}
       {state.status === "ready" && study.state.status === "ready" && state.data.materials > 0 && (
         <>
-          <div className="row" style={{ justifyContent: "flex-end", marginBottom: 16 }}>
+          <div className="row" style={{ justifyContent: "flex-end" }}>
             <button
               type="button"
               className="btn"
@@ -79,7 +79,7 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
               <span className="muted">{T.todayDoneToday}</span>
             </div>
           </div>
-          <div className="card" style={{ marginTop: 16 }}>
+          <div className="card">
             <strong>{T.todayGoal}</strong>
             <progress
               className="goal-bar"
@@ -99,7 +99,7 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
             <WeakTopics workspaceId={workspaceId} topics={overview.state.data.weakest} />
           )}
           {practice.state.status === "ready" && practice.state.data.toPractice > 0 && (
-            <div className="card" style={{ marginTop: 16 }}>
+            <div className="card">
               <strong>
                 {T.todayQuestions2}: {practice.state.data.toPractice}
               </strong>{" "}

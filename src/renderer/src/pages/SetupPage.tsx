@@ -46,6 +46,13 @@ export function SetupPage({ step }: { step: 1 | 2 }) {
           }}
         />
       )}
+      {state.status === "ready" && step === 1 && (
+        <p>
+          <button type="button" className="btn ghost" onClick={leave}>
+            {T.setupLater}
+          </button>
+        </p>
+      )}
       {state.status === "ready" && step === 2 && (
         <>
           <section className="card">
@@ -64,6 +71,9 @@ export function SetupPage({ step }: { step: 1 | 2 }) {
               }}
             >
               {T.accept}
+            </button>{" "}
+            <button type="button" className="btn ghost" onClick={leave}>
+              {T.setupLater}
             </button>
           </p>
         </>

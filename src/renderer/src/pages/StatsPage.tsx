@@ -28,6 +28,17 @@ import { T } from "../strings.js";
 type Overview = OutputOf<"stats:overview">;
 type TopicStat = Overview["topics"][number];
 
+const TOOLTIP = {
+  contentStyle: {
+    background: "var(--panel-2)",
+    border: "1px solid var(--line)",
+    borderRadius: 8,
+    color: "var(--fg)",
+  },
+  labelStyle: { color: "var(--fg)" },
+  cursor: { fill: "rgba(189, 147, 249, 0.15)", stroke: "var(--line)" },
+};
+
 const percent = (value: number | null): string =>
   value === null ? "—" : `${Math.round(value * 100)}%`;
 
@@ -229,7 +240,7 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
                 <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
                 <XAxis dataKey="day" stroke="var(--muted)" />
                 <YAxis domain={[0, 100]} unit="%" stroke="var(--muted)" />
-                <Tooltip />
+                <Tooltip {...TOOLTIP} />
                 <Line
                   type="monotone"
                   dataKey="rate"
@@ -260,7 +271,7 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
                 <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
                 <XAxis dataKey="day" stroke="var(--muted)" />
                 <YAxis allowDecimals={false} stroke="var(--muted)" />
-                <Tooltip />
+                <Tooltip {...TOOLTIP} />
                 <Bar dataKey="Cards" stackId="a" fill="var(--accent)" />
                 <Bar dataKey="Questões" stackId="a" fill="var(--info)" />
               </BarChart>
@@ -269,7 +280,7 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
 
           <WeakTopics workspaceId={workspaceId} topics={state.data.weakest} />
 
-          <div className="card" style={{ marginTop: 16 }}>
+          <div className="card">
             <h2>{T.statsTopics}</h2>
             <table aria-label={T.statsTopics}>
               <thead>

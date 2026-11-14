@@ -75,6 +75,7 @@ export const T = {
   library: "Biblioteca",
   importFile: "Importar arquivo",
   study: "Estudar",
+  setupLater: "Fazer isso depois",
   exportWorkspace: "Exportar…",
   importWorkspace: "Importar backup…",
   backupTitle: "Backup do workspace",

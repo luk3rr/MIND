@@ -317,9 +317,23 @@ pre {
   flex-direction: column;
   gap: 12px;
 }
-.stack + .stack,
-.card + .card {
-  margin-top: 16px;
+.content > section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.content > section > h1,
+.content > section > p {
+  margin: 0;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.stat .btn {
+  margin-top: 8px;
 }
 .field input {
   width: 100%;

@@ -22,7 +22,7 @@ export function WeakTopics({
   const trainable = topics.filter((t) => t.topicId !== null && t.name !== null);
   if (trainable.length === 0) return null;
   return (
-    <section className="card" aria-labelledby="weak-title" style={{ marginTop: 16 }}>
+    <section className="card" aria-labelledby="weak-title">
       <h2 id="weak-title">{T.weakTitle}</h2>
       <p className="muted">{T.weakHint}</p>
       <ul className="stack" style={{ listStyle: "none", padding: 0 }}>
