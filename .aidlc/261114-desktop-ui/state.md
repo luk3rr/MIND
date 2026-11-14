@@ -4,10 +4,10 @@
 - Status: IN_PROGRESS
 - Profile: mvp   Depth: Standard   Tests: Standard
 - Project type: brownfield   Repos: ~/Projects/MIND
-- Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-checkpoints (design gates e falhas seguem com aprovação) iteration=unit-major commits=max-20-total-até-o-fim (14 usados após o UNIT-9)
+- Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-checkpoints (design gates e falhas seguem com aprovação) iteration=unit-major commits=max-20-total-até-o-fim (15 usados após o UNIT-11)
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-14; válido após as ferramentas do UNIT-1)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.5 Code Generation (UNIT-9 verificado; próximo UNIT-10)   Updated: 2026-11-14T17:24:55.339936-03:00
+- Current: phase=construction stage=3.5 Code Generation (UNIT-10 e 11 verificados; próximo UNIT-12)   Updated: 2026-11-14T17:49:18.742228-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
@@ -47,8 +47,8 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-7 Ingestão, busca e biblioteca | UNIT-3, UNIT-5 | verified | yes |
 | UNIT-8 OCR, URL e DOCX | UNIT-7 | verified | yes |
 | UNIT-9 Flashcards com fonte e revisão | UNIT-4, UNIT-7 | verified | yes |
-| UNIT-10 Estudo FSRS | UNIT-9 | not started | no |
-| UNIT-11 Questões verificadas e prática | UNIT-9 | not started | no |
+| UNIT-10 Estudo FSRS | UNIT-9 | verified | yes |
+| UNIT-11 Questões verificadas e prática | UNIT-9 | verified | yes |
 | UNIT-12 Caderno de erros e estatísticas | UNIT-10, UNIT-11 | not started | no |
 | UNIT-13 Treino de pontos fracos | UNIT-12 | not started | no |
 | UNIT-14 Chat e busca semântica | UNIT-4, UNIT-7 | not started | no |

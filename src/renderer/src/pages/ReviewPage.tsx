@@ -54,7 +54,9 @@ function EditDialog({
     <Dialog title={T.edit} onClose={onClose}>
       <form onSubmit={(event) => void save(event)} className="stack">
         <div className="field">
-          <label htmlFor="edit-front">{T.editFront}</label>
+          <label htmlFor="edit-front">
+            {item.kind === "question" ? T.editStatement : T.editFront}
+          </label>
           <textarea
             id="edit-front"
             rows={3}
@@ -68,7 +70,7 @@ function EditDialog({
           )}
         </div>
         <div className="field">
-          <label htmlFor="edit-back">{T.editBack}</label>
+          <label htmlFor="edit-back">{item.kind === "question" ? T.editComment : T.editBack}</label>
           <textarea
             id="edit-back"
             rows={3}
@@ -163,7 +165,9 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
             {state.data.items.map((item) => (
               <article key={item.id} className="card">
                 <p className="muted">
-                  {T.cardTypes[item.subtype] ?? item.subtype}
+                  {item.kind === "question"
+                    ? T.kindQuestions
+                    : (T.cardTypes[item.subtype] ?? item.subtype)}
                   {item.topic ? ` · ${item.topic}` : ""}
                   {item.edited ? " · editado" : ""}
                 </p>
@@ -172,6 +176,24 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
                     <MathText text={clozePlain(item.front)} />
                   </strong>
                 </p>
+                {item.kind === "question" && (
+                  <ul className="stack" style={{ listStyle: "none", padding: 0 }}>
+                    {item.options.map((option) => (
+                      <li
+                        key={option.key}
+                        className={option.key === item.answer ? "ok" : undefined}
+                      >
+                        <strong>{option.key}</strong> · <MathText text={option.text} />
+                        {option.why && <span className="muted"> — {option.why}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {item.kind === "question" && item.options.length === 0 && (
+                  <p className="ok">
+                    {T.answerKey}: {item.answer}
+                  </p>
+                )}
                 {item.back && (
                   <p>
                     <MathText text={item.back} />

@@ -12,6 +12,8 @@ import { T } from "../strings.js";
 export function TodayPage({ workspaceId }: { workspaceId: number }) {
   const { navigate } = useRouter();
   const { state, reload } = useInvoke("today:summary", { workspaceId });
+  const study = useInvoke("study:today", { workspaceId });
+  const practice = useInvoke("practice:counts", { workspaceId });
 
   return (
     <section aria-labelledby="today-title">
@@ -45,6 +47,67 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
             {T.todayEmptyAction}
           </button>
         </div>
+      )}
+      {state.status === "ready" && study.state.status === "ready" && state.data.materials > 0 && (
+        <>
+          <div className="row" style={{ justifyContent: "flex-end", marginBottom: 16 }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => navigate(sectionPath(workspaceId, "study"))}
+            >
+              {T.todayStudyNow} ({study.state.data.counts.toStudy})
+            </button>
+          </div>
+          <div className="row">
+            <div className="card stat">
+              <b>{study.state.data.counts.review}</b>
+              <span className="muted">{T.todayDue}</span>
+            </div>
+            <div className="card stat" style={{ borderLeftColor: "var(--warn)" }}>
+              <b>{study.state.data.counts.learning}</b>
+              <span className="muted">{T.todayLearning}</span>
+            </div>
+            <div className="card stat" style={{ borderLeftColor: "var(--info)" }}>
+              <b>{study.state.data.counts.newAvailable}</b>
+              <span className="muted">{T.todayNew}</span>
+            </div>
+            <div className="card stat" style={{ borderLeftColor: "var(--purple)" }}>
+              <b>{study.state.data.counts.reviewedToday}</b>
+              <span className="muted">{T.todayDoneToday}</span>
+            </div>
+          </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <strong>{T.todayGoal}</strong>
+            <progress
+              className="goal-bar"
+              style={{ width: "100%" }}
+              max={study.state.data.settings.dailyGoal}
+              value={Math.min(
+                study.state.data.counts.reviewedToday,
+                study.state.data.settings.dailyGoal,
+              )}
+              aria-label={T.todayGoal}
+            />
+            <p className="muted">
+              {study.state.data.counts.reviewedToday} / {study.state.data.settings.dailyGoal}
+            </p>
+          </div>
+          {practice.state.status === "ready" && practice.state.data.toPractice > 0 && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <strong>
+                {T.todayQuestions2}: {practice.state.data.toPractice}
+              </strong>{" "}
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => navigate(`${sectionPath(workspaceId, "study")}/practice`)}
+              >
+                {T.todayPractice}
+              </button>
+            </div>
+          )}
+        </>
       )}
       {state.status === "ready" && state.data.materials > 0 && (
         <div className="row">

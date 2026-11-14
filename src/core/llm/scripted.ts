@@ -53,5 +53,55 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
     });
     return { cards };
   });
+  provider.script("QuestionBatch", (messages: readonly { content: string }[]) => {
+    const prompt = messages.at(-1)?.content ?? "";
+    const count = Number(/Create exactly (\d+) questions/.exec(prompt)?.[1] ?? 1);
+    const choices = /exactly (\d) options/.exec(prompt)?.[1];
+    const excerpts = parseExcerpts(prompt);
+    const questions = Array.from({ length: count }, (_, index) => {
+      const excerpt = excerpts[index % Math.max(excerpts.length, 1)] ?? { id: 0, text: "" };
+      const quote = excerpt.text.slice(0, 60);
+      const subject = excerpt.text.split(/\s+/).slice(0, 4).join(" ");
+      const source = { chunk_id: excerpt.id, quote };
+      if (!choices) {
+        return {
+          subtype: "certo_errado",
+          statement: `Segundo o trecho ${excerpt.id}, ${subject} é citado (${index + 1}).`,
+          options: [],
+          answer: "C",
+          explanation: "O trecho confirma a afirmação.",
+          topic: "Tópico de teste",
+          source,
+        };
+      }
+      const total = Number(choices);
+      const keys = "ABCDE".slice(0, total).split("");
+      return {
+        subtype: "multiple_choice",
+        statement: `Qual alternativa descreve ${subject} (${index + 1})?`,
+        options: keys.map((key) => ({
+          key,
+          text:
+            key === "A" ? `Descrição correta do trecho ${excerpt.id}` : `Descrição errada ${key}`,
+          why: key === "A" ? "Confere com o trecho." : "Não confere com o trecho.",
+        })),
+        answer: "A",
+        explanation: "A alternativa A repete o trecho.",
+        topic: "Tópico de teste",
+        source,
+      };
+    });
+    return { questions };
+  });
+  provider.script("JudgeBatch", (messages: readonly { content: string }[]) => {
+    const total = (messages.at(-1)?.content.match(/\[question \d+\]/g) ?? []).length;
+    return {
+      verdicts: Array.from({ length: total }, (_, index) => ({
+        index,
+        supported: true,
+        reason: "ok",
+      })),
+    };
+  });
   return provider;
 }

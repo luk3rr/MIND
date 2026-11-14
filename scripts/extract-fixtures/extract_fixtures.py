@@ -21,9 +21,13 @@ import docx
 import pymupdf
 
 from mind.generation.prompts import (
+    PROFILE_RULES,
     SUBTYPE_RULES,
+    JudgeItem,
     PromptChunk,
     build_card_messages,
+    build_judge_messages,
+    build_question_messages,
     render_avoid,
     render_chunks,
 )
@@ -165,6 +169,25 @@ def prompts_fixture() -> dict[str, object]:
     for subtype in SUBTYPE_RULES:
         built = build_card_messages(subtype, 3, chunks, avoid)
         messages[subtype] = [{"role": m.role, "content": m.content} for m in built]
+    questions = {}
+    for profile in PROFILE_RULES:
+        built = build_question_messages(profile, 2, chunks, avoid)
+        questions[profile] = [{"role": m.role, "content": m.content} for m in built]
+    judge_items = [
+        JudgeItem(
+            excerpt="A busca binária divide o intervalo.",
+            statement="A busca binária divide o intervalo ao meio.",
+            options=[],
+            answer="C",
+        ),
+        JudgeItem(
+            excerpt="O ciclo de Calvin fixa carbono.",
+            statement="Qual ciclo fixa carbono?",
+            options=[("A", "Calvin"), ("B", "Krebs")],
+            answer="A",
+        ),
+    ]
+    judge = [{"role": m.role, "content": m.content} for m in build_judge_messages(judge_items)]
     return {
         "chunks": [{"id": c.id, "label": c.label, "text": c.text} for c in chunks],
         "avoid": avoid,
@@ -172,6 +195,18 @@ def prompts_fixture() -> dict[str, object]:
         "rendered_chunks": render_chunks(chunks),
         "rendered_avoid": render_avoid(avoid),
         "card_messages": messages,
+        "question_messages": questions,
+        "question_count": 2,
+        "judge_items": [
+            {
+                "excerpt": item.excerpt,
+                "statement": item.statement,
+                "options": [list(option) for option in item.options],
+                "answer": item.answer,
+            }
+            for item in judge_items
+        ],
+        "judge_messages": judge,
     }
 
 

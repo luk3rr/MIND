@@ -11,7 +11,9 @@ import { LibraryPage } from "./pages/LibraryPage.js";
 import { MaterialPreviewPage } from "./pages/MaterialPreviewPage.js";
 import { PlaceholderPage } from "./pages/PlaceholderPage.js";
 import { ReviewPage } from "./pages/ReviewPage.js";
+import { PracticePage } from "./pages/PracticePage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
+import { StudyPage } from "./pages/StudyPage.js";
 import { SetupPage } from "./pages/SetupPage.js";
 import { TodayPage } from "./pages/TodayPage.js";
 import { WelcomePage } from "./pages/WelcomePage.js";
@@ -60,7 +62,13 @@ function Screen() {
         {route.section === "generate" && route.detailId !== undefined && (
           <ReviewPage workspaceId={route.workspaceId} runId={route.detailId} />
         )}
-        {!["today", "settings", "library", "generate"].includes(route.section) && (
+        {route.section === "study" && !route.practice && (
+          <StudyPage workspaceId={route.workspaceId} />
+        )}
+        {route.section === "study" && route.practice && (
+          <PracticePage workspaceId={route.workspaceId} />
+        )}
+        {!["today", "settings", "library", "generate", "study"].includes(route.section) && (
           <PlaceholderPage section={route.section} />
         )}
       </Shell>

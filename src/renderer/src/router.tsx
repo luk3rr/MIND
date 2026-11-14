@@ -18,6 +18,8 @@ export type Route =
       section: SectionSlug;
       detailId?: number;
       chunkId?: number;
+      /** The practice sub-screen of Study (`/w/:id/study/practice`). */
+      practice?: boolean;
     }
   | { name: "unknown" };
 
@@ -30,12 +32,13 @@ export function parseRoute(path: string): Route {
   if (path === "/setup/2") return { name: "setup", step: 2 };
   const [pathname = "", query] = path.split("?");
   const [empty, prefix, workspace, section, material, ...extra] = pathname.split("/");
+  const practice = section === "study" && material === "practice";
   const valid =
     empty === "" &&
     prefix === "w" &&
     isNumber(workspace) &&
     SECTION_SLUGS.includes(section as SectionSlug) &&
-    (material === undefined || isNumber(material)) &&
+    (material === undefined || isNumber(material) || practice) &&
     extra.length === 0;
   const chunk = query?.startsWith("chunk=") ? query.slice("chunk=".length) : undefined;
   if (!valid || (query !== undefined && !isNumber(chunk))) return { name: "unknown" };
@@ -43,7 +46,8 @@ export function parseRoute(path: string): Route {
     name: "section",
     workspaceId: Number(workspace),
     section: section as SectionSlug,
-    ...(material !== undefined ? { detailId: Number(material) } : {}),
+    ...(material !== undefined && !practice ? { detailId: Number(material) } : {}),
+    ...(practice ? { practice: true } : {}),
     ...(chunk !== undefined ? { chunkId: Number(chunk) } : {}),
   };
 }

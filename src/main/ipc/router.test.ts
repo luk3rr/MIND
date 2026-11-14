@@ -51,6 +51,28 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "review:edit": () => {
       throw new Error("unused");
     },
+    "study:today": () => {
+      throw new Error("unused");
+    },
+    "study:next": () => {
+      throw new Error("unused");
+    },
+    "study:rate": () => ({}),
+    "study:undo": () => ({ itemId: null }),
+    "study:saveSettings": () => ({ newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 }),
+    "practice:next": () => {
+      throw new Error("unused");
+    },
+    "practice:answer": () => {
+      throw new Error("unused");
+    },
+    "practice:counts": () => ({
+      unseen: 0,
+      retry: 0,
+      answeredToday: 0,
+      correctToday: 0,
+      toPractice: 0,
+    }),
     "settings:get": () => ({
       provider: "openrouter",
       generationModel: "a",

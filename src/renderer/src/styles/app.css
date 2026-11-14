@@ -409,3 +409,70 @@ textarea {
 .dialog textarea {
   resize: vertical;
 }
+
+.rating-row {
+  gap: 10px;
+}
+.rating {
+  flex: 1 1 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 12px;
+}
+.rating-1 {
+  background: var(--danger);
+  color: #1b0b0b;
+}
+.rating-2 {
+  background: var(--warn);
+  color: #1d1300;
+}
+.rating-4 {
+  background: var(--info);
+  color: #06222b;
+}
+.rating .muted {
+  color: inherit;
+  opacity: 0.8;
+}
+.card-front {
+  font-size: 20px;
+  margin: 12px 0 18px;
+}
+.card-back {
+  font-size: 18px;
+  color: var(--accent);
+}
+mark {
+  background: transparent;
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+.option {
+  all: unset;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.option:hover:not([disabled]) {
+  background: var(--panel-2);
+}
+.option.chosen {
+  border-color: var(--info);
+}
+.option.right {
+  border-color: var(--accent);
+  background: rgba(80, 250, 123, 0.12);
+}
+.option.wrong {
+  border-color: var(--danger);
+  background: rgba(255, 110, 110, 0.12);
+}
+.ok {
+  color: var(--accent);
+}

@@ -74,11 +74,11 @@ describe("App", () => {
     const { state } = installFakeMind({ workspaces: [ws(1, "Estudos")] });
     await ready();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Estudar" }));
-    expect(await screen.findByRole("heading", { name: "Estudar" })).toBeVisible();
+    await user.click(await screen.findByRole("button", { name: "Erros" }));
+    expect(await screen.findByRole("heading", { name: "Erros" })).toBeVisible();
     expect(screen.getByText("Esta seção chega em breve.")).toBeVisible();
-    expect(state.route).toBe("/w/1/study");
-    expect(screen.getByRole("button", { name: "Estudar" })).toHaveAttribute("aria-current", "page");
+    expect(state.route).toBe("/w/1/errors");
+    expect(screen.getByRole("button", { name: "Erros" })).toHaveAttribute("aria-current", "page");
   });
 
   it("restores the saved route on start", async () => {

@@ -57,6 +57,72 @@
     }
   ],
   "count": 3,
+  "judge_items": [
+    {
+      "answer": "C",
+      "excerpt": "A busca binária divide o intervalo.",
+      "options": [],
+      "statement": "A busca binária divide o intervalo ao meio."
+    },
+    {
+      "answer": "A",
+      "excerpt": "O ciclo de Calvin fixa carbono.",
+      "options": [
+        [
+          "A",
+          "Calvin"
+        ],
+        [
+          "B",
+          "Krebs"
+        ]
+      ],
+      "statement": "Qual ciclo fixa carbono?"
+    }
+  ],
+  "judge_messages": [
+    {
+      "content": "You are a strict reviewer of exam questions. For each numbered question you receive the source excerpt, the question, its options (if any) and the proposed answer.\n\nA question is `supported` only if ALL of these hold:\n1. The proposed answer is established by the excerpt alone.\n2. Exactly one option (or the right/wrong verdict) is correct; no other option is also defensible.\n3. The statement is unambiguous.\nOtherwise it is not supported. When in doubt, answer `supported: false`. Return one verdict per question, using its `index`, with a short `reason`.\n",
+      "role": "system"
+    },
+    {
+      "content": "[question 0]\nExcerpt:\nA busca binária divide o intervalo.\n\nStatement: A busca binária divide o intervalo ao meio.\nOptions:\n  (certo/errado)\nProposed answer: C\n\n[question 1]\nExcerpt:\nO ciclo de Calvin fixa carbono.\n\nStatement: Qual ciclo fixa carbono?\nOptions:\n  A) Calvin\n  B) Krebs\nProposed answer: A",
+      "role": "user"
+    }
+  ],
+  "question_count": 2,
+  "question_messages": {
+    "certo_errado": [
+      {
+        "content": "You write exam-style practice questions from excerpts of the user's own study material.\n\nRules:\n- Write every question in Brazilian Portuguese (pt-BR), even when the excerpts are in another language.\n- Use ONLY information found in the excerpts. The correct answer must follow from the excerpt alone, never from outside knowledge.\n- Each question tests one idea and has exactly one correct answer; avoid ambiguity, double negatives and \"all/none of the above\".\n- For every question, set `source.chunk_id` to the id of the excerpt that proves the answer and `source.quote` to a passage copied VERBATIM from that excerpt, in its original language, between 15 and 300 characters long.\n- `explanation` is a short comment (one to three sentences) that justifies the answer.\n- Write mathematical formulas in LaTeX between $...$ or $$...$$.\n- Set `topic` to a short, consistent label (up to 5 words).\n- Do not repeat a question.\n",
+        "role": "system"
+      },
+      {
+        "content": "Create exactly 2 questions from the excerpts below. Question type \"certo_errado\": `statement` is one self-contained claim that is either right or wrong according to the excerpt. Set `answer` to \"C\" (right) or \"E\" (wrong) and leave `options` empty. Make about half of the claims right and half wrong; a wrong claim must change a meaningful detail of the excerpt, not be absurd.\n\nExcerpts:\n\n[excerpt 1 | apostila.pdf, p. 12]\nA busca binária divide o intervalo.\n\n[excerpt 2 | notas.md > Introdução]\nO ciclo de Calvin fixa carbono.\n\nItems that already exist on this topic (do not repeat them):\n- O que é a busca binária?",
+        "role": "user"
+      }
+    ],
+    "multiple_choice_4": [
+      {
+        "content": "You write exam-style practice questions from excerpts of the user's own study material.\n\nRules:\n- Write every question in Brazilian Portuguese (pt-BR), even when the excerpts are in another language.\n- Use ONLY information found in the excerpts. The correct answer must follow from the excerpt alone, never from outside knowledge.\n- Each question tests one idea and has exactly one correct answer; avoid ambiguity, double negatives and \"all/none of the above\".\n- For every question, set `source.chunk_id` to the id of the excerpt that proves the answer and `source.quote` to a passage copied VERBATIM from that excerpt, in its original language, between 15 and 300 characters long.\n- `explanation` is a short comment (one to three sentences) that justifies the answer.\n- Write mathematical formulas in LaTeX between $...$ or $$...$$.\n- Set `topic` to a short, consistent label (up to 5 words).\n- Do not repeat a question.\n",
+        "role": "system"
+      },
+      {
+        "content": "Create exactly 2 questions from the excerpts below. Question type \"multiple_choice\" with exactly 4 options: `statement` is the question; `options` has keys \"A\" to \"D\" in order, each with `text` and `why` (why it is right or wrong); `answer` is the key of the single correct option. Distractors must be plausible and clearly different from each other.\n\nExcerpts:\n\n[excerpt 1 | apostila.pdf, p. 12]\nA busca binária divide o intervalo.\n\n[excerpt 2 | notas.md > Introdução]\nO ciclo de Calvin fixa carbono.\n\nItems that already exist on this topic (do not repeat them):\n- O que é a busca binária?",
+        "role": "user"
+      }
+    ],
+    "multiple_choice_5": [
+      {
+        "content": "You write exam-style practice questions from excerpts of the user's own study material.\n\nRules:\n- Write every question in Brazilian Portuguese (pt-BR), even when the excerpts are in another language.\n- Use ONLY information found in the excerpts. The correct answer must follow from the excerpt alone, never from outside knowledge.\n- Each question tests one idea and has exactly one correct answer; avoid ambiguity, double negatives and \"all/none of the above\".\n- For every question, set `source.chunk_id` to the id of the excerpt that proves the answer and `source.quote` to a passage copied VERBATIM from that excerpt, in its original language, between 15 and 300 characters long.\n- `explanation` is a short comment (one to three sentences) that justifies the answer.\n- Write mathematical formulas in LaTeX between $...$ or $$...$$.\n- Set `topic` to a short, consistent label (up to 5 words).\n- Do not repeat a question.\n",
+        "role": "system"
+      },
+      {
+        "content": "Create exactly 2 questions from the excerpts below. Question type \"multiple_choice\" with exactly 5 options: `statement` is the question; `options` has keys \"A\" to \"E\" in order, each with `text` and `why` (why it is right or wrong); `answer` is the key of the single correct option. Distractors must be plausible and clearly different from each other.\n\nExcerpts:\n\n[excerpt 1 | apostila.pdf, p. 12]\nA busca binária divide o intervalo.\n\n[excerpt 2 | notas.md > Introdução]\nO ciclo de Calvin fixa carbono.\n\nItems that already exist on this topic (do not repeat them):\n- O que é a busca binária?",
+        "role": "user"
+      }
+    ]
+  },
   "rendered_avoid": "\n\nItems that already exist on this topic (do not repeat them):\n- O que é a busca binária?",
   "rendered_chunks": "[excerpt 1 | apostila.pdf, p. 12]\nA busca binária divide o intervalo.\n\n[excerpt 2 | notas.md > Introdução]\nO ciclo de Calvin fixa carbono."
 }

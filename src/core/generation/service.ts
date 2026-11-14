@@ -15,14 +15,18 @@ import type { Llm } from "../core.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 import { CardGenerator } from "./cards.js";
 import type { BatchOutcome, DiscardNote } from "./cards.js";
-import { CARDS_PER_BATCH, planBatches, selectChunks } from "./planning.js";
+import { CARDS_PER_BATCH, QUESTIONS_PER_BATCH, planBatches, selectChunks } from "./planning.js";
+import { QuestionGenerator } from "./questions.js";
+import { JUDGE_SYSTEM, PROFILE_RULES, QUESTION_SYSTEM } from "./question-prompts.js";
 import type { SourceChunk } from "./planning.js";
 import { SUBTYPE_RULES, SYSTEM } from "./prompts.js";
-import { CARD_SUBTYPES } from "./schemas.js";
+import { CARD_SUBTYPES, PROFILES } from "./schemas.js";
 import { isoNow } from "../clock.js";
 
 export const MIN_QUANTITY = 1;
-export const MAX_QUANTITY = { card: 60 } as const;
+export const MAX_QUANTITY = { card: 60, question: 30 } as const;
+export const OUTPUT_TOKENS_PER_QUESTION = 250;
+export const JUDGE_TOKENS_PER_QUESTION = 60;
 export const OUTPUT_TOKENS_PER_CARD = 150;
 export const PROMPT_OVERHEAD_CHARS = 400;
 export const CONCURRENT_BATCHES = 2;
@@ -32,7 +36,7 @@ export interface GenerationRequest {
   materialId: number;
   subtype: string;
   quantity: number;
-  kind: "card";
+  kind: "card" | "question";
   pageFrom?: number;
   pageTo?: number;
   topicId?: number | null;
@@ -109,17 +113,25 @@ function toInfo(row: typeof generationRun.$inferSelect): RunInfo {
 
 export function validateRequest(request: GenerationRequest): void {
   const errors: FieldError[] = [];
-  if (request.kind !== "card") errors.push({ field: "kind", message: "Escolha cards." });
-  if (!(CARD_SUBTYPES as readonly string[]).includes(request.subtype)) {
-    errors.push({ field: "subtype", message: "Tipo de card desconhecido." });
-  }
-  const top = MAX_QUANTITY.card;
-  if (
-    !Number.isInteger(request.quantity) ||
-    request.quantity < MIN_QUANTITY ||
-    request.quantity > top
-  ) {
-    errors.push({ field: "quantity", message: `Peça de ${MIN_QUANTITY} a ${top} cards.` });
+  const kinds = Object.keys(MAX_QUANTITY);
+  if (!kinds.includes(request.kind)) {
+    errors.push({ field: "kind", message: "Escolha cards ou questões." });
+  } else {
+    const allowed =
+      request.kind === "card" ? (CARD_SUBTYPES as readonly string[]) : Object.keys(PROFILES);
+    if (!allowed.includes(request.subtype)) {
+      const label = request.kind === "card" ? "Tipo de card" : "Perfil de questão";
+      errors.push({ field: "subtype", message: `${label} desconhecido.` });
+    }
+    const top = MAX_QUANTITY[request.kind];
+    if (
+      !Number.isInteger(request.quantity) ||
+      request.quantity < MIN_QUANTITY ||
+      request.quantity > top
+    ) {
+      const name = request.kind === "card" ? "cards" : "questões";
+      errors.push({ field: "quantity", message: `Peça de ${MIN_QUANTITY} a ${top} ${name}.` });
+    }
   }
   if (request.pageFrom !== undefined && request.pageFrom < 1) {
     errors.push({ field: "pageFrom", message: "A primeira página é 1." });
@@ -135,9 +147,14 @@ export function validateRequest(request: GenerationRequest): void {
     throw new AppError("VALIDATION_ERROR", "Pedido de geração inválido.", errors);
 }
 
+function perBatch(kind: "card" | "question"): number {
+  return kind === "question" ? QUESTIONS_PER_BATCH : CARDS_PER_BATCH;
+}
+
 /** Generates drafts for one workspace: plans batches, calls the model and tracks the run. */
 export class GenerationService {
   private readonly generator: CardGenerator;
+  private readonly questionGenerator: QuestionGenerator;
 
   constructor(
     private readonly workspace: OpenWorkspace,
@@ -146,6 +163,11 @@ export class GenerationService {
     private readonly concurrency = CONCURRENT_BATCHES,
   ) {
     this.generator = new CardGenerator(
+      workspace.connection.db,
+      workspace.connection.sqlite,
+      llm.provider,
+    );
+    this.questionGenerator = new QuestionGenerator(
       workspace.connection.db,
       workspace.connection.sqlite,
       llm.provider,
@@ -177,12 +199,50 @@ export class GenerationService {
 
   estimate(request: GenerationRequest): EstimateInfo {
     validateRequest(request);
-    const plan = planBatches(this.chunksFor(request), request.quantity, CARDS_PER_BATCH, true);
+    const plan = planBatches(
+      this.chunksFor(request),
+      request.quantity,
+      perBatch(request.kind),
+      true,
+    );
     const settings = this.llm.settings.get();
     const chunkChars = plan.reduce(
       (total, batch) => total + batch.chunks.reduce((sum, c) => sum + c.text.length, 0),
       0,
     );
+    if (request.kind === "question") {
+      const system = QUESTION_SYSTEM.length + (PROFILE_RULES[request.subtype]?.length ?? 0);
+      let promptChars = plan.length * (system + PROMPT_OVERHEAD_CHARS) + chunkChars;
+      // The judge reads, for each question, its source excerpt (about one chunk).
+      const judgeChars = plan.reduce(
+        (total, batch) =>
+          total +
+          batch.count * (JUDGE_SYSTEM.length + PROMPT_OVERHEAD_CHARS) +
+          batch.count *
+            Math.floor(
+              batch.chunks.reduce((sum, c) => sum + c.text.length, 0) /
+                Math.max(batch.chunks.length, 1),
+            ),
+        0,
+      );
+      const generation = this.llm.catalog.estimate(
+        settings.generationModel,
+        promptChars,
+        request.quantity * OUTPUT_TOKENS_PER_QUESTION,
+      );
+      const judging = this.llm.catalog.estimate(
+        settings.judgeModel,
+        judgeChars,
+        request.quantity * JUDGE_TOKENS_PER_QUESTION,
+      );
+      promptChars += judgeChars;
+      return {
+        estimatedUsd: generation === null || judging === null ? null : generation + judging,
+        chunks: plan.reduce((total, batch) => total + batch.chunks.length, 0),
+        batches: plan.length,
+        promptChars,
+      };
+    }
     const promptChars =
       plan.length *
         (SYSTEM.length + (SUBTYPE_RULES[request.subtype]?.length ?? 0) + PROMPT_OVERHEAD_CHARS) +
@@ -204,7 +264,8 @@ export class GenerationService {
     validateRequest(request);
     this.chunksFor(request);
     this.llm.ensureReady();
-    const model = this.llm.settings.get().generationModel;
+    const configured = this.llm.settings.get();
+    const model = configured.generationModel;
     const row = this.db
       .insert(generationRun)
       .values({
@@ -220,8 +281,11 @@ export class GenerationService {
       })
       .returning()
       .get();
-    const job = this.queue.submit(this.workspace.info.id, this.db, "generate_cards", (context) =>
-      this.run(row.id, request, model, context),
+    const job = this.queue.submit(
+      this.workspace.info.id,
+      this.db,
+      `generate_${request.kind}s`,
+      (context) => this.run(row.id, request, model, configured.judgeModel, context),
     );
     this.db.update(generationRun).set({ jobId: job.id }).where(eq(generationRun.id, row.id)).run();
     return this.get(row.id);
@@ -236,10 +300,16 @@ export class GenerationService {
     runId: number,
     request: GenerationRequest,
     model: string,
+    judgeModel: string,
     context: JobContext,
   ): Promise<void> {
     this.setStatus(runId, "running");
-    const plan = planBatches(this.chunksFor(request), request.quantity, CARDS_PER_BATCH, true);
+    const plan = planBatches(
+      this.chunksFor(request),
+      request.quantity,
+      perBatch(request.kind),
+      true,
+    );
     let accepted = 0;
     let finished = 0;
     let active = 0;
@@ -261,15 +331,28 @@ export class GenerationService {
       await acquire();
       try {
         context.checkCancelled();
-        const outcome = await this.generator.generateBatch({
-          runId,
-          subtype: request.subtype,
-          count,
-          chunks,
-          model,
-          remaining: () => request.quantity - accepted,
-          topicId: request.topicId ?? null,
-        });
+        const remaining = (): number => request.quantity - accepted;
+        const outcome =
+          request.kind === "question"
+            ? await this.questionGenerator.generateBatch({
+                runId,
+                profile: request.subtype,
+                count,
+                chunks,
+                model,
+                judgeModel,
+                remaining,
+                topicId: request.topicId ?? null,
+              })
+            : await this.generator.generateBatch({
+                runId,
+                subtype: request.subtype,
+                count,
+                chunks,
+                model,
+                remaining,
+                topicId: request.topicId ?? null,
+              });
         accepted += outcome.accepted;
         finished += 1;
         this.addOutcome(runId, outcome);

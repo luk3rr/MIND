@@ -21,6 +21,8 @@ export type FakeMaterial = OutputOf<"material:list">["materials"][number];
 type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
 export type FakeRun = OutputOf<"generation:list">["runs"][number];
 export type FakeItem = OutputOf<"review:list">["items"][number];
+export type FakeStudyCard = NonNullable<OutputOf<"study:next">["card"]>;
+export type FakeQuestion = NonNullable<OutputOf<"practice:next">["question"]>;
 
 export interface FakeState {
   workspaces: Workspace[];
@@ -32,6 +34,14 @@ export interface FakeState {
   runs: FakeRun[];
   items: FakeItem[];
   estimateUsd: number | null;
+  /** The cards the study queue serves, in order; rating one removes it. */
+  studyQueue: FakeStudyCard[];
+  reviewedToday: number;
+  undoStack: FakeStudyCard[];
+  /** Questions the practice queue serves; answering one removes it. */
+  questions: FakeQuestion[];
+  answerKeys: Record<number, string>;
+  answeredToday: number;
   importResult: OutputOf<"material:import">;
   searchHits: OutputOf<"material:search">["hits"];
   provider: {
@@ -48,6 +58,27 @@ export interface FakeState {
   };
 }
 
+function studyCounts(state: FakeState) {
+  return {
+    learning: 0,
+    review: 0,
+    newAvailable: state.studyQueue.length,
+    reviewedToday: state.reviewedToday,
+    newStudiedToday: state.reviewedToday,
+    toStudy: state.studyQueue.length,
+  };
+}
+
+function practiceCounts(state: FakeState) {
+  return {
+    unseen: state.questions.length,
+    retry: 0,
+    answeredToday: state.answeredToday,
+    correctToday: 0,
+    toPractice: state.questions.length,
+  };
+}
+
 /** An in-memory `window.mind` that behaves like the real core for the channels the UI uses. */
 export function installFakeMind(initial: Partial<FakeState> = {}) {
   const state: FakeState = {
@@ -60,6 +91,12 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     runs: [],
     items: [],
     estimateUsd: 0.0123,
+    studyQueue: [],
+    reviewedToday: 0,
+    undoStack: [],
+    questions: [],
+    answerKeys: {},
+    answeredToday: 0,
     importResult: { materials: [], errors: [] },
     searchHits: [],
     provider: {
@@ -286,6 +323,61 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         });
         return edited ? ok(edited) : failure("ITEM_NOT_FOUND", "Item não encontrado.");
       }
+      case "study:today":
+        return ok({
+          counts: studyCounts(state),
+          settings: { newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 },
+          facets: {
+            topics: [{ key: 1, label: "Biologia", count: state.studyQueue.length }],
+            materials: [{ key: 1, label: "apostila", count: state.studyQueue.length }],
+            subtypes: [{ key: "qa", label: "qa", count: state.studyQueue.length }],
+            cards: state.studyQueue.length,
+            questions: state.questions.length,
+          },
+        });
+      case "study:next":
+        return ok({ card: state.studyQueue[0] ?? null, counts: studyCounts(state) });
+      case "study:rate": {
+        const first = state.studyQueue[0];
+        if (first) {
+          state.undoStack.push(first);
+          state.studyQueue = state.studyQueue.slice(1);
+          state.reviewedToday += 1;
+        }
+        return ok({});
+      }
+      case "study:undo": {
+        const last = state.undoStack.pop();
+        if (!last) return ok({ itemId: null });
+        state.studyQueue = [last, ...state.studyQueue];
+        state.reviewedToday = Math.max(state.reviewedToday - 1, 0);
+        return ok({ itemId: last.itemId });
+      }
+      case "study:saveSettings":
+        return ok({ newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 });
+      case "practice:next": {
+        const input = payload as InputOf<"practice:next">;
+        const question =
+          state.questions.find((q) => !(input.exclude ?? []).includes(q.item.id)) ?? null;
+        return ok({ question, counts: practiceCounts(state) });
+      }
+      case "practice:answer": {
+        const input = payload as InputOf<"practice:answer">;
+        const found = state.questions.find((q) => q.item.id === input.itemId);
+        if (!found) return failure("ITEM_NOT_FOUND", "Não existe questão.");
+        state.answeredToday += 1;
+        const key = state.answerKeys[input.itemId] ?? "A";
+        return ok({
+          correct: input.answer === key,
+          answer: input.answer,
+          correctKey: key,
+          explanation: "Comentário da questão.",
+          options: found.item.options,
+          attemptId: state.answeredToday,
+        });
+      }
+      case "practice:counts":
+        return ok(practiceCounts(state));
       case "settings:get": {
         const p = state.provider;
         return ok({

@@ -7,6 +7,7 @@
 import { join } from "node:path";
 import { createCore } from "../core.js";
 import type { Core } from "../core.js";
+import type { Clock } from "../clock.js";
 import { chunk, material } from "../db/workspace-schema.js";
 import type { Provider } from "../llm/provider.js";
 import { scriptedCardProvider } from "../llm/scripted.js";
@@ -28,7 +29,13 @@ export const TEXTS = [
 
 /** A core with an indexed material of three chunks and a scripted provider that needs no consent. */
 export function generationRig(
-  options: { provider?: Provider; texts?: string[]; concurrency?: number } = {},
+  options: {
+    provider?: Provider;
+    texts?: string[];
+    concurrency?: number;
+    clock?: Clock;
+    tzOffset?: () => number;
+  } = {},
 ): GenerationRig {
   const dir = tempDir();
   const core = createCore({
@@ -36,6 +43,8 @@ export function generationRig(
     env: {},
     provider: options.provider ?? scriptedCardProvider(),
     ...(options.concurrency ? { generationConcurrency: options.concurrency } : {}),
+    ...(options.clock ? { clock: options.clock } : {}),
+    ...(options.tzOffset ? { tzOffset: options.tzOffset } : {}),
   });
   const workspaceId = core.registry.create("Gerar").id;
   const { connection } = core.registry.open(workspaceId);

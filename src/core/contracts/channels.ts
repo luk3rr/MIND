@@ -67,9 +67,17 @@ const generationRequest = z
   .object({
     workspaceId,
     materialId: z.number().int().positive(),
-    subtype: z.enum(["qa", "cloze", "compare", "true_false"]),
+    subtype: z.enum([
+      "qa",
+      "cloze",
+      "compare",
+      "true_false",
+      "certo_errado",
+      "multiple_choice_4",
+      "multiple_choice_5",
+    ]),
     quantity: z.number().int().min(1).max(200),
-    kind: z.literal("card"),
+    kind: z.enum(["card", "question"]),
     pageFrom: z.number().int().min(1).optional(),
     pageTo: z.number().int().min(1).optional(),
   })
@@ -132,6 +140,45 @@ const reviewResult = z.object({
   approved: z.number().int(),
   discarded: z.number().int(),
   skipped: z.number().int(),
+});
+
+const studyFilter = z
+  .object({
+    topicId: z.number().int().positive().optional(),
+    materialId: z.number().int().positive().optional(),
+    subtype: z.string().max(40).optional(),
+  })
+  .strict();
+
+const facet = z.object({
+  key: z.union([z.number(), z.string()]),
+  label: z.string(),
+  count: z.number().int(),
+});
+
+const studyCounts = z.object({
+  learning: z.number().int(),
+  review: z.number().int(),
+  newAvailable: z.number().int(),
+  reviewedToday: z.number().int(),
+  newStudiedToday: z.number().int(),
+  toStudy: z.number().int(),
+});
+
+const studySettings = z.object({
+  newPerDay: z.number().int(),
+  dailyGoal: z.number().int(),
+  desiredRetention: z.number(),
+});
+
+const piece = z.object({ text: z.string(), hit: z.boolean() });
+
+const practiceCounts = z.object({
+  unseen: z.number().int(),
+  retry: z.number().int(),
+  answeredToday: z.number().int(),
+  correctToday: z.number().int(),
+  toPractice: z.number().int(),
 });
 
 export const channels = {
@@ -294,6 +341,108 @@ export const channels = {
       })
       .strict(),
     output: itemInfo,
+  },
+  "study:today": {
+    input: z.object({ workspaceId, filter: studyFilter.optional() }).strict(),
+    output: z.object({
+      counts: studyCounts,
+      settings: studySettings,
+      facets: z.object({
+        topics: z.array(facet),
+        materials: z.array(facet),
+        subtypes: z.array(facet),
+        cards: z.number().int(),
+        questions: z.number().int(),
+      }),
+    }),
+  },
+  "study:next": {
+    input: z.object({ workspaceId, filter: studyFilter.optional() }).strict(),
+    output: z.object({
+      card: z
+        .object({
+          itemId: z.number().int(),
+          subtype: z.string(),
+          topic: z.string().nullable(),
+          sourceTitle: z.string(),
+          sourcePage: z.number().int().nullable(),
+          isNew: z.boolean(),
+          front: z.array(piece),
+          back: z.array(piece),
+          previews: z.object({
+            "1": z.string(),
+            "2": z.string(),
+            "3": z.string(),
+            "4": z.string(),
+          }),
+        })
+        .nullable(),
+      counts: studyCounts,
+    }),
+  },
+  "study:rate": {
+    input: z
+      .object({
+        workspaceId,
+        itemId: z.number().int().positive(),
+        rating: z.number().int().min(1).max(4),
+        durationMs: z.number().int().min(0).max(86_400_000).optional(),
+      })
+      .strict(),
+    output: z.object({}).strict(),
+  },
+  "study:undo": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ itemId: z.number().int().nullable() }),
+  },
+  "study:saveSettings": {
+    input: z
+      .object({
+        workspaceId,
+        newPerDay: z.number().int().optional(),
+        dailyGoal: z.number().int().optional(),
+        desiredRetention: z.number().optional(),
+      })
+      .strict(),
+    output: studySettings,
+  },
+  "practice:next": {
+    input: z
+      .object({
+        workspaceId,
+        filter: studyFilter.optional(),
+        redo: z.boolean().optional(),
+        exclude: z.array(z.number().int().positive()).max(1000).optional(),
+      })
+      .strict(),
+    output: z.object({
+      question: z
+        .object({ item: itemInfo, attempts: z.number().int(), lastCorrect: z.boolean().nullable() })
+        .nullable(),
+      counts: practiceCounts,
+    }),
+  },
+  "practice:answer": {
+    input: z
+      .object({
+        workspaceId,
+        itemId: z.number().int().positive(),
+        answer: z.string().max(8),
+        seconds: z.number().min(0).max(86_400).optional(),
+      })
+      .strict(),
+    output: z.object({
+      correct: z.boolean(),
+      answer: z.string(),
+      correctKey: z.string(),
+      explanation: z.string(),
+      options: z.array(z.object({ key: z.string(), text: z.string(), why: z.string() })),
+      attemptId: z.number().int(),
+    }),
+  },
+  "practice:counts": {
+    input: z.object({ workspaceId, filter: studyFilter.optional() }).strict(),
+    output: practiceCounts,
   },
   "settings:get": {
     input: z.object({}).strict(),

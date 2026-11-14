@@ -849,3 +849,45 @@ sequenceDiagram
 
 - A45 (3.1 UNIT-9): O tipo `question` do pedido de geração é recusado até o UNIT-11; o contrato muda lá. — confirmed: yes
 - A46 (3.1 UNIT-9): A rota de Revisar é `/w/:id/generate/:runId` e a de prévia de material passa a usar o mesmo campo genérico de detalhe. — confirmed: yes
+
+### UNIT-10 — Estudo FSRS (nota de design)
+
+**Objetivo.** Estudar a fila do dia com repetição espaçada: ts-fsrs, fila (aprendizado vencido, revisões do dia, novos dentro da cota), avaliação com prévia de intervalos, desfazer, meta diária, filtros e a tela Estudar com atalhos; Hoje ganha os indicadores de estudo. Porta `study/` do Python. [src: FR-12, FR-13, FR-32, A35]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Agendador | `Scheduler` próprio sobre `ts-fsrs` (retenção desejada 0,9, sem fuzzing nos testes), com `review` e `preview` iguais aos do Python; o estado do cartão é gravado em JSON no `card_state`; os intervalos são conferidos com `fixtures/fsrs.json` (6 sequências e a prévia de um card novo) |
+| Dia de estudo | O dia vira às 4 h do horário local (`studyDay`, `dayEnd`); o deslocamento de fuso é injetável para os testes |
+| Fila | Aprendizado vencido ou a até 20 min (`LEARN_AHEAD`), revisões vencidas até o fim do dia de estudo, depois novos por ordem de aprovação respeitando a cota diária global; o filtro (tópico, material, tipo) vale para todas as partes, mas a cota de novos é global |
+| Configurações | `new_per_day` 20 (0 a 500), `daily_goal` 40 (1 a 2000), `desired_retention` 0,9 (0,70 a 0,99) na tabela `meta` do workspace, validadas por campo |
+| Avaliação | Só cards aprovados; cria ou atualiza o `card_state`, grava o `review_log` com o estado anterior e o dia; `undo` reverte a última avaliação (apaga o estado se o card era novo) |
+| Apresentação | Lacunas `{{c1::termo}}` aparecem como `[…]` na frente e reveladas no verso (comentário extra depois); intervalos como "1 min", "10 min", "3 h", "3 d", "2 meses", "1,2 anos" |
+| IPC | `study:today` (contagens, meta, facetas), `study:next`, `study:rate`, `study:undo`, `study:saveSettings` |
+| UI | Tela Estudar com cartão, "Mostrar resposta" (Espaço), quatro botões com intervalo (1 a 4), "Desfazer" (Ctrl+Z), seletor de filtro, barra de meta e fim de sessão; Hoje mostra Vencidos, Aprendendo, Novos, Feitos hoje, meta e botão "Estudar agora (N)" |
+
+### UNIT-11 — Questões verificadas e prática (nota de design)
+
+**Objetivo.** Gerar questões Certo/Errado e de múltipla escolha com a mesma verificação de fonte e uma segunda verificação por LLM (juiz), com perfil de prova, e praticar com correção, comentário e tempo. Porta `generation/questions.py`, `judge.py`, os prompts de questão e `practice/`. [src: FR-9, FR-10, FR-11, FR-14, NFR-8]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Perfis | `certo_errado`, `multiple_choice_4` e `multiple_choice_5`; o contrato de `generation:*` passa a aceitar `kind: "question"` com `profile` no lugar de `subtype` de card |
+| Prompts | `QUESTION_SYSTEM`, `PROFILE_RULES`, `JUDGE_SYSTEM`, `buildQuestionMessages` e `buildJudgeMessages` portados com o texto do Python (conferidos com um novo trecho de fixtures gerado pelo script) |
+| Questões | `questionProblem` (subtipo, enunciado, comentário, 2 a 5 alternativas com letras em ordem, textos e comentários não vazios, alternativas distintas, gabarito válido), fonte verificada, duplicidade, juiz em lote (um veredito por questão; ausente, repetido ou fora de faixa conta contra), contagem de `unsupported` e custo do juiz somado |
+| Estimativa | Soma geração e juiz; exige preço dos dois modelos, senão fica sem estimativa |
+| Prática | `PracticeService`: fila de nunca respondidas, depois erradas por tentativa mais antiga e, com `redo`, as certas; `answer` grava a tentativa com resultado, tempo e dia; contagens (novas, para refazer, respondidas e certas hoje) |
+| IPC | `practice:next`, `practice:answer`, `practice:counts`; `generation:*` e `review:*` já cobrem questões (a revisão mostra alternativas e gabarito) |
+| UI | Gerar ganha o tipo "Questões" e o perfil; Revisar mostra enunciado, alternativas, gabarito e comentário; Praticar (subtela de Estudar em `/w/:id/study/practice`) com cronômetro, alternativas, correção, comentário por alternativa e fonte |
+
+**NFR (nota).** NFR-3: a troca de card e de questão responde em até 300 ms (E2E mede). NFR-8: o `pnpm sm1 --kind question` mede a qualidade (fora do CI).
+
+**Riscos.** (1) O ts-fsrs pode divergir do `fsrs` do Python em casas decimais: as fixtures dizem; se divergir, comparo com tolerância e registro. (2) O fuso do E2E: os testes injetam o deslocamento.
+
+### Assumptions & open questions
+
+- A47 (3.1 UNIT-10): `desired_retention` do ts-fsrs usa os mesmos parâmetros padrão do FSRS 6 do Python. — confirmed: yes
+- A48 (3.1 UNIT-11): A prática fica em `/w/:id/study/practice`, dentro da seção Estudar. — confirmed: yes

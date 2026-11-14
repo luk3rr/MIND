@@ -24,6 +24,9 @@ import { SettingsService } from "./settings/service.js";
 import { AppError } from "./contracts/errors.js";
 import { GenerationService } from "./generation/service.js";
 import { ReviewService } from "./review/service.js";
+import { PracticeService } from "./practice/service.js";
+import { StudyService } from "./study/service.js";
+import type { TzOffset } from "./study/scheduler.js";
 import { WorkspaceRegistry } from "./workspaces/registry.js";
 
 export interface CoreOptions {
@@ -39,6 +42,8 @@ export interface CoreOptions {
   extract?: ExtractFn;
   maxUploadMb?: number;
   generationConcurrency?: number;
+  /** Minutes behind UTC of the local clock; tests fix it to get a stable study day. */
+  tzOffset?: TzOffset;
   /** Folder for the OCR language data (a cache); OCR is off when absent. */
   tessdataDir?: string;
   /** How web pages are downloaded; defaults to the global fetch. */
@@ -66,6 +71,8 @@ export interface Core {
   materials(workspaceId: number): MaterialService;
   generation(workspaceId: number): GenerationService;
   review(workspaceId: number): ReviewService;
+  study(workspaceId: number): StudyService;
+  practice(workspaceId: number): PracticeService;
   retriever(workspaceId: number): Bm25Retriever;
   close(): Promise<void>;
 }
@@ -130,6 +137,16 @@ export function createCore(options: CoreOptions): Core {
     generation: (workspaceId) =>
       new GenerationService(registry.open(workspaceId), queue, llm, options.generationConcurrency),
     review: (workspaceId) => new ReviewService(registry.open(workspaceId), clock),
+    practice: (workspaceId) =>
+      new PracticeService(registry.open(workspaceId), {
+        clock,
+        ...(options.tzOffset ? { offset: options.tzOffset } : {}),
+      }),
+    study: (workspaceId) =>
+      new StudyService(registry.open(workspaceId), {
+        clock,
+        ...(options.tzOffset ? { offset: options.tzOffset } : {}),
+      }),
     materials: (workspaceId) =>
       new MaterialService(registry.open(workspaceId), queue, {
         maxUploadBytes: (options.maxUploadMb ?? 200) * 1024 * 1024,

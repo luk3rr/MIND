@@ -45,7 +45,7 @@ function RunsTable({
         {runs.map((run) => (
           <tr key={run.id}>
             <td>{run.createdAt.slice(0, 16).replace("T", " ")}</td>
-            <td>{T.cardTypes[run.subtype] ?? run.subtype}</td>
+            <td>{T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype}</td>
             <td>
               <span className="pill">{T.runStatus[run.status] ?? run.status}</span>
               {run.progress !== null && (
@@ -106,7 +106,16 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
   const [materialId, setMaterialId] = useState<number | null>(null);
   const [pageFrom, setPageFrom] = useState("");
   const [pageTo, setPageTo] = useState("");
-  const [subtype, setSubtype] = useState<"qa" | "cloze" | "compare" | "true_false">("qa");
+  const [kind, setKind] = useState<"card" | "question">("card");
+  const [subtype, setSubtype] = useState<
+    | "qa"
+    | "cloze"
+    | "compare"
+    | "true_false"
+    | "certo_errado"
+    | "multiple_choice_4"
+    | "multiple_choice_5"
+  >("qa");
   const [quantity, setQuantity] = useState("20");
   const [estimate, setEstimate] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -127,7 +136,7 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
       materialId: selected,
       subtype,
       quantity: count,
-      kind: "card",
+      kind,
       ...(pageFrom.trim() ? { pageFrom: Number(pageFrom) } : {}),
       ...(pageTo.trim() ? { pageTo: Number(pageTo) } : {}),
     };
@@ -139,7 +148,7 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
     setFormError(Object.keys(byField).length === 0 ? error.message : null);
   };
 
-  const key = JSON.stringify([selected, subtype, quantity, pageFrom, pageTo]);
+  const key = JSON.stringify([selected, kind, subtype, quantity, pageFrom, pageTo]);
   useEffect(() => {
     const payload = request();
     if (!payload) {
@@ -256,17 +265,34 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
           </div>
           <div className="row">
             <div className="field">
-              <label htmlFor="gen-type">{T.generateType}</label>
+              <label htmlFor="gen-kind">{T.generateKind}</label>
+              <select
+                id="gen-kind"
+                value={kind}
+                onChange={(event) => {
+                  const next = event.target.value as "card" | "question";
+                  setKind(next);
+                  setSubtype(next === "card" ? "qa" : "certo_errado");
+                }}
+              >
+                <option value="card">{T.kindCards}</option>
+                <option value="question">{T.kindQuestions}</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="gen-type">{kind === "card" ? T.generateType : T.profileLabel}</label>
               <select
                 id="gen-type"
                 value={subtype}
                 onChange={(event) => setSubtype(event.target.value as typeof subtype)}
               >
-                {Object.entries(T.cardTypes).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
+                {Object.entries(kind === "card" ? T.cardTypes : T.profiles).map(
+                  ([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
               </select>
             </div>
             <div className="field">
@@ -296,7 +322,7 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
           )}
           <div>
             <button type="submit" className="btn" disabled={busy || selected === null}>
-              {T.generateCards}
+              {kind === "card" ? T.generateCards : "Gerar questões"}
             </button>
           </div>
         </form>

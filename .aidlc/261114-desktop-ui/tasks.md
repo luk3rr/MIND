@@ -126,16 +126,20 @@ Ordem: BOLT-1 → BOLT-2 → BOLT-3 → BOLT-4 → BOLT-5 (seguindo o DAG de 2.7
 
 **Resumo do UNIT-9.** Prompts e esquemas portados com texto idêntico ao do Python (conferido por fixtures), `SourceChecker` (NFKC, aspas, traços, invisíveis, caixa) conferido caso a caso com as fixtures, planejamento (lotes de 6000 caracteres, 5 cards por lote, arredondamento como o do Python), `CardGenerator` (forma, fonte, duplicidade, cota, tópicos), `GenerationService` (estimativa, `ensureReady`, 2 lotes em paralelo, progresso, cancelamento, contadores e razões de descarte) e `ReviewService` (aprovar, descartar, editar, aprovar todos, contadores do SM-1). UI: Gerar com estimativa de custo e lista de execuções; Revisar com a citação ao lado, abas e edição; fórmulas e lacunas. `pnpm sm1` calcula a taxa SM-1. Resultado: verification command exit 0 (369 testes, 95,7% de linhas, 85,2% de ramos) e E2E 23/23 com o provedor roteirizado. **Desvios.** (1) O tipo `question` e o treino ficam nos Units 11 e 13; o contrato de `generation:*` só aceita `card` por enquanto (A45). (2) A rota de detalhe passou a ser genérica (`detailId`) para a prévia de material e a revisão (A46). (3) `import.meta.glob` das migrações ganhou um caminho de leitura de disco para rodar sob `tsx` (`pnpm sm1`). (4) Os testes E2E de geração só rodam fora do app empacotado.
 
-### UNIT-10 Estudo FSRS   Status: not started
-- [ ] UNIT-10.1 Integrar ts-fsrs e agenda de cards [FR-12] — teste: Intervalos iguais aos de referência
-- [ ] UNIT-10.2 Fila do dia, filtro, meta diária e desfazer [FR-13] — teste: Testes portados de `study`
-- [ ] UNIT-10.3 Tela Estudar com atalhos [FR-13] — teste: Testing Library: Espaço e 1 a 4
+### UNIT-10 Estudo FSRS   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-10.1 Integrar ts-fsrs e agenda de cards [FR-12] — teste: Intervalos iguais aos de referência — files: src/core/study/scheduler.ts (ts-fsrs, dia de estudo, intervalos) + scheduler.test.ts contra fixtures/fsrs.json
+- [x] UNIT-10.2 Fila do dia, filtro, meta diária e desfazer [FR-13] — teste: Testes portados de `study` — files: src/core/study/service.ts, rendering.ts, canais study:*
+- [x] UNIT-10.3 Tela Estudar com atalhos [FR-13] — teste: Testing Library: Espaço e 1 a 4 — files: src/renderer/src/pages/StudyPage.tsx, TodayPage.tsx (indicadores), hooks de teclado
 
-### UNIT-11 Questões verificadas e prática   Status: not started
-- [ ] UNIT-11.1 Geração de questões C/E e múltipla escolha [FR-9] — teste: Testes portados
-- [ ] UNIT-11.2 Segunda verificação por LLM e descarte de não sustentadas [FR-10] — teste: Caso com gabarito sem suporte
-- [ ] UNIT-11.3 Perfil de prova [FR-11] — teste: Formato respeita o perfil
-- [ ] UNIT-11.4 Tela Praticar com correção, comentário e tempo [FR-14] — teste: Tentativa gravada
+**Resumo do UNIT-10.** `Scheduler` sobre ts-fsrs 6 (retenção 0,9), dia de estudo com virada às 4 h e deslocamento de fuso injetável, `StudyService` (fila com aprendizado vencido, revisões do dia e novos dentro da cota global, filtros por tópico, material e tipo, facetas, avaliação com log, desfazer, configurações validadas), apresentação de lacunas e intervalos (`1 min` a `1,2 anos`), canais `study:*`, tela Estudar com Espaço e 1 a 4, Ctrl+Z e filtro, e os indicadores de estudo em Hoje. **Paridade com o Python:** estados, repetições, lapsos, estabilidade e dificuldade coincidem em todas as sequências; **um** intervalo de revisão (boa depois de reaprendizado) difere em 1 dia entre as duas bibliotecas FSRS e o teste aceita essa tolerância (R-1). **Desvios.** (1) A fila serve primeiro o card em aprendizado que vence em até 20 min, como no Python; por isso a mesma carta volta logo após uma avaliação "Bom". (2) O E2E mede a troca de card (limite 1 s no teste; o alvo de 300 ms do NFR-3 é medido no UNIT-16).
+
+### UNIT-11 Questões verificadas e prática   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-11.1 Geração de questões C/E e múltipla escolha [FR-9] — teste: Testes portados — files: src/core/generation/{question-prompts,schemas,questions}.ts (textos idênticos às fixtures)
+- [x] UNIT-11.2 Segunda verificação por LLM e descarte de não sustentadas [FR-10] — teste: Caso com gabarito sem suporte — files: src/core/generation/judge.ts, questions.ts
+- [x] UNIT-11.3 Perfil de prova [FR-11] — teste: Formato respeita o perfil — files: src/core/generation/service.ts (kind question, perfil, estimativa com juiz)
+- [x] UNIT-11.4 Tela Praticar com correção, comentário e tempo [FR-14] — teste: Tentativa gravada — files: src/core/practice/service.ts, canais practice:*, src/renderer/src/pages/PracticePage.tsx
+
+**Resumo do UNIT-11.** Prompts de questão e do juiz com texto idêntico ao do Python (fixtures regeneradas pelo script), esquemas, `questionProblem`, `QuestionGenerator` (forma, fonte, duplicidade, juiz em lote, contagem de não sustentadas e custo somado), `GenerationService` com perfis (`certo_errado`, `multiple_choice_4`, `multiple_choice_5`), lotes de 3 e estimativa de geração mais juiz, `PracticeService` (fila de novas, depois erradas e, com refazer, as certas; tentativas com resultado, tempo e dia; contagens), canais `practice:*` e telas Gerar (cards ou questões), Revisar (alternativas, gabarito e comentário) e Praticar (cronômetro, correção, comentário por alternativa e fonte, teclado). **Resultado dos Units 10 e 11:** verification command exit 0 (469 testes, 96,1% de linhas, 86,1% de ramos) e E2E 26/26 (estudo com teclado, desfazer e prática com o provedor roteirizado). **Desvios.** (1) O contrato `generation:*` agora aceita `kind: question` (A45 cumprida). (2) Uma regressão do `pnpm sm1` (leitura de migrações) foi detectada pelo E2E e corrigida com `try/catch` em torno de `import.meta.glob`.
 
 ### UNIT-12 Caderno de erros e estatísticas   Status: not started
 - [ ] UNIT-12.1 Itens errados viram cards com fonte [FR-15] — teste: Teste portado de `error_notebook`

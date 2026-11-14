@@ -8,6 +8,8 @@ import { CONTRACT_VERSION } from "../../core/contracts/index.js";
 import type { OutputOf } from "../../core/contracts/index.js";
 import type { Core } from "../../core/core.js";
 import { todaySummary } from "../../core/today/summary.js";
+import { cardSides } from "../../core/study/rendering.js";
+import { Rating } from "../../core/study/scheduler.js";
 import type { Handlers } from "./router.js";
 import { AppError } from "../../core/contracts/errors.js";
 import { basename } from "node:path";
@@ -137,6 +139,65 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "review:approveAll": ({ workspaceId, runId }) => core.review(workspaceId).approveAll(runId),
     "review:edit": ({ workspaceId, itemId, front, back, topic }) =>
       core.review(workspaceId).edit(itemId, front, back, topic),
+    "study:today": ({ workspaceId, filter }) => {
+      const study = core.study(workspaceId);
+      return {
+        counts: study.counts(undefined, filter),
+        settings: study.settings(),
+        facets: study.facets(),
+      };
+    },
+    "study:next": ({ workspaceId, filter }) => {
+      const study = core.study(workspaceId);
+      const next = study.nextCard(undefined, filter);
+      const counts = study.counts(undefined, filter);
+      if (!next) return { card: null, counts };
+      const sides = cardSides(next.item.subtype, next.item.front, next.item.back);
+      const previews = study.previews(next);
+      return {
+        card: {
+          itemId: next.item.id,
+          subtype: next.item.subtype,
+          topic: next.item.topic,
+          sourceTitle: next.item.sourceTitle,
+          sourcePage: next.item.sourcePage,
+          isNew: next.schedule === null,
+          front: sides.front,
+          back: sides.back,
+          previews: {
+            "1": previews[Rating.AGAIN],
+            "2": previews[Rating.HARD],
+            "3": previews[Rating.GOOD],
+            "4": previews[Rating.EASY],
+          },
+        },
+        counts,
+      };
+    },
+    "study:rate": ({ workspaceId, itemId, rating, durationMs }) => {
+      core.study(workspaceId).rate(itemId, rating as Rating, {
+        ...(durationMs !== undefined ? { durationMs } : {}),
+      });
+      return {};
+    },
+    "study:undo": ({ workspaceId }) => ({ itemId: core.study(workspaceId).undo() }),
+    "study:saveSettings": ({ workspaceId, ...changes }) =>
+      core.study(workspaceId).updateSettings(changes),
+    "practice:next": ({ workspaceId, filter, redo, exclude }) => {
+      const practice = core.practice(workspaceId);
+      return {
+        question: practice.nextQuestion(filter, {
+          ...(redo !== undefined ? { redo } : {}),
+          ...(exclude ? { exclude } : {}),
+        }),
+        counts: practice.counts(filter),
+      };
+    },
+    "practice:answer": ({ workspaceId, itemId, answer, seconds }) =>
+      core.practice(workspaceId).answer(itemId, answer, {
+        ...(seconds !== undefined ? { seconds } : {}),
+      }),
+    "practice:counts": ({ workspaceId, filter }) => core.practice(workspaceId).counts(filter),
     "settings:get": () => settingsView(core),
     "settings:save": (input) => {
       core.llm.settings.update({
