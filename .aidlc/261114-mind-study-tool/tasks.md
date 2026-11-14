@@ -100,7 +100,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-3.3 Extratores de Markdown e texto. · FR-2 · teste: `tests/ingestion/test_text.py` · files: src/mind/ingestion/extractors.py (TextExtractor), tests/ingestion/test_extractors.py
 - [x] T-3.4 `Chunker` por seção e página com metadados (arquivo, página, seção) e tamanho-alvo. · FR-5 · teste: `tests/ingestion/test_chunker.py` · files: src/mind/ingestion/chunker.py, tests/ingestion/test_chunker.py
 - [x] T-3.5 `Retriever` (Protocol) com BM25 via FTS5, filtros por material e intervalo de páginas. · FR-5, US-2 · teste: `tests/retrieval/test_bm25.py` · files: src/mind/retrieval/retriever.py, tests/retrieval/{conftest,test_bm25}.py
-- [ ] T-3.6 Job de importação com progresso (extrair, dividir, indexar) e falha legível. · FR-2, US-2 · teste: `tests/ingestion/test_import_job.py`
+- [x] T-3.6 Job de importação com progresso (extrair, dividir, indexar) e falha legível. · FR-2, US-2 · teste: `tests/ingestion/test_import_job.py` · files: src/mind/ingestion/service.py, src/mind/config.py, tests/ingestion/test_material_service.py
 - [ ] T-3.7 Tela Biblioteca: lista, status, prévia do texto, importar, excluir. · US-2 · teste: `tests/web/test_library.py`
 - [ ] T-3.8 API `materials`, `chunks`, `search`. · FR-24 · teste: `tests/api/test_materials_contract.py`
 - [ ] T-3.9 Medição de desempenho: PDF de 100 páginas em < 60 s e ≤ 4 GB. · NFR-1, NFR-4 · teste: `tests/perf/test_import_100_pages.py` (marcador `perf`)
