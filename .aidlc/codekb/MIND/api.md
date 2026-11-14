@@ -1,10 +1,11 @@
-# API — MIND
-Status: draft · Confidence: medium
+# Contratos IPC
 
-**Páginas HTML** (`mind.web`, sem autenticação, mesma origem): `/`, `/welcome`, `/setup`, `/settings`, `/w/{id}/{today|library|generate|review|study|practice|stats|errors|chat|settings}`, além de ações POST (importar, gerar, aprovar, avaliar, exportar, renomear, excluir). ~50 rotas. [src: src/mind/web/*_pages.py, app.py]
+Status: draft · Confiança: alta
 
-**API JSON** em `/api/v1` (58 rotas): backup, chat, custos, erros, gerações, itens, jobs, materiais, prática, configurações, estatísticas, estudo, tópicos, workspaces. Documentação em `/api/docs`. [src: src/mind/api/v1/]
+Não há API HTTP. A interface é o `window.mind` com `invoke(canal, payload)` e `on(evento, handler)`. [src: src/core/contracts/api.ts]
 
-**Versionamento.** Prefixo `/v1`; erros em problem+json. **Autenticação:** nenhuma, só Host/Origin e CSP. [src: src/mind/web/security.py, src/mind/api/problems.py]
-
-**Consumida de terceiros.** OpenRouter (HTTPS) para geração e chat. [src: src/mind/llm/openrouter.py]
+- **Canais** (`CHANNEL_NAMES`, 53): `window:*`, `workspace:*` (list, create, rename, delete, export, import), `today:summary`, `material:*` (list, import, importUrl, delete, chunks, search), `generation:*`, `review:*`, `study:*`, `practice:*`, `errors:*`, `topics:*`, `stats:overview`, `chat:*`, `embeddings:*`, `settings:*`. [src: src/core/contracts/channel-names.ts]
+- **Eventos**: `window:focus-requested`, `job:progress`, `job:finished`.
+- **Resposta**: `Result<T>` = `{ ok: true, data }` ou `{ ok: false, error: { code, message, fields? } }`; `AppError` vira erro estável; erro desconhecido vira `INTERNAL_ERROR`. [src: src/core/contracts/result.ts; src/main/ipc/router.ts]
+- **Validação**: cada canal tem `input` e `output` zod em `channels.ts`; saída inválida é rejeitada. `CONTRACT_VERSION = 1`, devolvido por `window:getState`.
+- **Rotas do renderer**: `/w/:workspaceId/:secao[/:detalheId]` com `?chunk=` ou `?topic=&subtype=`; lista fechada de seções. [src: src/renderer/src/router.tsx]

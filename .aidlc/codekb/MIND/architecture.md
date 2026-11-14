@@ -1,43 +1,28 @@
-# Architecture — MIND
-Status: human-reviewed (2026-11-14) · Confidence: high
+# Arquitetura
 
-**Estilo.** Monólito modular em Python: pacotes por domínio (ingestion, generation, study, practice, stats, chat, error_notebook), serviços sem HTTP, e duas camadas de borda sobre eles: páginas HTML (`mind.web`) e API JSON (`mind.api`). [src: src/mind/]
+Status: human-reviewed (2026-11-14) · Confiança: alta
 
 ```mermaid
 flowchart TB
-  subgraph Borda
-    W[mind.web: páginas Jinja + HTMX]
-    A[mind.api: /api/v1 JSON]
+  subgraph Renderer["Renderer (React + Vite, sandbox, CSP self)"]
+    UI[Páginas e componentes] --> Hook[useInvoke / window.mind.invoke]
   end
-  subgraph Servicos
-    S[services.py + *Factory em app.py]
-    G[generation] --- V[verification]
-    ST[study + FSRS] --- P[practice]
-    I[ingestion] --- R[retrieval]
-    C[chat] --- E[error_notebook]
-    J[jobs: fila]
-  end
-  subgraph Dados
-    REG[workspaces/registry]
-    DB[(app.db + workspace.db SQLite)]
-    SEC[secrets: chave em .env]
-  end
-  L[llm: OpenRouter via httpx]
-  W --> S
-  A --> S
-  S --> REG --> DB
-  S --> L
-  S --> SEC
+  Hook -->|"ipcRenderer.invoke('mind:invoke', canal, payload)"| Pre[preload/index.ts]
+  Pre --> Rt[main/ipc/router.ts: valida zod entrada e saída]
+  Rt --> H[main/ipc/handlers.ts]
+  H --> Core[core/core.ts]
+  Core --> Reg[WorkspaceRegistry]
+  Core --> Ing[MaterialService + workers de extração]
+  Core --> Svc[generation · review · study · practice · stats · chat · retrieval]
+  Core --> LLM[llm: OpenRouter, consentimento, custos]
+  Reg --> DB[(app.db + workspace.db por workspace)]
+  Reg --> FS[(workspaces/uuid/files)]
+  Core -. eventos job:* e window:focus-requested .-> UI
 ```
 
-**Regras de dependência.** Web e API dependem dos serviços; os serviços não importam web nem api. As duas bordas são montadas em `create_app` (`/api` montado como sub-app). [src: src/mind/web/app.py:100-104]
-
-**Transversais.**
-
-- Segurança local: `TrustedHostMiddleware`, checagem de origem em métodos não seguros, CSP restritiva (`script-src 'self'`), `nosniff`. [src: src/mind/web/security.py:41-67]
-- Erros: hierarquia `AppError` com tratador que renderiza `error.html`; a API usa problem+json. [src: src/mind/errors.py, src/mind/api/problems.py]
-- Log com redação da chave. [src: src/mind/redaction.py, app.py:80]
-- i18n: textos pt-BR em um dicionário único `T` e `SECTIONS`. [src: src/mind/web/strings.py:12-23]
-- Config: variáveis `MIND_*` e `.env`. [src: src/mind/config.py]
-
-**Decisões e motivos.** Sem autenticação por desenho (uso local; o Dockerfile avisa para publicar só em 127.0.0.1) [src: Dockerfile:5]. Demais motivos: ver `design.md` do intent `261114-mind-study-tool`.
+- **Um único canal IPC** (`mind:invoke`); o preload só repassa nomes de `CHANNEL_NAMES`. [src: src/preload/index.ts:15-25; mem: M-9]
+- **Núcleo sem Electron**: diálogos nativos entram por `UiBridge`; o núcleo é testável em Vitest. [src: src/main/ipc/handlers.ts:46-55]
+- **Uma `BrowserWindow`**: `setWindowOpenHandler` nega novas janelas e `will-navigate` bloqueia URLs fora do app. [src: src/main/index.ts:56-60]
+- **Segurança**: `contextIsolation`, `sandbox`, sem `nodeIntegration`; CSP `default-src 'self'` sem `blob:`; permissões do Chromium negadas. [src: src/main/security.ts; src/main/index.ts:63-73]
+- **Instância única** (`requestSingleInstanceLock`); ao fechar, o `core` fecha bancos e jobs antes de sair. [src: src/main/index.ts:76-95,170-184]
+- **Jobs** em fila com eventos `job:progress` e `job:finished`; extração de PDF/DOCX em worker threads. [src: src/core/jobs; src/main/extract-worker.ts; src/core/ingestion/pdf.worker.ts]

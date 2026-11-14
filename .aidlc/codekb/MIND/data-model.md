@@ -1,25 +1,25 @@
-# Data model — MIND
-Status: draft · Confidence: medium
+# Modelo de dados
 
-**Armazenamento.** `app.db` (workspaces, configurações, consentimento, custos) e um `workspace.db` por workspace; migrações Alembic separadas (`migrations/app` e `migrations/workspace`). A chave da API fica em `.env` no diretório de dados, nunca na UI. [src: src/mind/config.py:30-37, src/mind/secrets.py]
+Status: human-reviewed (2026-11-14) · Confiança: alta
 
 ```mermaid
 erDiagram
-  WORKSPACE ||--o{ MATERIAL : "tem (workspace.db)"
-  MATERIAL ||--o{ CHUNK : contem
-  MATERIAL ||--o{ GENERATION_RUN : alimenta
-  GENERATION_RUN ||--o{ ITEM : produz
-  TOPIC ||--o{ ITEM : classifica
-  ITEM ||--o| CARD_STATE : agenda
-  ITEM ||--o{ REVIEW_LOG : registra
-  ITEM ||--o{ ATTEMPT : responde
-  CHUNK ||--o| CHUNK_EMBEDDING : indexa
-  JOB }o--|| MATERIAL : processa
-  CHAT_MESSAGE }o--|| WORKSPACE : pertence
+  workspace_app ||--o{ material : "pasta workspaces/uuid"
+  material ||--o{ chunk : contém
+  material ||--o{ generation_run : origem
+  generation_run ||--o{ item : gera
+  topic ||--o{ item : rotula
+  chunk ||--o{ item : "fonte (chunk_id, source_page, quote)"
+  item ||--o| card_state : FSRS
+  item ||--o{ review_log : revisões
+  item ||--o{ attempt : respostas
+  chunk ||--o| chunk_embedding : vetor
 ```
 
-Entidades: `Job, Material, Chunk, Topic, GenerationRun, Item, CardState, ReviewLog, Meta, Attempt, ChatMessage, ChunkEmbedding` por workspace; `Workspace, Setting, Consent, CostEntry, ModelPrice` no app. [src: src/mind/db/workspace_models.py, app_models.py]
-
-**PII.** O conteúdo dos materiais é do usuário; só trechos usados na geração vão ao provedor, após consentimento. [src: README.md:7-8]
-
-**Diretório de dados.** `platformdirs.user_data_dir("mind")`, ou `MIND_DATA_DIR`. [src: src/mind/config.py:63-67]
+- **`app.db`** (global): `workspace`, `setting`, `consent`, `cost_ledger`, `model_price`. [src: src/core/db/app-schema.ts]
+- **`workspaces/<uuid>/workspace.db`**: `job`, `material`, `chunk` (+FTS), `topic`, `generation_run`, `item`, `card_state`, `review_log` (`duration_ms`, `day`), `attempt` (`seconds`, `day`), `meta` (chave/valor por workspace), `chat_message`, `chunk_embedding`. [src: src/core/db/workspace-schema.ts]
+- **Arquivos**: `workspaces/<uuid>/files/<…>/<original>`; `material.stored_path` é relativo à raiz do workspace e a exclusão do material remove a pasta. [src: src/core/ingestion/service.ts:182,224,411]
+- **Backup**: `.zip` com manifesto, snapshot do banco e `files/`. [src: src/core/workspaces/archive.ts:78-84]
+- **Migrações**: Drizzle em `src/core/db/migrations/{app,workspace}` (workspace: 0000 init, 0001 índice de chunk, 0002 FTS). [src: db/migrations]
+- `material` não tem `topic_id`; o tópico vem de `item` e `generation_run`. `day` é o dia local de estudo.
+- Não existe hoje nenhuma tabela de sessões de estudo; a meta diária atual é em número de cartões (`study settings.dailyGoal`). [src: src/renderer/src/pages/TodayPage.tsx]

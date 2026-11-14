@@ -1,24 +1,16 @@
-# Quality and risks — MIND
-Status: draft · Confidence: medium
+# Qualidade e riscos
 
-**Baseline de testes.** `uv run pytest --cov --cov-fail-under=80`, 2026-11-14, commit 7a16826: 642 passaram, 6 desmarcados (`perf`/`real_llm`), 1 aviso, cobertura 97,38%, nenhuma falha pré-existente. [user: autorizou a execução]
+Status: draft · Confiança: alta
 
-**Pontos sensíveis para a mudança de UI.**
+**Baseline (2026-11-14, commit 101d3e6).** `pnpm lint` exit 0 · `pnpm format:check` exit 0 · `pnpm typecheck` exit 0 · `pnpm test --coverage`: **66 arquivos, 614 testes, todos passam**; cobertura: instruções 94,37% · ramos 86,2% · funções 93,73% · linhas 95,52% (limite 80%). `pnpm e2e` não foi rodado. Sem falhas pré-existentes.
 
-| Risco | Evidência |
-|---|---|
-| CSP `script-src 'self'` e `style-src 'self'` podem barrar scripts injetados pela casca e qualquer estilo inline | src/mind/web/security.py:19-22 |
-| Checagem de origem espera `Host` loopback em porta fixa; com porta aleatória e token, o `TrustedHost` e o `Origin` precisam ser revistos | src/mind/web/security.py:28-38 |
-| API sem autenticação: hoje só o loopback a protege; qualquer processo local acessa a porta | src/mind/api/ |
-| Estado da UI no HTMX e em `study.js`/`practice.js` depende de recargas parciais | src/mind/web/static/ |
-| Fórmulas (KaTeX) e gráficos gerados no servidor precisam renderizar no WebKitGTK | static/vendor/katex, src/mind/web/charts.py |
-| Dependências de sistema opcionais (Tesseract) não vêm no `.deb` por padrão | README.md:34-40 |
-| Código a remover (S-6): `Dockerfile`, texto de `uvx` e `--host`/`--port` do CLI | Dockerfile, README.md, __main__.py:24-28 |
+**Riscos e pontos frágeis** (todos [inferred], não confirmados):
 
-**Segurança.** Chave só em `.env` do diretório de dados; redação de log. Sem autenticação por desenho.
+- CSP sem `blob:` e uma só janela com abertura de novas janelas negada: qualquer leitor de PDF ou janela extra exige decisão explícita. [src: security.ts; index.ts:56]
+- PDFs grandes: o único caminho atual para o arquivo é o extrator em worker, sem renderização sob demanda para a UI. [src: src/core/ingestion/pdf.ts]
+- Dados de tempo de estudo não existem: `review_log.duration_ms` e `attempt.seconds` são medidas por item, não sessões. [src: workspace-schema.ts]
+- Backup só inclui o que está no banco do workspace e em `files/`; tabelas novas entram sozinhas no snapshot, mas a importação precisa de migração compatível. [src: archive.ts]
 
 ## Open questions
 
-- Q-1: Onde ficam hoje `app.db` e o `.env` no Linux (`~/.local/share/mind`)? Confirmar no `.deb`, que não deve apagar dados do usuário ao atualizar.
-
-- Nenhum dado real em uso nem scripts externos na API ainda `[user]`: há liberdade para mudar caminhos, portas e o diretório de dados sem migração de usuários.
+- Regras de convenção marcadas [inferred] em `conventions.md`: não foram confirmadas pelo autor.
