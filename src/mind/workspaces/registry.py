@@ -22,6 +22,7 @@ from mind.db import migrate
 from mind.db.app_models import Workspace
 from mind.db.base import make_session_factory
 from mind.errors import FieldError, ValidationFailed, WorkspaceNotFound
+from mind.jobs.store import recover_interrupted
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +186,8 @@ class WorkspaceRegistry:
             info, folder = self._info(row), row.folder
         root = self._folder_path(folder)
         engine = migrate.upgrade("workspace", root / "workspace.db")
-        opened = OpenWorkspace(info, engine, make_session_factory(engine), root)
+        sessions = make_session_factory(engine)
+        recover_interrupted(sessions)
+        opened = OpenWorkspace(info, engine, sessions, root)
         self._open[workspace_id] = opened
         return opened
