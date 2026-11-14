@@ -53,6 +53,12 @@ class TopicService:
             raise TopicNotFound(f"Não existe tópico com id {topic_id}.")
         return topic
 
+    def get(self, topic_id: int) -> TopicInfo:
+        found = next((t for t in self.list_topics() if t.id == topic_id), None)
+        if found is None:
+            raise TopicNotFound(f"Não existe tópico com id {topic_id}.")
+        return found
+
     def rename(self, topic_id: int, raw_name: str) -> TopicInfo:
         name = clean_topic(raw_name)
         if name is None:

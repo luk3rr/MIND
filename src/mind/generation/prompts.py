@@ -59,11 +59,20 @@ def render_chunks(chunks: list[PromptChunk]) -> str:
     return "\n\n".join(f"[excerpt {c.id} | {c.label}]\n{c.text}" for c in chunks)
 
 
-def build_card_messages(subtype: str, count: int, chunks: list[PromptChunk]) -> list[Message]:
+def render_avoid(avoid: list[str]) -> str:
+    if not avoid:
+        return ""
+    listing = "\n".join(f"- {text}" for text in avoid)
+    return f"\n\nItems that already exist on this topic (do not repeat them):\n{listing}"
+
+
+def build_card_messages(
+    subtype: str, count: int, chunks: list[PromptChunk], avoid: list[str] | None = None
+) -> list[Message]:
     task = (
         f"Create exactly {count} flashcards of one type from the excerpts below. "
         f'{SUBTYPE_RULES[subtype]} Every card must use `subtype` = "{subtype}".\n\n'
-        f"Excerpts:\n\n{render_chunks(chunks)}"
+        f"Excerpts:\n\n{render_chunks(chunks)}{render_avoid(avoid or [])}"
     )
     return [Message(role="system", content=SYSTEM), Message(role="user", content=task)]
 
@@ -128,10 +137,12 @@ class JudgeItem:
     answer: str
 
 
-def build_question_messages(profile: str, count: int, chunks: list[PromptChunk]) -> list[Message]:
+def build_question_messages(
+    profile: str, count: int, chunks: list[PromptChunk], avoid: list[str] | None = None
+) -> list[Message]:
     task = (
         f"Create exactly {count} questions from the excerpts below. {PROFILE_RULES[profile]}\n\n"
-        f"Excerpts:\n\n{render_chunks(chunks)}"
+        f"Excerpts:\n\n{render_chunks(chunks)}{render_avoid(avoid or [])}"
     )
     return [Message(role="system", content=QUESTION_SYSTEM), Message(role="user", content=task)]
 
