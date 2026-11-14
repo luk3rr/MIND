@@ -89,7 +89,7 @@ test("restores the last section after a restart and opens the quick switcher (FR
   const userData = profile();
   current = await launch(userData);
   await createWorkspace(current, "Atalhos");
-  await current.page.keyboard.press("Control+k");
+  await current.page.keyboard.press("Control+s");
   const dialog = current.page.getByRole("dialog", { name: "Ir para" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("textbox").fill("estat");
