@@ -11,11 +11,19 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, tzinfo
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from mind.clock import utcnow
-from mind.db.workspace_models import CardState, Item, Meta, ReviewLog
+from mind.db.workspace_models import (
+    CardState,
+    GenerationRun,
+    Item,
+    Material,
+    Meta,
+    ReviewLog,
+    Topic,
+)
 from mind.errors import FieldError, ItemNotFound, ValidationFailed
 from mind.review.service import ItemInfo, ReviewService
 from mind.study.formatting import format_interval
@@ -41,6 +49,65 @@ class StudySettings:
     new_per_day: int
     daily_goal: int
     desired_retention: float
+
+
+@dataclass(frozen=True)
+class StudyFilter:
+    """What to study in a session. `None` means "no restriction" for that dimension."""
+
+    kind: str | None = None  # "card" or "question"
+    topic_id: int | None = None
+    material_id: int | None = None
+    subtype: str | None = None
+
+    @property
+    def is_empty(self) -> bool:
+        return self == StudyFilter()
+
+    def params(self) -> dict[str, str]:
+        """The non-empty fields as strings (used to carry the filter between requests)."""
+        values = {
+            "kind": self.kind,
+            "topic": self.topic_id,
+            "material": self.material_id,
+            "subtype": self.subtype,
+        }
+        return {key: str(value) for key, value in values.items() if value is not None}
+
+    def conditions(self) -> list[ColumnElement[bool]]:
+        found: list[ColumnElement[bool]] = [
+            Item.status == "approved",
+            Item.kind == (self.kind or "card"),
+        ]
+        if self.topic_id is not None:
+            found.append(Item.topic_id == self.topic_id)
+        if self.subtype is not None:
+            found.append(Item.subtype == self.subtype)
+        if self.material_id is not None:
+            found.append(
+                Item.run_id.in_(
+                    select(GenerationRun.id).where(GenerationRun.material_id == self.material_id)
+                )
+            )
+        return found
+
+
+@dataclass(frozen=True)
+class Facet:
+    key: int | str
+    label: str
+    count: int
+
+
+@dataclass(frozen=True)
+class StudyFacets:
+    """The options of the study selector, each with how many approved items it holds."""
+
+    topics: list[Facet]
+    materials: list[Facet]
+    subtypes: list[Facet]
+    cards: int
+    questions: int
 
 
 @dataclass(frozen=True)
@@ -147,23 +214,25 @@ class StudyService:
             or 0
         )
 
-    def counts(self, now: datetime | None = None) -> TodayCounts:
+    def counts(
+        self, now: datetime | None = None, selection: StudyFilter | None = None
+    ) -> TodayCounts:
         moment = now or self._clock()
         end = day_end(moment, self._tz)
         ahead = moment + LEARN_AHEAD
         day = self._today(moment)
+        wanted = (selection or StudyFilter()).conditions()
         with self._sessions() as session:
-            approved = (Item.status == "approved") & (Item.kind == "card")
             learning = session.scalar(
                 select(func.count()).select_from(CardState).join(Item, Item.id == CardState.item_id)
-                .where(approved, CardState.state.in_(LEARNING_STATES), CardState.due <= ahead)
+                .where(*wanted, CardState.state.in_(LEARNING_STATES), CardState.due <= ahead)
             )  # fmt: skip
             review = session.scalar(
                 select(func.count()).select_from(CardState).join(Item, Item.id == CardState.item_id)
-                .where(approved, CardState.state == REVIEW_STATE, CardState.due <= end)
+                .where(*wanted, CardState.state == REVIEW_STATE, CardState.due <= end)
             )  # fmt: skip
             unseen = session.scalar(
-                select(func.count(Item.id)).where(approved, ~Item.id.in_(select(CardState.item_id)))
+                select(func.count(Item.id)).where(*wanted, ~Item.id.in_(select(CardState.item_id)))
             )
             new_today = self._new_studied_today(session, day)
             reviewed = session.scalar(select(func.count(ReviewLog.id)).where(ReviewLog.day == day))
@@ -176,21 +245,26 @@ class StudyService:
             new_studied_today=new_today,
         )
 
-    def queue(self, limit: int = 20, now: datetime | None = None) -> list[StudyCard]:
+    def queue(
+        self,
+        limit: int = 20,
+        now: datetime | None = None,
+        selection: StudyFilter | None = None,
+    ) -> list[StudyCard]:
         """Upcoming cards: due learning cards, reviews due today, then new cards in the quota."""
         moment = now or self._clock()
         end = day_end(moment, self._tz)
         ahead = moment + LEARN_AHEAD
         cards: list[StudyCard] = []
+        wanted = (selection or StudyFilter()).conditions()
         with self._sessions() as session:
-            approved = (Item.status == "approved") & (Item.kind == "card")
             for states, cutoff in ((LEARNING_STATES, ahead), ((REVIEW_STATE,), end)):
                 remaining = limit - len(cards)
                 if remaining <= 0:
                     break
                 rows = session.scalars(
                     select(CardState).join(Item, Item.id == CardState.item_id)
-                    .where(approved, CardState.state.in_(states), CardState.due <= cutoff)
+                    .where(*wanted, CardState.state.in_(states), CardState.due <= cutoff)
                     .order_by(CardState.due).limit(remaining)
                 ).all()  # fmt: skip
                 cards.extend(
@@ -202,16 +276,57 @@ class StudyService:
             room = min(limit - len(cards), allowance)
             if room > 0:
                 fresh = session.scalars(
-                    select(Item).where(approved, ~Item.id.in_(select(CardState.item_id)))
+                    select(Item).where(*wanted, ~Item.id.in_(select(CardState.item_id)))
                     .order_by(Item.approved_at, Item.id).limit(room)
                 ).all()  # fmt: skip
                 cards.extend(StudyCard(self._review.get(i.id), None) for i in fresh)
         return cards
 
-    def next_card(self, now: datetime | None = None) -> StudyCard | None:
+    def next_card(
+        self, now: datetime | None = None, selection: StudyFilter | None = None
+    ) -> StudyCard | None:
         """The next card to study, or `None` when the session is over."""
-        upcoming = self.queue(1, now)
+        upcoming = self.queue(1, now, selection)
         return upcoming[0] if upcoming else None
+
+    def facets(self) -> StudyFacets:
+        """Selector options with the number of approved items behind each one."""
+        approved = (Item.status == "approved", Item.kind == "card")
+        with self._sessions() as session:
+            topics = session.execute(
+                select(Topic.id, Topic.name, func.count(Item.id))
+                .join(Item, Item.topic_id == Topic.id)
+                .where(*approved)
+                .group_by(Topic.id)
+                .order_by(Topic.name)
+            ).all()
+            materials = session.execute(
+                select(Material.id, Material.title, func.count(Item.id))
+                .join(GenerationRun, GenerationRun.material_id == Material.id)
+                .join(Item, Item.run_id == GenerationRun.id)
+                .where(*approved)
+                .group_by(Material.id)
+                .order_by(Material.title)
+            ).all()
+            subtypes = session.execute(
+                select(Item.subtype, func.count(Item.id))
+                .where(*approved)
+                .group_by(Item.subtype)
+                .order_by(Item.subtype)
+            ).all()
+            cards = session.scalar(select(func.count(Item.id)).where(*approved))
+            questions = session.scalar(
+                select(func.count(Item.id)).where(
+                    Item.status == "approved", Item.kind == "question"
+                )
+            )
+        return StudyFacets(
+            topics=[Facet(i, str(n), int(c)) for i, n, c in topics],
+            materials=[Facet(i, str(n), int(c)) for i, n, c in materials],
+            subtypes=[Facet(str(s), str(s), int(c)) for s, c in subtypes],
+            cards=int(cards or 0),
+            questions=int(questions or 0),
+        )
 
     def card(self, item_id: int) -> StudyCard:
         """A specific card with its current state (used after an undo)."""

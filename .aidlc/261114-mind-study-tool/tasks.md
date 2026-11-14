@@ -146,6 +146,9 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-5.6 Estudo sem rede: nenhuma rota de estudo depende do provedor. · NFR-5 · teste: `tests/study/test_offline.py` (provedor que falha) · files: tests/study/test_offline.py
 - [x] T-5.7 API `study/queue` e `study/reviews`. · FR-24 · teste: `tests/api/test_study_contract.py` · files: src/mind/api/{deps,schemas}.py, src/mind/api/v1/{study,__init__}.py, src/mind/study/service.py (queue), tests/api/{test_study_contract.py,openapi_v1.json}
 - [x] T-5.8 Latência p95 < 300 ms nas telas de estudo e navegação. · NFR-3 · teste: `tests/perf/test_ui_latency.py` (marcador `perf`) · files: tests/perf/test_ui_latency.py (measured p95 with 1000 cards: today 5 ms, study 9 ms, queue 28 ms, queue+rate 13 ms)
+- [x] T-5.9 (adição pedida pelo autor após a UNIT-5) Seletor de estudo no serviço: `StudyFilter` por tipo de conteúdo, tópico, material e tipo de card, aplicado à fila e às contagens; limite de novos continua global; `facets()` com as opções e suas contagens. · FR-13, US-7 · teste: `tests/study/test_study_filter.py` · files: src/mind/study/service.py (StudyFilter, StudyFacets, queue/counts/facets), tests/study/test_study_filter.py
+- [ ] T-5.10 Seletor de estudo na interface: formulário na tela Estudar (e atalho em Hoje) que mantém o filtro durante a sessão. · US-7 · teste: `tests/web/test_study_filter_pages.py`
+- [ ] T-5.11 Filtros na API de estudo (`topic_id`, `material_id`, `subtype`, `kind` na fila e no resumo) e `GET /study/facets`. · FR-24 · teste: `tests/api/test_study_contract.py`
 
 **Resumo da UNIT-5 (2026-11-14)**
 
