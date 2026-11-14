@@ -30,6 +30,7 @@ from mind.web.generate_pages import router as generate_router
 from mind.web.library_pages import router as library_router
 from mind.web.provider_pages import router as provider_router
 from mind.web.rendering import BASE_DIR, Registry, render
+from mind.web.review_pages import router as review_router
 from mind.web.security import install_security
 from mind.web.strings import SECTIONS
 from mind.workspaces.registry import WorkspaceInfo, WorkspaceRegistry
@@ -83,6 +84,7 @@ def create_app(
     app.include_router(provider_router)
     app.include_router(library_router)
     app.include_router(generate_router)
+    app.include_router(review_router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> HTMLResponse:
