@@ -12,7 +12,7 @@
 {% if material.status == "failed" and material.error_detail %}<p class="alert alert-danger" role="alert">{{ material.error_detail }}</p>{% endif %}
 <h2>{{ t.preview_title }}</h2>
 {% for chunk in chunks %}
-<article class="card chunk">
+<article class="card chunk{% if chunk.id == highlight %} chunk-highlight{% endif %}" id="chunk-{{ chunk.id }}">
   <p class="muted">
     {% if chunk.page %}{{ t.preview_page }} {{ chunk.page }}{% endif %}
     {% if chunk.section %}{{ t.preview_section }}: {{ chunk.section }}{% endif %}

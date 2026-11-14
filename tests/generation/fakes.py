@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 
+from mind.chat.schemas import ChatAnswer, ChatCitation
 from mind.generation.schemas import (
     CardBatch,
     CardOut,
@@ -100,3 +101,14 @@ def judge_supports_everything(messages: Sequence[Message], model: str) -> JudgeB
     """A judge that accepts every question listed in the prompt."""
     total = len(re.findall(r"\[question \d+\]", messages[-1].content))
     return JudgeBatch(verdicts=[Verdict(index=i, supported=True) for i in range(total)])
+
+
+def chat_from_prompt(messages: Sequence[Message], model: str) -> ChatAnswer:
+    """Answer a chat prompt by quoting the first excerpt."""
+    excerpt = EXCERPT.search(messages[-1].content)
+    assert excerpt
+    return ChatAnswer(
+        supported=True,
+        answer="Resposta baseada no material.",
+        citations=[ChatCitation(chunk_id=int(excerpt.group(1)), quote=excerpt.group(2)[:60])],
+    )

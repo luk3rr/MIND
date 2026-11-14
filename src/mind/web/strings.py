@@ -299,5 +299,30 @@ T: dict[str, str] = {
     "train_hint": "Os itens novos usam os trechos de onde você errou.",
     "train_cancel": "Gerar a partir de um material",
     "train_run": "Treino",
+    "chat_title": "Chat com a base",
+    "chat_hint": (
+        "Cada pergunta é independente e só é enviada ao modelo quando você clica em Perguntar."
+    ),
+    "chat_question": "Sua pergunta",
+    "chat_ask": "Perguntar",
+    "chat_empty": "Nenhuma pergunta ainda. Pergunte algo sobre o material importado.",
+    "chat_you": "Você",
+    "chat_answer": "Resposta",
+    "chat_no_support": "Sem suporte no material",
+    "chat_sources": "Fontes",
+    "chat_open_source": "Abrir o trecho",
+    "chat_clear": "Apagar histórico",
+    "chat_cost": "Custo",
+    "emb_title": "Busca semântica (opcional)",
+    "emb_hint": (
+        "Combina a busca por palavras com a busca por significado. Baixa um modelo na primeira vez."
+    ),
+    "emb_unavailable": "Para ativar, instale o extra: pip install 'mind-study[embeddings]'.",
+    "emb_status": "Trechos vetorizados",
+    "emb_enable": "Ativar e vetorizar",
+    "emb_update": "Vetorizar trechos novos",
+    "emb_disable": "Desativar",
+    "emb_on": "Ativada",
+    "emb_off": "Desativada",
     "today_setup_step": "Passo 3 de 3: importe seu primeiro material.",
 }

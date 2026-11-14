@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from mind.api.app import create_api_app
+from mind.chat.factory import ChatFactory
 from mind.config import Settings, load_settings
 from mind.error_notebook.service import NotebookFactory
 from mind.errors import AppError, ValidationFailed, WorkspaceNotFound
@@ -27,10 +28,12 @@ from mind.jobs.queue import JobQueue
 from mind.llm.provider import Provider
 from mind.practice.service import PracticeFactory
 from mind.redaction import install_log_redaction, uninstall_log_redaction
+from mind.retrieval.embeddings import Embedder
 from mind.review.service import ReviewFactory
 from mind.services import Services
 from mind.stats.service import StatsFactory
 from mind.study.service import StudyFactory
+from mind.web.chat_pages import router as chat_router
 from mind.web.errors_pages import router as errors_router
 from mind.web.generate_pages import router as generate_router
 from mind.web.library_pages import router as library_router
@@ -60,6 +63,7 @@ def create_app(
     http_client: httpx.AsyncClient | None = None,
     inner_provider: Provider | None = None,
     page_fetcher: PageFetcher | None = None,
+    embedder: Embedder | None = None,
 ) -> FastAPI:
     """Build the application. The optional arguments let tests replace the network layer."""
     resolved = settings or load_settings(env_file=Path(".env"))
@@ -85,6 +89,7 @@ def create_app(
             target.state.practice = PracticeFactory(registry)
             target.state.stats = StatsFactory(registry)
             target.state.notebook = NotebookFactory(registry)
+            target.state.chat = ChatFactory(registry, queue, services, embedder)
         try:
             yield
         finally:
@@ -112,6 +117,7 @@ def create_app(
     app.include_router(practice_router)
     app.include_router(stats_router)
     app.include_router(errors_router)
+    app.include_router(chat_router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> HTMLResponse:

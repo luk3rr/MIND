@@ -13,6 +13,7 @@ from fastapi import Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from mind.chat.factory import ChatFactory
 from mind.error_notebook.service import NotebookFactory
 from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
@@ -76,6 +77,11 @@ def get_practice(request: Request) -> PracticeFactory:
     return factory
 
 
+def get_chat(request: Request) -> ChatFactory:
+    factory: ChatFactory = request.app.state.chat
+    return factory
+
+
 def get_study(request: Request) -> StudyFactory:
     factory: StudyFactory = request.app.state.study
     return factory
@@ -90,6 +96,7 @@ StudyDep = Annotated[StudyFactory, Depends(get_study)]
 PracticeDep = Annotated[PracticeFactory, Depends(get_practice)]
 StatsDep = Annotated[StatsFactory, Depends(get_stats)]
 NotebookDep = Annotated[NotebookFactory, Depends(get_notebook)]
+ChatDep = Annotated[ChatFactory, Depends(get_chat)]
 
 
 def render(

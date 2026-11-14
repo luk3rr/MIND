@@ -537,3 +537,21 @@ html:not(.js) .study-back[hidden] {
     scroll-behavior: auto !important;
   }
 }
+
+.chat-turn {
+  margin: 0.75rem 0;
+}
+.chat-answer {
+  white-space: pre-wrap;
+}
+.chat-sources summary {
+  cursor: pointer;
+}
+.chat-sources blockquote {
+  margin: 0.25rem 0 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--accent);
+}
+.chunk-highlight {
+  outline: 2px solid var(--accent);
+}

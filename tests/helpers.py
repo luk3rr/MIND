@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from mind.ingestion.web import FetchedPage
@@ -46,3 +46,15 @@ class SavedPageFetcher:
         target = folder / "page.html"
         target.write_text(self.html, encoding="utf-8")
         return FetchedPage(target, self.final_url)
+
+
+TOPICS = ("energia", "genética", "ribossomo")
+
+
+class TopicEmbedder:
+    """One axis per topic word: a text is as close to a query as the words they share."""
+
+    model_name = "fake-topics"
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        return [[1.0 if word in text.lower() else 0.0 for word in TOPICS] for text in texts]

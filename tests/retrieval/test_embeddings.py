@@ -2,8 +2,6 @@
 # Created on: November 14, 2026
 # Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
 
-from collections.abc import Sequence
-
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -21,17 +19,7 @@ from mind.retrieval.embeddings import (
     unpack,
 )
 from mind.retrieval.retriever import Bm25Retriever
-
-TOPICS = ("energia", "genética", "ribossomo")
-
-
-class TopicEmbedder:
-    """One axis per topic word: a text is as close to a query as the words they share."""
-
-    model_name = "fake-topics"
-
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        return [[1.0 if word in text.lower() else 0.0 for word in TOPICS] for text in texts]
+from tests.helpers import TopicEmbedder
 
 
 @pytest.fixture

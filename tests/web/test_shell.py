@@ -45,13 +45,6 @@ def test_sidebar_lists_every_section_and_workspace(client: TestClient) -> None:
     assert 'aria-current="page"' in page
 
 
-def test_other_sections_show_coming_soon(client: TestClient) -> None:
-    workspace_id = create_workspace(client)
-    page = client.get(f"/w/{workspace_id}/chat")
-    assert page.status_code == 200
-    assert "Em breve" in page.text
-
-
 def test_unknown_workspace_and_section_return_404(client: TestClient) -> None:
     workspace_id = create_workspace(client)
     assert client.get("/w/999/today").status_code == 404

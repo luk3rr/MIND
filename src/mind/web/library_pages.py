@@ -121,11 +121,16 @@ async def preview(
     registry: Registry,
     materials: MaterialsDep,
     offset: int = 0,
+    chunk: int | None = None,
 ) -> HTMLResponse:
     info = registry.get(workspace_id)
     service = materials.for_workspace(workspace_id)
     material: MaterialInfo = service.get(material_id)
     offset = max(offset, 0)
+    if chunk is not None:
+        before = service.chunk_offset(material_id, chunk)
+        if before is not None:
+            offset = before - before % PREVIEW_PAGE_SIZE
     chunks = service.chunks(material_id, offset=offset, limit=PREVIEW_PAGE_SIZE)
     total = service.chunk_count(material_id)
     return render(
@@ -136,6 +141,7 @@ async def preview(
         material=material,
         chunks=chunks,
         offset=offset,
+        highlight=chunk,
         previous_offset=max(offset - PREVIEW_PAGE_SIZE, 0) if offset > 0 else None,
         next_offset=offset + PREVIEW_PAGE_SIZE if offset + PREVIEW_PAGE_SIZE < total else None,
     )

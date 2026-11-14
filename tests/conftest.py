@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
+from mind.chat.schemas import ChatAnswer
 from mind.config import Settings
 from mind.db import migrate
 from mind.db.base import make_session_factory
@@ -17,6 +18,7 @@ from mind.llm.fake import FakeProvider
 from mind.web.app import create_app
 from tests.generation.fakes import (
     cards_from_prompt,
+    chat_from_prompt,
     judge_supports_everything,
     questions_from_prompt,
 )
@@ -44,6 +46,7 @@ def ready(tmp_path: Path) -> Iterator[TestClient]:
     fake.script(CardBatch, cards_from_prompt)
     fake.script(QuestionBatch, questions_from_prompt)
     fake.script(JudgeBatch, judge_supports_everything)
+    fake.script(ChatAnswer, chat_from_prompt)
     app = create_app(
         Settings(data_dir=tmp_path), inner_provider=fake, page_fetcher=SavedPageFetcher(ARTICLE)
     )

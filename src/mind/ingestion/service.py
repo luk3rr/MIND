@@ -308,6 +308,21 @@ class MaterialService:
                 for c in session.scalars(query)
             ]
 
+    def chunk_offset(self, material_id: int, chunk_id: int) -> int | None:
+        """How many chunks come before `chunk_id` in its material (None if it is not there)."""
+        with self._sessions() as session:
+            chunk = session.get(Chunk, chunk_id)
+            if chunk is None or chunk.material_id != material_id:
+                return None
+            return int(
+                session.scalar(
+                    select(func.count())
+                    .select_from(Chunk)
+                    .where(Chunk.material_id == material_id, Chunk.ordinal < chunk.ordinal)
+                )
+                or 0
+            )
+
     def chunk_count(self, material_id: int) -> int:
         with self._sessions() as session:
             return int(
