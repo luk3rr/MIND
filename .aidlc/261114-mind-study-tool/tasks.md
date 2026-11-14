@@ -94,7 +94,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Desvios e adições (em `design.md § 3.1 / UNIT-2` e aqui): (1) validação de `Host` e `Origin` (proteção contra DNS rebinding e CSRF contra o localhost), não prevista no plano, motivada por a chave ser gravada pela tela; (2) `web/app.py` dividido em `rendering.py`, `security.py` e `provider_pages.py`, e `services.py` criado para montar os serviços uma vez por processo; (3) `create_app` aceita `http_client` e `inner_provider` para testes; (4) os testes de interface usam `base_url="http://127.0.0.1:8000"` por causa da validação de `Host`; (5) `httpx` virou dependência de execução; (6) `SecretStore` ficou em `secrets.py` na raiz do pacote, junto de `redaction.py`.
 - Pendências conhecidas: o cliente OpenRouter só foi exercitado com transporte simulado; a primeira chamada real, a validação dos slugs de modelo (A39) e o formato de `usage.cost` (A40) serão conferidos no gate do BOLT-2 com uma chave de verdade.
 
-### UNIT-3 Ingestão de PDF/Markdown, busca e biblioteca — Status: pending
+### UNIT-3 Ingestão de PDF/Markdown, busca e biblioteca — Status: verified (2026-11-14)
 - [x] T-3.1 Modelos `material` e `chunk`, migração do `workspace.db` e tabela virtual FTS5. · FR-5 · teste: `tests/db/test_migrations_workspace.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0003_*.py, tests/ingestion/test_workspace_migrations.py
 - [x] T-3.2 `PdfExtractor` (PyMuPDF; ver A34): texto por página; PDF corrompido gera `EXTRACTION_FAILED`. · FR-2 · teste: `tests/ingestion/test_pdf.py` · files: src/mind/ingestion/extractors.py, tests/ingestion/{pdfs,test_extractors}.py, pyproject.toml
 - [x] T-3.3 Extratores de Markdown e texto. · FR-2 · teste: `tests/ingestion/test_text.py` · files: src/mind/ingestion/extractors.py (TextExtractor), tests/ingestion/test_extractors.py
@@ -104,6 +104,16 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-3.7 Tela Biblioteca: lista, status, prévia do texto, importar, excluir. · US-2 · teste: `tests/web/test_library.py` · files: src/mind/web/{library_pages.py,strings.py,app.py,rendering.py,static/app.css}, src/mind/web/templates/{library,_library_rows,library_preview}.html, src/mind/ingestion/service.py (MaterialsFactory), tests/web/test_library_pages.py
 - [x] T-3.8 API `materials`, `chunks`, `search`. · FR-24 · teste: `tests/api/test_materials_contract.py` · files: src/mind/api/{deps,schemas}.py, src/mind/api/v1/{materials,__init__}.py, tests/api/{test_materials_contract.py,openapi_v1.json}
 - [x] T-3.9 Medição de desempenho: PDF de 100 páginas em < 60 s e ≤ 4 GB. · NFR-1, NFR-4 · teste: `tests/perf/test_import_100_pages.py` (marcador `perf`) · files: tests/perf/test_import_100_pages.py (measured: 0.83 s, 141 MB peak)
+
+**Resumo da UNIT-3 (2026-11-14)**
+
+- Verificação: comando aprovado → exit 0; 233 testes, cobertura 98%, `mypy --strict` sem erros em 104 arquivos. Teste de desempenho (`pytest -m perf`): PDF de 100 páginas importado e indexado em **0,83 s** com pico de **141 MB** (limites: 60 s e 4 GB).
+- Execução real: servidor com `--data-dir` temporário; PDF de 2 páginas enviado por `POST /api/v1/workspaces/1/materials` (202), ficou `indexed` com `page_count: 2`, a busca `mitocondria` (sem acento) devolveu o trecho da página 1, e a Biblioteca mostrou "aula" e "Indexado".
+- Como usar: abrir `/w/{id}/library`, importar PDF, Markdown ou texto, acompanhar o status e ver o texto extraído; busca e trechos também pela API.
+- Desvios e adições: (1) PyMuPDF fixado em `>=1.25,<2`: a linha 2.x passou a exigir numpy, onnxruntime e networkx, pesada demais para uma ferramenta local; (2) `MaterialsFactory` criada para montar o serviço de cada workspace sob demanda; (3) `MIND_MAX_UPLOAD_MB` adicionado às configurações; (4) o método de listagem do serviço se chama `list_materials` para não sombrear o `list` embutido; (5) os testes de PDF geram os arquivos na hora com o próprio PyMuPDF, sem arquivos binários no repositório; (6) o mypy relaxa `disallow_untyped_calls` apenas nos módulos que chamam o PyMuPDF (sem tipos).
+- Pendências conhecidas: PDFs de duas colunas podem sair com ordem de leitura imperfeita (A41), a ser avaliada na amostra de SM-1; o PDF escaneado fica para a UNIT-8.
+
+**BOLT-1 (Esqueleto: UNIT-1, 2 e 3) concluído.** Itens da meta: app abre no navegador com workspaces e tema ✓; `FakeProvider` e OpenRouter atrás da interface ✓; PDF e Markdown importados e pesquisáveis ✓; verificação passa ✓; CI verde: workflow criado, **só roda após o push final**.
 
 ### UNIT-4 Flashcards com fonte e revisão — Status: pending
 - [ ] T-4.1 Modelos `item`, `topic`, `generation_run` e migração. · FR-6 · teste: `tests/db/test_items_migration.py`
