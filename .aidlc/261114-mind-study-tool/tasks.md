@@ -241,10 +241,10 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 ### UNIT-11 Backup e distribuição — Status: pending
 - [x] T-11.1 `WorkspaceArchive`: exportar e importar `.zip` com `manifest.json`; recusa e migra versões. ≈2 h · FR-22, US-15 · teste: `tests/workspaces/test_archive.py` (ida e volta; `ARCHIVE_INCOMPATIBLE`)
 - [x] T-11.2 Interface e API de backup. · FR-22, FR-24, US-15 · teste: `tests/api/test_backup_contract.py`
-- [ ] T-11.3 README em pt-BR, `.env.example`, instruções com `uv`/`uvx` e Tesseract; aviso sobre a API sem autenticação. · NFR-9, US-16 · teste: revisão por lista de conferência registrada no gate
-- [ ] T-11.4 Dockerfile opcional com Tesseract. · NFR-9 · teste: build da imagem e execução do `/api/docs`
-- [ ] T-11.5 Revisão de licenças (fontes, KaTeX, dependências, A34), `LICENSE` e `NOTICE`. · A21, A34 · teste: lista de conferência registrada
-- [ ] T-11.6 Material de amostra para o primeiro baralho. · US-16 · teste: `tests/e2e/test_sample_deck.py` com `FakeProvider`
+- [x] T-11.3 README em pt-BR, `.env.example`, instruções com `uv`/`uvx` e Tesseract; aviso sobre a API sem autenticação. · NFR-9, US-16 · teste: revisão por lista de conferência registrada no gate
+- [x] T-11.4 Dockerfile opcional com Tesseract. · NFR-9 · teste: build da imagem e execução do `/api/docs`
+- [x] T-11.5 Revisão de licenças (fontes, KaTeX, dependências, A34), `LICENSE` e `NOTICE`. · A21, A34 · teste: lista de conferência registrada
+- [x] T-11.6 Material de amostra para o primeiro baralho. · US-16 · teste: `tests/e2e/test_sample_deck.py` com `FakeProvider`
 - [ ] T-11.7 Instalação limpa em Linux e em uma segunda plataforma. · SM-3, NFR-9 · teste: execução manual registrada em `construction/`
 
 ### Cobertura de tarefas (rastreabilidade)
