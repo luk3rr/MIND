@@ -9,6 +9,7 @@ import type { FormEvent } from "react";
 import type { ErrorInfo, OutputOf } from "../../../core/contracts/index.js";
 import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
+import type { Route } from "../router.js";
 import { T } from "../strings.js";
 
 type Run = OutputOf<"generation:list">["runs"][number];
@@ -21,10 +22,12 @@ export function runPath(workspaceId: number, runId: number): string {
 function RunsTable({
   workspaceId,
   runs,
+  topics,
   onChange,
 }: {
   workspaceId: number;
   runs: Run[];
+  topics: Map<number, string>;
   onChange: () => void;
 }) {
   const { navigate } = useRouter();
@@ -45,7 +48,15 @@ function RunsTable({
         {runs.map((run) => (
           <tr key={run.id}>
             <td>{run.createdAt.slice(0, 16).replace("T", " ")}</td>
-            <td>{T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype}</td>
+            <td>
+              {T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype}
+              {run.topicId !== null && run.materialId === null && (
+                <span className="muted">
+                  {" "}
+                  · {T.trainRun}: {topics.get(run.topicId) ?? run.topicId}
+                </span>
+              )}
+            </td>
             <td>
               <span className="pill">{T.runStatus[run.status] ?? run.status}</span>
               {run.progress !== null && (
@@ -99,8 +110,21 @@ function RunsTable({
 }
 
 /** Generate cards from a material: pick the options, see the estimated cost and follow the runs. */
-export function GeneratePage({ workspaceId }: { workspaceId: number }) {
+export function GeneratePage({
+  workspaceId,
+  training,
+}: {
+  workspaceId: number;
+  training?: Pick<Extract<Route, { name: "section" }>, "topicId" | "subtype">;
+}) {
   const { navigate } = useRouter();
+  const topics = useInvoke("topics:list", { workspaceId });
+  const topicNames = new Map(
+    topics.state.status === "ready" ? topics.state.data.topics.map((t) => [t.id, t.name]) : [],
+  );
+  // An unknown topic falls back to the normal material form.
+  const trainTopic =
+    training?.topicId !== undefined && topicNames.has(training.topicId) ? training.topicId : null;
   const materials = useInvoke("material:list", { workspaceId });
   const runs = useInvoke("generation:list", { workspaceId });
   const [materialId, setMaterialId] = useState<number | null>(null);
@@ -115,7 +139,10 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
     | "certo_errado"
     | "multiple_choice_4"
     | "multiple_choice_5"
-  >("qa");
+  >(
+    (["qa", "cloze", "compare", "true_false"] as const).find((v) => v === training?.subtype) ??
+      "qa",
+  );
   const [quantity, setQuantity] = useState("20");
   const [estimate, setEstimate] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -130,15 +157,15 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
 
   const request = (): Parameters<typeof window.mind.invoke<"generation:start">>[1] | null => {
     const count = Number(quantity);
-    if (selected === null || !Number.isInteger(count)) return null;
+    if ((trainTopic === null && selected === null) || !Number.isInteger(count)) return null;
     return {
       workspaceId,
-      materialId: selected,
+      ...(trainTopic !== null ? { topicId: trainTopic } : { materialId: selected as number }),
       subtype,
       quantity: count,
       kind,
-      ...(pageFrom.trim() ? { pageFrom: Number(pageFrom) } : {}),
-      ...(pageTo.trim() ? { pageTo: Number(pageTo) } : {}),
+      ...(trainTopic === null && pageFrom.trim() ? { pageFrom: Number(pageFrom) } : {}),
+      ...(trainTopic === null && pageTo.trim() ? { pageTo: Number(pageTo) } : {}),
     };
   };
 
@@ -148,7 +175,7 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
     setFormError(Object.keys(byField).length === 0 ? error.message : null);
   };
 
-  const key = JSON.stringify([selected, kind, subtype, quantity, pageFrom, pageTo]);
+  const key = JSON.stringify([selected, trainTopic, kind, subtype, quantity, pageFrom, pageTo]);
   useEffect(() => {
     const payload = request();
     if (!payload) {
@@ -201,7 +228,7 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
   return (
     <section aria-labelledby="generate-title">
       <h1 id="generate-title">{T.generate}</h1>
-      {materials.state.status === "ready" && indexed.length === 0 ? (
+      {trainTopic === null && materials.state.status === "ready" && indexed.length === 0 ? (
         <div className="card">
           <p className="muted">{T.generateNoMaterial}</p>
           <button
@@ -219,50 +246,69 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
               {formError}
             </p>
           )}
-          <div className="field">
-            <label htmlFor="gen-material">{T.generateMaterial}</label>
-            <select
-              id="gen-material"
-              value={selected ?? ""}
-              onChange={(event) => setMaterialId(Number(event.target.value))}
-            >
-              {indexed.map((material) => (
-                <option key={material.id} value={material.id}>
-                  {material.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="row">
-            <div className="field">
-              <label htmlFor="gen-from">{T.generatePageFrom}</label>
-              <input
-                id="gen-from"
-                inputMode="numeric"
-                value={pageFrom}
-                onChange={(event) => setPageFrom(event.target.value)}
-              />
-              {errors["pageFrom"] && (
-                <p className="field-error" role="alert">
-                  {errors["pageFrom"]}
-                </p>
-              )}
+          {trainTopic !== null && (
+            <div className="card" role="note">
+              <p>
+                {T.trainBanner} <strong>{topicNames.get(trainTopic)}</strong>
+              </p>
+              <p className="muted">{T.trainHint}</p>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => navigate(sectionPath(workspaceId, "generate"))}
+              >
+                {T.trainCancel}
+              </button>
             </div>
+          )}
+          {trainTopic === null && (
             <div className="field">
-              <label htmlFor="gen-to">{T.generatePageTo}</label>
-              <input
-                id="gen-to"
-                inputMode="numeric"
-                value={pageTo}
-                onChange={(event) => setPageTo(event.target.value)}
-              />
-              {errors["pageTo"] && (
-                <p className="field-error" role="alert">
-                  {errors["pageTo"]}
-                </p>
-              )}
+              <label htmlFor="gen-material">{T.generateMaterial}</label>
+              <select
+                id="gen-material"
+                value={selected ?? ""}
+                onChange={(event) => setMaterialId(Number(event.target.value))}
+              >
+                {indexed.map((material) => (
+                  <option key={material.id} value={material.id}>
+                    {material.title}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
+          )}
+          {trainTopic === null && (
+            <div className="row">
+              <div className="field">
+                <label htmlFor="gen-from">{T.generatePageFrom}</label>
+                <input
+                  id="gen-from"
+                  inputMode="numeric"
+                  value={pageFrom}
+                  onChange={(event) => setPageFrom(event.target.value)}
+                />
+                {errors["pageFrom"] && (
+                  <p className="field-error" role="alert">
+                    {errors["pageFrom"]}
+                  </p>
+                )}
+              </div>
+              <div className="field">
+                <label htmlFor="gen-to">{T.generatePageTo}</label>
+                <input
+                  id="gen-to"
+                  inputMode="numeric"
+                  value={pageTo}
+                  onChange={(event) => setPageTo(event.target.value)}
+                />
+                {errors["pageTo"] && (
+                  <p className="field-error" role="alert">
+                    {errors["pageTo"]}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
           <div className="row">
             <div className="field">
               <label htmlFor="gen-kind">{T.generateKind}</label>
@@ -321,7 +367,11 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
             </p>
           )}
           <div>
-            <button type="submit" className="btn" disabled={busy || selected === null}>
+            <button
+              type="submit"
+              className="btn"
+              disabled={busy || (trainTopic === null && selected === null)}
+            >
               {kind === "card" ? T.generateCards : "Gerar questões"}
             </button>
           </div>
@@ -330,7 +380,12 @@ export function GeneratePage({ workspaceId }: { workspaceId: number }) {
       <section className="card stack" aria-labelledby="runs-title">
         <h2 id="runs-title">{T.runsTitle}</h2>
         {runs.state.status === "ready" && (
-          <RunsTable workspaceId={workspaceId} runs={runs.state.data.runs} onChange={runs.reload} />
+          <RunsTable
+            workspaceId={workspaceId}
+            runs={runs.state.data.runs}
+            topics={topicNames}
+            onChange={runs.reload}
+          />
         )}
       </section>
     </section>

@@ -141,14 +141,18 @@ Ordem: BOLT-1 → BOLT-2 → BOLT-3 → BOLT-4 → BOLT-5 (seguindo o DAG de 2.7
 
 **Resumo do UNIT-11.** Prompts de questão e do juiz com texto idêntico ao do Python (fixtures regeneradas pelo script), esquemas, `questionProblem`, `QuestionGenerator` (forma, fonte, duplicidade, juiz em lote, contagem de não sustentadas e custo somado), `GenerationService` com perfis (`certo_errado`, `multiple_choice_4`, `multiple_choice_5`), lotes de 3 e estimativa de geração mais juiz, `PracticeService` (fila de novas, depois erradas e, com refazer, as certas; tentativas com resultado, tempo e dia; contagens), canais `practice:*` e telas Gerar (cards ou questões), Revisar (alternativas, gabarito e comentário) e Praticar (cronômetro, correção, comentário por alternativa e fonte, teclado). **Resultado dos Units 10 e 11:** verification command exit 0 (469 testes, 96,1% de linhas, 86,1% de ramos) e E2E 26/26 (estudo com teclado, desfazer e prática com o provedor roteirizado). **Desvios.** (1) O contrato `generation:*` agora aceita `kind: question` (A45 cumprida). (2) Uma regressão do `pnpm sm1` (leitura de migrações) foi detectada pelo E2E e corrigida com `try/catch` em torno de `import.meta.glob`.
 
-### UNIT-12 Caderno de erros e estatísticas   Status: not started
-- [ ] UNIT-12.1 Itens errados viram cards com fonte [FR-15] — teste: Teste portado de `error_notebook`
-- [ ] UNIT-12.2 Tópicos e estatísticas (retenção, sequência, acerto por tópico) [FR-16] — teste: Fixtures de estatísticas
-- [ ] UNIT-12.3 Telas Erros e Estatísticas com Recharts [FR-16] — teste: Testing Library
+### UNIT-12 Caderno de erros e estatísticas   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-12.1 Itens errados viram cards com fonte [FR-15] — teste: Teste portado de `error_notebook` — files: src/core/notebook/service.ts (+ notebook.test.ts, fixtures/stats.json)
+- [x] UNIT-12.2 Tópicos e estatísticas (retenção, sequência, acerto por tópico) [FR-16] — teste: Fixtures de estatísticas — files: src/core/stats/{service,topics}.ts (+ stats.test.ts, topics.test.ts, paridade com fixtures/stats.json)
+- [x] UNIT-12.3 Telas Erros e Estatísticas com Recharts [FR-16] — teste: Testing Library — files: src/renderer/src/pages/{ErrorsPage,StatsPage}.tsx, PracticePage (Virar card), Recharts + tabelas alternativas
 
-### UNIT-13 Treino de pontos fracos   Status: not started
-- [ ] UNIT-13.1 Escolher tópicos de menor acerto e pré-configurar a geração [FR-17] — teste: Teste de seleção
-- [ ] UNIT-13.2 Botão "Treinar" nas telas Hoje, Estatísticas e Erros [FR-17] — teste: Testing Library
+**Resumo do UNIT-12.** `ErrorNotebook` (card de erro idempotente com fonte, lista e contagens), `TopicService` (listar, renomear, mesclar, excluir), `StatsService` (acerto por tópico, mais fracos, retenção 30 d, atividade, resumo e sequências), canais `errors:*`, `topics:*` e `stats:overview`, telas Erros e Estatísticas (gráficos Recharts com descrição e tabela alternativa, meta editável, gestão de tópicos) e "Virar card" na Prática. **Paridade:** `extract_fixtures.py` ganhou um mundo semeado (`fixtures/stats.json`) e o TS reproduz exatamente acerto por tópico, mais fracos, retenção, atividade, resumo e o texto dos cards de erro. **Resultado:** verification command exit 0 (512 testes, 96,4% de linhas, 85,9% de ramos), E2E 28/28; consulta de visão geral com 10 mil registros abaixo de 300 ms. **Desvios.** (1) O Recharts 3.2.1 foi adicionado como dependência (decisão do ADR de UI). (2) A seção Chat continua como placeholder (UNIT-14); os testes de navegação passaram a usar Chat.
+
+### UNIT-13 Treino de pontos fracos   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-13.1 Escolher tópicos de menor acerto e pré-configurar a geração [FR-17] — teste: Teste de seleção — files: src/core/generation/training.ts (+ training.test.ts), service.ts (topicId sem material, avoid, spread)
+- [x] UNIT-13.2 Botão "Treinar" nas telas Hoje, Estatísticas e Erros [FR-17] — teste: Testing Library — files: src/renderer/src/components/WeakTopics.tsx, GeneratePage (modo treino), router (?topic=&subtype=), Hoje e Estatísticas
+
+**Resumo do UNIT-13.** `trainingMaterial` (trechos errados primeiro, depois BM25 do nome do tópico, máx. 30; `avoid` com até 25 itens existentes), `GenerationService` aceita `topicId` sem material (tópico forçado nos itens, lotes sem espalhar, `avoid` no prompt, validações e estimativa sem chamar o modelo), seção "Pontos fracos" com "Treinar" em Hoje e Estatísticas e Gerar pré-preenchida por `/w/:id/generate?topic=<id>&subtype=<tipo>` com banner, volta ao formulário de material e rótulo "Treino: tópico" nas execuções. **Resultado:** verification command exit 0 (527 testes, 96,5% de linhas, 86,3% de ramos), E2E 29/29 (treino sem material). **Desvios.** (1) O parser de rotas passou a aceitar só as chaves `chunk`, `topic` e `subtype`, sem repetição. (2) Os testes de treino usam as 3 passagens do rig em vez das 6 do Python; a ordem esperada foi adaptada.
 
 ### UNIT-14 Chat e busca semântica   Status: not started
 - [ ] UNIT-14.1 Chat com recuperação por palavras, citações e "não encontrei suporte" [FR-18] — teste: Testes portados

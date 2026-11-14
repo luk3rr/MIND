@@ -20,11 +20,21 @@ export type Route =
       chunkId?: number;
       /** The practice sub-screen of Study (`/w/:id/study/practice`). */
       practice?: boolean;
+      /** Generate screen pre-filled to train on a weak topic (`?topic=<id>&subtype=<type>`). */
+      topicId?: number;
+      subtype?: string;
     }
   | { name: "unknown" };
 
 const isNumber = (text: string | undefined): text is string =>
   text !== undefined && /^\d+$/.test(text);
+
+function parseQuery(query: string | undefined): URLSearchParams | null {
+  if (query === undefined) return null;
+  const params = new URLSearchParams(query);
+  // Repeated keys or stray text are not routes of ours.
+  return [...params.keys()].length === new Set(params.keys()).size ? params : null;
+}
 
 export function parseRoute(path: string): Route {
   if (path === "/welcome") return { name: "welcome" };
@@ -40,8 +50,19 @@ export function parseRoute(path: string): Route {
     SECTION_SLUGS.includes(section as SectionSlug) &&
     (material === undefined || isNumber(material) || practice) &&
     extra.length === 0;
-  const chunk = query?.startsWith("chunk=") ? query.slice("chunk=".length) : undefined;
-  if (!valid || (query !== undefined && !isNumber(chunk))) return { name: "unknown" };
+  const params = parseQuery(query);
+  const chunk = params?.get("chunk") ?? undefined;
+  const topic = params?.get("topic") ?? undefined;
+  const subtype = params?.get("subtype") ?? undefined;
+  const queryValid =
+    query === undefined ||
+    (params !== null &&
+      [...params.keys()].every((key) => ["chunk", "topic", "subtype"].includes(key)) &&
+      (chunk === undefined || isNumber(chunk)) &&
+      (topic === undefined || (isNumber(topic) && section === "generate")) &&
+      (subtype === undefined || (topic !== undefined && /^[a-z_0-9]{1,30}$/.test(subtype))) &&
+      (chunk !== undefined || topic !== undefined));
+  if (!valid || !queryValid) return { name: "unknown" };
   return {
     name: "section",
     workspaceId: Number(workspace),
@@ -49,11 +70,19 @@ export function parseRoute(path: string): Route {
     ...(material !== undefined && !practice ? { detailId: Number(material) } : {}),
     ...(practice ? { practice: true } : {}),
     ...(chunk !== undefined ? { chunkId: Number(chunk) } : {}),
+    ...(topic !== undefined ? { topicId: Number(topic) } : {}),
+    ...(subtype !== undefined ? { subtype } : {}),
   };
 }
 
 export function sectionPath(workspaceId: number, section: SectionSlug): string {
   return `/w/${workspaceId}/${section}`;
+}
+
+/** The Generate screen pre-filled to train on a topic; nothing is generated until the user asks. */
+export function trainPath(workspaceId: number, topicId: number, subtype?: string): string {
+  const base = `/w/${workspaceId}/generate?topic=${topicId}`;
+  return subtype === undefined ? base : `${base}&subtype=${subtype}`;
 }
 
 export function materialPath(workspaceId: number, materialId: number, chunkId?: number): string {

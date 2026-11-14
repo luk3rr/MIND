@@ -66,7 +66,9 @@ const chunkInfo = z.object({
 const generationRequest = z
   .object({
     workspaceId,
-    materialId: z.number().int().positive(),
+    materialId: z.number().int().positive().optional(),
+    /** Train on a topic instead of a material. */
+    topicId: z.number().int().positive().optional(),
     subtype: z.enum([
       "qa",
       "cloze",
@@ -179,6 +181,38 @@ const practiceCounts = z.object({
   answeredToday: z.number().int(),
   correctToday: z.number().int(),
   toPractice: z.number().int(),
+});
+
+const topicInfo = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  cards: z.number().int(),
+  questions: z.number().int(),
+});
+
+const topicStat = z.object({
+  topicId: z.number().int().nullable(),
+  name: z.string().nullable(),
+  cardReviews: z.number().int(),
+  cardPasses: z.number().int(),
+  questionAttempts: z.number().int(),
+  questionCorrect: z.number().int(),
+  events: z.number().int(),
+  accuracy: z.number().nullable(),
+  cardAccuracy: z.number().nullable(),
+  questionAccuracy: z.number().nullable(),
+  smallSample: z.boolean(),
+});
+
+const errorEntry = z.object({
+  itemId: z.number().int(),
+  front: z.string(),
+  topic: z.string().nullable(),
+  sourceTitle: z.string(),
+  sourcePage: z.number().int().nullable(),
+  fromQuestion: z.boolean(),
+  failures: z.number().int(),
+  lastErrorAt: z.string(),
 });
 
 export const channels = {
@@ -443,6 +477,84 @@ export const channels = {
   "practice:counts": {
     input: z.object({ workspaceId, filter: studyFilter.optional() }).strict(),
     output: practiceCounts,
+  },
+  "errors:list": {
+    input: z.object({ workspaceId, topicId: z.number().int().positive().optional() }).strict(),
+    output: z.object({
+      entries: z.array(errorEntry),
+      counts: z.object({
+        total: z.number().int(),
+        fromQuestions: z.number().int(),
+        failedCards: z.number().int(),
+      }),
+      topics: z.array(topicInfo),
+    }),
+  },
+  "errors:makeCard": {
+    input: z.object({ workspaceId, questionId: z.number().int().positive() }).strict(),
+    output: z.object({ itemId: z.number().int(), created: z.boolean() }),
+  },
+  "topics:list": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ topics: z.array(topicInfo) }),
+  },
+  "topics:rename": {
+    input: z
+      .object({ workspaceId, topicId: z.number().int().positive(), name: z.string().max(200) })
+      .strict(),
+    output: topicInfo,
+  },
+  "topics:merge": {
+    input: z
+      .object({
+        workspaceId,
+        sourceId: z.number().int().positive(),
+        targetId: z.number().int().positive(),
+      })
+      .strict(),
+    output: topicInfo,
+  },
+  "topics:delete": {
+    input: z.object({ workspaceId, topicId: z.number().int().positive() }).strict(),
+    output: z.object({}).strict(),
+  },
+  "stats:overview": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({
+      summary: z.object({
+        reviewedToday: z.number().int(),
+        answeredToday: z.number().int(),
+        activityToday: z.number().int(),
+        goal: z.number().int(),
+        goalMet: z.boolean(),
+        currentStreak: z.number().int(),
+        longestStreak: z.number().int(),
+        totalReviews: z.number().int(),
+        totalAttempts: z.number().int(),
+      }),
+      topics: z.array(topicStat),
+      weakest: z.array(topicStat),
+      retention: z.object({
+        rate: z.number().nullable(),
+        reviews: z.number().int(),
+        days: z.array(
+          z.object({
+            day: z.string(),
+            reviews: z.number().int(),
+            passes: z.number().int(),
+            rate: z.number().nullable(),
+          }),
+        ),
+      }),
+      activity: z.array(
+        z.object({
+          day: z.string(),
+          reviews: z.number().int(),
+          attempts: z.number().int(),
+          total: z.number().int(),
+        }),
+      ),
+    }),
   },
   "settings:get": {
     input: z.object({}).strict(),

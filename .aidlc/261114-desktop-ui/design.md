@@ -112,6 +112,46 @@ flowchart LR
   I --> D
 ```
 
+### UNIT-12 — Caderno de erros e estatísticas (nota de design)
+
+**Objetivo.** Transformar erros em cards com fonte, gerenciar tópicos e mostrar estatísticas (acerto por tópico, retenção, atividade, meta e sequência), com as telas Erros e Estatísticas. Porta `error_notebook/`, `stats/` e `web/{errors,stats}_pages.py`. [src: FR-15, FR-16, US-9, US-10]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Card de erro | `ErrorNotebook.createCard(questionId)`: só questão aprovada e já errada; cria uma vez (idempotente via `origin_item_id`) um card aprovado `origin = error_note` com tópico, trecho, fonte e página da questão; certo/errado vira `true_false` ("Verdadeiro/Falso. comentário"), múltipla escolha vira `qa` com as alternativas no enunciado e a resposta no verso; usa uma `generation_run` interna `kind = notebook` |
+| Lista de erros | `entries(topicId?)`: cards de erro mais cards avaliados "Errei" (rating 1) ao menos uma vez, com contagem de falhas, última falha e origem; ordem da mais recente; `counts` (total, de questões, cards com falha) |
+| Tópicos | `TopicService`: listar (cards e questões aprovados por tópico), renomear (limpo, não vazio, sem colisão sem diferenciar maiúsculas), mesclar (move itens, apaga origem; dois tópicos diferentes) e excluir (itens ficam sem tópico) |
+| Estatísticas | `StatsService`: `topicStats` (acertos de cards com rating ≥ 2 e de tentativas, amostra pequena < 5 eventos, "sem tópico" por último), `weakestTopics`, `retention(30 dias)` só de revisões de cards maduros (estado anterior = 2), `activity(30 dias)`, `summary` (hoje, meta, sequência atual e maior; hoje sem atividade não quebra a sequência) |
+| Paridade | `extract_fixtures.py` ganha um mundo semeado (tópicos, revisões, tentativas em dias diferentes, erros de cada perfil) e grava `fixtures/stats.json` (topicStats, weakest, retention, activity, summary, streaks, texto dos cards de erro); o teste TS semeia o mesmo mundo e compara |
+| IPC | `errors:list`, `errors:makeCard`, `topics:list|rename|merge|delete`, `stats:overview` (resumo, tópicos, retenção, atividade) e a meta usa `study:saveSettings` |
+| UI | Erros: lista com filtro por tópico, contadores, fonte e "Virar card" também ao errar na prática; Estatísticas: cartões de resumo (hoje, meta, sequência), gráfico de retenção e de atividade (Recharts, tema escuro, `aria-label` e tabela alternativa), acerto por tópico com marca de amostra pequena, edição da meta e gestão de tópicos (renomear, mesclar, excluir com confirmação) |
+
+**NFR (nota).** NFR-3/NFR-18: a consulta `stats:overview` usa agregações SQL e fica abaixo de 300 ms com 10 mil registros (teste de latência portado de `tests/perf/test_stats_latency.py`). Acessibilidade: cada gráfico tem descrição textual e tabela.
+
+**Riscos.** (1) Diferenças de data entre o Python e o TS na sequência: o teste injeta o relógio e o fuso. (2) Recharts em jsdom não mede tamanho: os testes conferem os dados e a tabela alternativa, e o E2E confere o gráfico real.
+
+### UNIT-13 — Treino de pontos fracos (nota de design)
+
+**Objetivo.** Gerar itens novos sobre os tópicos em que o usuário mais erra: lista de "Pontos fracos" em Hoje e Estatísticas, botão "Treinar" que abre Gerar já preenchida com o tópico, e geração sem material, usando os trechos de onde o usuário errou. Porta `generation/training.py` e a parte de treino de `generation/service.py`. [src: FR-17, US-11]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Material de treino | `trainingMaterial(topicId)`: trechos de origem de itens aprovados do tópico que tiveram "Errei" (cards) ou resposta errada (questões), do mais errado ao menos (empate pelo id do trecho), depois os melhores resultados BM25 pelo nome do tópico (limite 20), no máximo 30 trechos, sem repetir; `avoid` = até 25 enunciados existentes do tópico (não descartados, mais recentes primeiro, primeira linha, 160 caracteres) |
+| Pedido | `generation:start`/`estimate` aceitam `materialId` ou `topicId` (um dos dois); com `topicId`, os itens recebem esse tópico (sem criar outros), os lotes não espalham trechos (`spread = false`) e o modelo recebe `avoid` ("do not repeat them") |
+| Validação | Sem material nem tópico, erro no campo `materialId`; tópico inexistente, `TOPIC_NOT_FOUND`; tópico sem trechos de origem, "Não há trechos de origem para treinar este tópico." no campo `topicId`; a estimativa de treino não chama o modelo |
+| Pontos fracos | `stats:overview` já traz `weakest` (mínimo de 5 eventos, 5 tópicos); a seção "Pontos fracos" (nome, acerto, eventos, botão "Treinar") aparece em Hoje e Estatísticas e some quando não há tópico elegível |
+| Rota | `/w/:id/generate?topic=<id>` (query `topic` e `subtype` opcionais) abre Gerar com o banner "Treino do tópico <nome>", sem seletor de material e com o botão "Gerar a partir de um material" para voltar; tópico desconhecido cai no formulário normal. A geração só começa ao clicar em "Gerar" |
+| Execuções | A lista de execuções rotula treinos como "Treino: <tópico>" |
+| IPC | `generation:*` ganha `topicId` opcional e `materialId` opcional; `stats:overview` não muda |
+
+**NFR (nota).** NFR-8: a estimativa de treino é só local. Segurança: o `topicId` é inteiro validado pelo zod; nada do nome do tópico vira SQL (o BM25 usa a consulta já higienizada).
+
+**Riscos.** (1) A rota com query: o `parseRoute` aceita `?topic=` e `?subtype=` sem abrir brecha para rotas externas (já validadas). (2) Mudar o contrato de `generation:*` exige atualizar os stubs de teste.
+
 ### Assumptions & open questions
 
 - A7 (1.6): Manter as 8 seções atuais na barra lateral, sem acrescentar seções novas. — confirmed: yes
@@ -891,3 +931,5 @@ sequenceDiagram
 
 - A47 (3.1 UNIT-10): `desired_retention` do ts-fsrs usa os mesmos parâmetros padrão do FSRS 6 do Python. — confirmed: yes
 - A48 (3.1 UNIT-11): A prática fica em `/w/:id/study/practice`, dentro da seção Estudar. — confirmed: yes
+- A49 (3.1 UNIT-12): "Virar card" aparece na lista de erros e logo após um erro na prática; a meta diária é editada em Estatísticas. — confirmed: yes
+- A50 (3.1 UNIT-13): O botão "Treinar" só abre a tela Gerar preenchida; nada é gerado nem cobrado até o clique em "Gerar". — confirmed: yes

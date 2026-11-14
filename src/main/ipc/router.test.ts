@@ -73,6 +73,21 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       correctToday: 0,
       toPractice: 0,
     }),
+    "errors:list": () => {
+      throw new Error("unused");
+    },
+    "errors:makeCard": () => ({ itemId: 1, created: true }),
+    "topics:list": () => ({ topics: [] }),
+    "topics:rename": () => {
+      throw new Error("unused");
+    },
+    "topics:merge": () => {
+      throw new Error("unused");
+    },
+    "topics:delete": () => ({}),
+    "stats:overview": () => {
+      throw new Error("unused");
+    },
     "settings:get": () => ({
       provider: "openrouter",
       generationModel: "a",

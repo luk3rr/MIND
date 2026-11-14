@@ -23,6 +23,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
   const [redo, setRedo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seen, setSeen] = useState<number[]>([]);
+  const [cardMessage, setCardMessage] = useState<string | null>(null);
   const shownAt = useRef(0);
 
   const load = (exclude: number[] = seen): void => {
@@ -37,6 +38,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
         setNext(response.data);
         setChosen(null);
         setResult(null);
+        setCardMessage(null);
         shownAt.current = performance.now();
       });
   };
@@ -164,6 +166,30 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                 </span>
                 <br />“{question.item.quote}”
               </blockquote>
+              {!result.correct && (
+                <div>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() =>
+                      void window.mind
+                        .invoke("errors:makeCard", { workspaceId, questionId: question.item.id })
+                        .then((response) =>
+                          setCardMessage(
+                            response.ok
+                              ? response.data.created
+                                ? T.cardMade
+                                : T.cardExists
+                              : response.error.message,
+                          ),
+                        )
+                    }
+                  >
+                    {T.makeCard}
+                  </button>
+                  {cardMessage && <span className="ok"> {cardMessage}</span>}
+                </div>
+              )}
               <div>
                 <button type="button" className="btn" onClick={advance}>
                   {T.practiceNext}

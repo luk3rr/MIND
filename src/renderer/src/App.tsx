@@ -11,8 +11,10 @@ import { LibraryPage } from "./pages/LibraryPage.js";
 import { MaterialPreviewPage } from "./pages/MaterialPreviewPage.js";
 import { PlaceholderPage } from "./pages/PlaceholderPage.js";
 import { ReviewPage } from "./pages/ReviewPage.js";
+import { ErrorsPage } from "./pages/ErrorsPage.js";
 import { PracticePage } from "./pages/PracticePage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
+import { StatsPage } from "./pages/StatsPage.js";
 import { StudyPage } from "./pages/StudyPage.js";
 import { SetupPage } from "./pages/SetupPage.js";
 import { TodayPage } from "./pages/TodayPage.js";
@@ -57,7 +59,13 @@ function Screen() {
           />
         )}
         {route.section === "generate" && route.detailId === undefined && (
-          <GeneratePage workspaceId={route.workspaceId} />
+          <GeneratePage
+            workspaceId={route.workspaceId}
+            training={{
+              ...(route.topicId !== undefined ? { topicId: route.topicId } : {}),
+              ...(route.subtype !== undefined ? { subtype: route.subtype } : {}),
+            }}
+          />
         )}
         {route.section === "generate" && route.detailId !== undefined && (
           <ReviewPage workspaceId={route.workspaceId} runId={route.detailId} />
@@ -68,9 +76,11 @@ function Screen() {
         {route.section === "study" && route.practice && (
           <PracticePage workspaceId={route.workspaceId} />
         )}
-        {!["today", "settings", "library", "generate", "study"].includes(route.section) && (
-          <PlaceholderPage section={route.section} />
-        )}
+        {route.section === "stats" && <StatsPage workspaceId={route.workspaceId} />}
+        {route.section === "errors" && <ErrorsPage workspaceId={route.workspaceId} />}
+        {!["today", "settings", "library", "generate", "study", "stats", "errors"].includes(
+          route.section,
+        ) && <PlaceholderPage section={route.section} />}
       </Shell>
     );
   }

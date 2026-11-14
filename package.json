@@ -73,6 +73,7 @@
     "linkedom": "^0.18.15",
     "mammoth": "^1.13.0",
     "mupdf": "^1.28.6",
+    "recharts": "3.2.1",
     "tesseract.js": "^7.0.0",
     "ts-fsrs": "^6.0.0",
     "zod": "^4.6.7"

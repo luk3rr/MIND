@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { WeakTopics } from "../components/WeakTopics.js";
 import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
@@ -14,6 +15,7 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
   const { state, reload } = useInvoke("today:summary", { workspaceId });
   const study = useInvoke("study:today", { workspaceId });
   const practice = useInvoke("practice:counts", { workspaceId });
+  const overview = useInvoke("stats:overview", { workspaceId });
 
   return (
     <section aria-labelledby="today-title">
@@ -93,6 +95,9 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
               {study.state.data.counts.reviewedToday} / {study.state.data.settings.dailyGoal}
             </p>
           </div>
+          {overview.state.status === "ready" && (
+            <WeakTopics workspaceId={workspaceId} topics={overview.state.data.weakest} />
+          )}
           {practice.state.status === "ready" && practice.state.data.toPractice > 0 && (
             <div className="card" style={{ marginTop: 16 }}>
               <strong>

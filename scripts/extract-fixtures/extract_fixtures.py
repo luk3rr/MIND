@@ -39,6 +39,11 @@ from mind.ingestion.extractors import (
     markdown_segments,
     reflow_paragraphs,
 )
+from mind.db import migrate
+from mind.db.base import make_session_factory
+from mind.db.workspace_models import Attempt, GenerationRun, Item, ReviewLog, Topic
+from mind.error_notebook.service import error_card_text
+from mind.stats.service import StatsService
 from mind.study.scheduler import CardSchedule, Rating, Scheduler
 from mind.verification.source_checker import SourceChecker, locate_quote, normalize
 
@@ -333,6 +338,138 @@ def docx_and_scanned_fixture() -> dict[str, object]:
     }
 
 
+def stats_fixture() -> dict[str, object]:
+    """A seeded workspace and what the statistics report for it, plus the error-card texts."""
+    now = datetime(2026, 11, 14, 15, 0, tzinfo=UTC)
+    from datetime import timedelta, timezone
+
+    brt = timezone(timedelta(hours=-3))
+
+    def day(offset: int) -> str:
+        return (datetime(2026, 11, 14) + timedelta(days=offset)).strftime("%Y-%m-%d")
+
+    topics = ["Células", "Genética", "Ecologia"]
+    # (id, kind, topic index or None, status)
+    items = [
+        (1, "card", 0, "approved"),
+        (2, "card", 0, "approved"),
+        (3, "question", 0, "approved"),
+        (4, "card", 1, "approved"),
+        (5, "question", 1, "approved"),
+        (6, "card", None, "approved"),
+        (7, "card", 2, "approved"),
+        (8, "card", 2, "draft"),
+    ]
+    # (item, rating, day offset, previous state or None)
+    reviews = [
+        (1, 3, 0, 2), (1, 3, 0, 2), (1, 1, 0, 2), (1, 2, -1, 2), (1, 4, -2, 2),
+        (2, 3, 0, 1), (2, 1, -3, None), (4, 1, 0, 2), (4, 1, -1, 2), (4, 3, -2, 2),
+        (4, 3, -3, 2), (4, 1, -4, 2), (6, 2, -10, 2), (6, 3, -9, 2), (7, 3, -40, 2),
+        (8, 3, 0, 2),
+    ]  # fmt: skip
+    # (item, correct, day offset)
+    attempts = [
+        (3, True, 0), (3, False, 0), (3, True, -1), (5, False, -1), (5, False, -2), (5, True, -3),
+    ]  # fmt: skip
+    with tempfile.TemporaryDirectory() as tmp:
+        engine = migrate.upgrade("workspace", Path(tmp) / "workspace.db")
+        sessions = make_session_factory(engine)
+        with sessions() as session:
+            run = GenerationRun(kind="card", subtype="qa", model="m", requested=1)
+            session.add(run)
+            session.flush()
+            topic_rows = [Topic(name=name) for name in topics]
+            session.add_all(topic_rows)
+            session.flush()
+            for item_id, kind, topic_index, status in items:
+                session.add(
+                    Item(
+                        id=item_id,
+                        run_id=run.id,
+                        kind=kind,
+                        subtype="qa",
+                        payload_json="{}",
+                        status=status,
+                        topic_id=None if topic_index is None else topic_rows[topic_index].id,
+                    )
+                )
+            session.flush()
+            for item_id, rating, offset, state in reviews:
+                session.add(
+                    ReviewLog(
+                        item_id=item_id,
+                        rating=rating,
+                        day=day(offset),
+                        previous_state_json=None if state is None else json.dumps({"state": state}),
+                        reviewed_at=now,
+                    )
+                )
+            for item_id, correct, offset in attempts:
+                session.add(
+                    Attempt(item_id=item_id, answer="A", correct=correct, day=day(offset), answered_at=now)
+                )
+            session.commit()
+        stats = StatsService(sessions, clock=lambda: now, tz=brt)
+        topic_stats = [
+            {
+                "name": t.name,
+                "cardReviews": t.card_reviews,
+                "cardPasses": t.card_passes,
+                "questionAttempts": t.question_attempts,
+                "questionCorrect": t.question_correct,
+                "accuracy": t.accuracy,
+                "smallSample": t.small_sample,
+            }
+            for t in stats.topic_stats()
+        ]
+        weakest = [t.name for t in stats.weakest_topics(limit=5, min_events=2)]
+        retention = stats.retention(30, now)
+        summary = stats.summary(now)
+        out: dict[str, object] = {
+            "topics": topics,
+            "items": [list(i) for i in items],
+            "reviews": [list(r) for r in reviews],
+            "attempts": [list(a) for a in attempts],
+            "topicStats": topic_stats,
+            "weakest": weakest,
+            "retention": [[d.day, d.reviews, d.passes] for d in retention.days],
+            "activity": [[d.day, d.reviews, d.attempts] for d in stats.activity(30, now)],
+            "summary": {
+                "reviewedToday": summary.reviewed_today,
+                "answeredToday": summary.answered_today,
+                "goal": summary.goal,
+                "currentStreak": summary.current_streak,
+                "longestStreak": summary.longest_streak,
+                "totalReviews": summary.total_reviews,
+                "totalAttempts": summary.total_attempts,
+            },
+        }
+        engine.dispose()
+    mc = {
+        "statement": "Qual organela faz a respiração celular?",
+        "options": [{"key": "A", "text": "Núcleo", "why": "x"}, {"key": "B", "text": "Mitocôndria", "why": "y"}],
+        "answer": "B",
+        "explanation": "A mitocôndria respira.",
+    }
+    tf = {
+        "statement": "O núcleo faz a respiração celular.",
+        "options": [{"key": "C", "text": "Certo", "why": ""}, {"key": "E", "text": "Errado", "why": ""}],
+        "answer": "E",
+        "explanation": "Quem respira é a mitocôndria.",
+    }
+    ce_true = {**tf, "answer": "C"}
+    out["errorCards"] = {
+        name: list(error_card_text(subtype, payload))
+        for name, subtype, payload in (
+            ("multiple_choice", "multiple_choice", mc),
+            ("certo_errado_false", "certo_errado", tf),
+            ("certo_errado_true", "certo_errado", ce_true),
+        )
+    }
+    out["errorCardPayloads"] = {"multiple_choice": mc, "certo_errado_false": tf, "certo_errado_true": ce_true}
+    return out
+
+
 def main() -> None:
     write("fsrs", fsrs_fixture())
     write("chunker", chunker_fixture())
@@ -340,6 +477,7 @@ def main() -> None:
     write("prompts", prompts_fixture())
     write("extractors", extractors_fixture())
     write("docx-and-scanned", docx_and_scanned_fixture())
+    write("stats", stats_fixture())
 
 
 if __name__ == "__main__":

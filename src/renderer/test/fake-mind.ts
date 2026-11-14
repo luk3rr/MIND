@@ -22,6 +22,9 @@ type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
 export type FakeRun = OutputOf<"generation:list">["runs"][number];
 export type FakeItem = OutputOf<"review:list">["items"][number];
 export type FakeStudyCard = NonNullable<OutputOf<"study:next">["card"]>;
+export type FakeErrorEntry = OutputOf<"errors:list">["entries"][number];
+export type FakeTopic = OutputOf<"topics:list">["topics"][number];
+export type FakeOverview = OutputOf<"stats:overview">;
 export type FakeQuestion = NonNullable<OutputOf<"practice:next">["question"]>;
 
 export interface FakeState {
@@ -42,6 +45,10 @@ export interface FakeState {
   questions: FakeQuestion[];
   answerKeys: Record<number, string>;
   answeredToday: number;
+  errorEntries: FakeErrorEntry[];
+  topicList: FakeTopic[];
+  overview: FakeOverview;
+  madeCards: number[];
   importResult: OutputOf<"material:import">;
   searchHits: OutputOf<"material:search">["hits"];
   provider: {
@@ -55,6 +62,26 @@ export interface FakeState {
     knownModels: string[];
     lines: OutputOf<"settings:getCost">["lines"];
     refreshWorks: boolean;
+  };
+}
+
+export function emptyOverview(): FakeOverview {
+  return {
+    summary: {
+      reviewedToday: 0,
+      answeredToday: 0,
+      activityToday: 0,
+      goal: 40,
+      goalMet: false,
+      currentStreak: 0,
+      longestStreak: 0,
+      totalReviews: 0,
+      totalAttempts: 0,
+    },
+    topics: [],
+    weakest: [],
+    retention: { rate: null, reviews: 0, days: [] },
+    activity: [],
   };
 }
 
@@ -97,6 +124,10 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     questions: [],
     answerKeys: {},
     answeredToday: 0,
+    errorEntries: [],
+    topicList: [],
+    overview: emptyOverview(),
+    madeCards: [],
     importResult: { materials: [], errors: [] },
     searchHits: [],
     provider: {
@@ -218,10 +249,10 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           id: state.runs.length + 1,
           kind: "card",
           subtype: input.subtype,
-          materialId: input.materialId,
+          materialId: input.topicId === undefined ? (input.materialId ?? null) : null,
           pageFrom: input.pageFrom ?? null,
           pageTo: input.pageTo ?? null,
-          topicId: null,
+          topicId: input.topicId ?? null,
           model: "a/gen",
           requested: input.quantity,
           generated: 0,
@@ -353,8 +384,16 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         state.reviewedToday = Math.max(state.reviewedToday - 1, 0);
         return ok({ itemId: last.itemId });
       }
-      case "study:saveSettings":
-        return ok({ newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 });
+      case "study:saveSettings": {
+        const input = payload as InputOf<"study:saveSettings">;
+        if (input.dailyGoal !== undefined) {
+          if (input.dailyGoal < 1 || input.dailyGoal > 2000) {
+            return failure("VALIDATION_ERROR", "Meta inválida.", "dailyGoal");
+          }
+          state.overview.summary.goal = input.dailyGoal;
+        }
+        return ok({ newPerDay: 20, dailyGoal: state.overview.summary.goal, desiredRetention: 0.9 });
+      }
       case "practice:next": {
         const input = payload as InputOf<"practice:next">;
         const question =
@@ -378,6 +417,60 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       }
       case "practice:counts":
         return ok(practiceCounts(state));
+      case "errors:list": {
+        const input = payload as InputOf<"errors:list">;
+        const entries = state.errorEntries.filter(
+          (e) =>
+            input.topicId === undefined ||
+            state.topicList.find((t) => t.id === input.topicId)?.name === e.topic,
+        );
+        return ok({
+          entries,
+          counts: {
+            total: state.errorEntries.length,
+            fromQuestions: state.errorEntries.filter((e) => e.fromQuestion).length,
+            failedCards: state.errorEntries.filter((e) => e.failures > 0).length,
+          },
+          topics: state.topicList,
+        });
+      }
+      case "errors:makeCard": {
+        const input = payload as InputOf<"errors:makeCard">;
+        const created = !state.madeCards.includes(input.questionId);
+        if (created) state.madeCards.push(input.questionId);
+        return ok({ itemId: 1000 + input.questionId, created });
+      }
+      case "topics:list":
+        return ok({ topics: state.topicList });
+      case "topics:rename": {
+        const input = payload as InputOf<"topics:rename">;
+        if (!input.name.trim()) {
+          return failure("VALIDATION_ERROR", "Informe um nome.", "name");
+        }
+        const found = state.topicList.find((t) => t.id === input.topicId);
+        if (!found) return failure("TOPIC_NOT_FOUND", "Não existe tópico.");
+        found.name = input.name.trim();
+        for (const stat of state.overview.topics) {
+          if (stat.topicId === input.topicId) stat.name = found.name;
+        }
+        return ok(found);
+      }
+      case "topics:merge": {
+        const input = payload as InputOf<"topics:merge">;
+        const target = state.topicList.find((t) => t.id === input.targetId);
+        if (!target) return failure("TOPIC_NOT_FOUND", "Não existe tópico.");
+        state.topicList = state.topicList.filter((t) => t.id !== input.sourceId);
+        state.overview.topics = state.overview.topics.filter((t) => t.topicId !== input.sourceId);
+        return ok(target);
+      }
+      case "topics:delete": {
+        const input = payload as InputOf<"topics:delete">;
+        state.topicList = state.topicList.filter((t) => t.id !== input.topicId);
+        state.overview.topics = state.overview.topics.filter((t) => t.topicId !== input.topicId);
+        return ok({});
+      }
+      case "stats:overview":
+        return ok(state.overview);
       case "settings:get": {
         const p = state.provider;
         return ok({

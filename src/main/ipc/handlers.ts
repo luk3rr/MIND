@@ -198,6 +198,35 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         ...(seconds !== undefined ? { seconds } : {}),
       }),
     "practice:counts": ({ workspaceId, filter }) => core.practice(workspaceId).counts(filter),
+    "errors:list": ({ workspaceId, topicId }) => {
+      const notebook = core.notebook(workspaceId);
+      return {
+        entries: notebook.entries(topicId),
+        counts: notebook.counts(),
+        topics: core.topics(workspaceId).list(),
+      };
+    },
+    "errors:makeCard": ({ workspaceId, questionId }) =>
+      core.notebook(workspaceId).createCard(questionId),
+    "topics:list": ({ workspaceId }) => ({ topics: core.topics(workspaceId).list() }),
+    "topics:rename": ({ workspaceId, topicId, name }) =>
+      core.topics(workspaceId).rename(topicId, name),
+    "topics:merge": ({ workspaceId, sourceId, targetId }) =>
+      core.topics(workspaceId).merge(sourceId, targetId),
+    "topics:delete": ({ workspaceId, topicId }) => {
+      core.topics(workspaceId).delete(topicId);
+      return {};
+    },
+    "stats:overview": ({ workspaceId }) => {
+      const stats = core.stats(workspaceId);
+      return {
+        summary: stats.summary(),
+        topics: stats.topicStats(),
+        weakest: stats.weakestTopics(),
+        retention: stats.retention(),
+        activity: stats.activity(),
+      };
+    },
     "settings:get": () => settingsView(core),
     "settings:save": (input) => {
       core.llm.settings.update({

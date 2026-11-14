@@ -74,17 +74,17 @@ describe("App", () => {
     const { state } = installFakeMind({ workspaces: [ws(1, "Estudos")] });
     await ready();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Erros" }));
-    expect(await screen.findByRole("heading", { name: "Erros" })).toBeVisible();
+    await user.click(await screen.findByRole("button", { name: "Chat" }));
+    expect(await screen.findByRole("heading", { name: "Chat" })).toBeVisible();
     expect(screen.getByText("Esta seção chega em breve.")).toBeVisible();
-    expect(state.route).toBe("/w/1/errors");
-    expect(screen.getByRole("button", { name: "Erros" })).toHaveAttribute("aria-current", "page");
+    expect(state.route).toBe("/w/1/chat");
+    expect(screen.getByRole("button", { name: "Chat" })).toHaveAttribute("aria-current", "page");
   });
 
   it("restores the saved route on start", async () => {
-    installFakeMind({ workspaces: [ws(1, "Estudos")], route: "/w/1/stats" });
+    installFakeMind({ workspaces: [ws(1, "Estudos")], route: "/w/1/chat" });
     await ready();
-    expect(await screen.findByRole("heading", { name: "Estatísticas" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Chat" })).toBeVisible();
   });
 
   it("starts dark and keeps the toggle choice across a rerender", async () => {

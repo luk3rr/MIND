@@ -24,7 +24,10 @@ import { SettingsService } from "./settings/service.js";
 import { AppError } from "./contracts/errors.js";
 import { GenerationService } from "./generation/service.js";
 import { ReviewService } from "./review/service.js";
+import { ErrorNotebook } from "./notebook/service.js";
 import { PracticeService } from "./practice/service.js";
+import { StatsService } from "./stats/service.js";
+import { TopicService } from "./stats/topics.js";
 import { StudyService } from "./study/service.js";
 import type { TzOffset } from "./study/scheduler.js";
 import { WorkspaceRegistry } from "./workspaces/registry.js";
@@ -73,6 +76,9 @@ export interface Core {
   review(workspaceId: number): ReviewService;
   study(workspaceId: number): StudyService;
   practice(workspaceId: number): PracticeService;
+  notebook(workspaceId: number): ErrorNotebook;
+  stats(workspaceId: number): StatsService;
+  topics(workspaceId: number): TopicService;
   retriever(workspaceId: number): Bm25Retriever;
   close(): Promise<void>;
 }
@@ -137,6 +143,13 @@ export function createCore(options: CoreOptions): Core {
     generation: (workspaceId) =>
       new GenerationService(registry.open(workspaceId), queue, llm, options.generationConcurrency),
     review: (workspaceId) => new ReviewService(registry.open(workspaceId), clock),
+    notebook: (workspaceId) => new ErrorNotebook(registry.open(workspaceId), clock),
+    stats: (workspaceId) =>
+      new StatsService(registry.open(workspaceId), {
+        clock,
+        ...(options.tzOffset ? { offset: options.tzOffset } : {}),
+      }),
+    topics: (workspaceId) => new TopicService(registry.open(workspaceId)),
     practice: (workspaceId) =>
       new PracticeService(registry.open(workspaceId), {
         clock,

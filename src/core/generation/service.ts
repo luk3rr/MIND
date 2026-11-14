@@ -22,6 +22,7 @@ import type { SourceChunk } from "./planning.js";
 import { SUBTYPE_RULES, SYSTEM } from "./prompts.js";
 import { CARD_SUBTYPES, PROFILES } from "./schemas.js";
 import { isoNow } from "../clock.js";
+import { trainingMaterial } from "./training.js";
 
 export const MIN_QUANTITY = 1;
 export const MAX_QUANTITY = { card: 60, question: 30 } as const;
@@ -33,7 +34,8 @@ export const CONCURRENT_BATCHES = 2;
 const LOG_LIMIT = 20;
 
 export interface GenerationRequest {
-  materialId: number;
+  /** The material to generate from; omitted when training on `topicId`. */
+  materialId?: number | null;
   subtype: string;
   quantity: number;
   kind: "card" | "question";
@@ -113,6 +115,9 @@ function toInfo(row: typeof generationRun.$inferSelect): RunInfo {
 
 export function validateRequest(request: GenerationRequest): void {
   const errors: FieldError[] = [];
+  if ((request.materialId ?? null) === null && (request.topicId ?? null) === null) {
+    errors.push({ field: "materialId", message: "Escolha um material ou um tópico para treinar." });
+  }
   const kinds = Object.keys(MAX_QUANTITY);
   if (!kinds.includes(request.kind)) {
     errors.push({ field: "kind", message: "Escolha cards ou questões." });
@@ -179,16 +184,28 @@ export class GenerationService {
   }
 
   private chunksFor(request: GenerationRequest): SourceChunk[] {
-    const row = this.db.select().from(material).where(eq(material.id, request.materialId)).get();
+    if ((request.topicId ?? null) !== null) {
+      const training = trainingMaterial(this.workspace.connection, request.topicId as number);
+      if (training.chunks.length === 0) {
+        throw new AppError(
+          "VALIDATION_ERROR",
+          "Não há trechos de origem para treinar este tópico.",
+          [{ field: "topicId", message: "Importe material que fale deste tópico." }],
+        );
+      }
+      return training.chunks;
+    }
+    const materialId = request.materialId as number;
+    const row = this.db.select().from(material).where(eq(material.id, materialId)).get();
     if (!row) {
-      throw new AppError("MATERIAL_NOT_FOUND", `Não existe material com id ${request.materialId}.`);
+      throw new AppError("MATERIAL_NOT_FOUND", `Não existe material com id ${materialId}.`);
     }
     if (row.status !== "indexed") {
       throw new AppError("VALIDATION_ERROR", "O material ainda não foi indexado.", [
         { field: "materialId", message: "Aguarde a importação terminar." },
       ]);
     }
-    const chunks = selectChunks(this.db, request.materialId, request.pageFrom, request.pageTo);
+    const chunks = selectChunks(this.db, materialId, request.pageFrom, request.pageTo);
     if (chunks.length === 0) {
       throw new AppError("VALIDATION_ERROR", "Não há texto nesse recorte do material.", [
         { field: "pageFrom", message: "Escolha outro intervalo de páginas." },
@@ -203,7 +220,7 @@ export class GenerationService {
       this.chunksFor(request),
       request.quantity,
       perBatch(request.kind),
-      true,
+      (request.topicId ?? null) === null,
     );
     const settings = this.llm.settings.get();
     const chunkChars = plan.reduce(
@@ -271,7 +288,7 @@ export class GenerationService {
       .values({
         kind: request.kind,
         subtype: request.subtype,
-        materialId: request.materialId,
+        materialId: (request.topicId ?? null) === null ? (request.materialId ?? null) : null,
         pageFrom: request.pageFrom ?? null,
         pageTo: request.pageTo ?? null,
         topicId: request.topicId ?? null,
@@ -308,8 +325,12 @@ export class GenerationService {
       this.chunksFor(request),
       request.quantity,
       perBatch(request.kind),
-      true,
+      (request.topicId ?? null) === null,
     );
+    const avoid =
+      (request.topicId ?? null) === null
+        ? []
+        : trainingMaterial(this.workspace.connection, request.topicId as number).avoid;
     let accepted = 0;
     let finished = 0;
     let active = 0;
@@ -343,6 +364,7 @@ export class GenerationService {
                 judgeModel,
                 remaining,
                 topicId: request.topicId ?? null,
+                avoid,
               })
             : await this.generator.generateBatch({
                 runId,
@@ -352,6 +374,7 @@ export class GenerationService {
                 model,
                 remaining,
                 topicId: request.topicId ?? null,
+                avoid,
               });
         accepted += outcome.accepted;
         finished += 1;
