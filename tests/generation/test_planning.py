@@ -71,3 +71,10 @@ def test_plan_uses_every_batch_when_there_are_few() -> None:
 def test_plan_is_empty_without_chunks_or_quantity() -> None:
     assert plan_batches([], 10) == []
     assert plan_batches([chunk(1)], 0) == []
+
+
+def test_without_spreading_the_first_batches_are_used() -> None:
+    chunks = [chunk(i, 6000) for i in range(12)]
+    plan = plan_batches(chunks, 10, spread=False)
+    assert [p.chunks[0].id for p in plan] == [0, 1]
+    assert [p.count for p in plan] == [5, 5]

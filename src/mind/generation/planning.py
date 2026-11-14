@@ -99,14 +99,22 @@ def spread_indices(total: int, wanted: int) -> list[int]:
 
 
 def plan_batches(
-    chunks: list[SourceChunk], quantity: int, per_batch: int = CARDS_PER_BATCH
+    chunks: list[SourceChunk],
+    quantity: int,
+    per_batch: int = CARDS_PER_BATCH,
+    *,
+    spread: bool = True,
 ) -> list[PlannedBatch]:
-    """Group chunks, pick evenly spread batches and split the requested quantity among them."""
+    """Group chunks, pick batches and split the requested quantity among them.
+
+    By default the batches are spread evenly over the chunks; with `spread=False` the first
+    batches are used (training puts the most relevant chunks first)."""
     batches = make_batches(chunks)
     if not batches or quantity < 1:
         return []
     wanted = min(math.ceil(quantity / per_batch), len(batches))
-    chosen = [batches[i] for i in spread_indices(len(batches), wanted)]
+    indices = spread_indices(len(batches), wanted) if spread else list(range(wanted))
+    chosen = [batches[i] for i in indices]
     return [
         PlannedBatch(b, n) for b, n in zip(chosen, split_quantity(quantity, wanted), strict=True)
     ]
