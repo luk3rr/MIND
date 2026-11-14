@@ -890,3 +890,86 @@ sequenceDiagram
 ### Assumptions & open questions
 - A41: PDFs de duas colunas podem sair com ordem de leitura imperfeita mesmo com `sort=True`; avaliado na amostra do BOLT-2 (SM-1) e tratado como melhoria se pesar. (confirmed: no)
 - A42: O limite de 200 MB por arquivo e o chunk de ~1 200 caracteres são valores iniciais ajustáveis por configuração e medição. (confirmed: no)
+
+### UNIT-4 — Flashcards com fonte e revisão
+
+Decisões confirmadas: [src: Q36–Q37] os cards são **sempre escritos em português (pt-BR)**, mesmo com material em outro idioma, e a citação (`quote`) fica no idioma original do trecho; quantidade padrão 20 e máximo 60 por geração.
+
+**Estrutura:** `src/mind/generation/` (`prompts.py`, `schemas.py`, `cards.py` com `CardGenerator`, `runs.py` com o job), `src/mind/verification/source_checker.py`, `src/mind/review/service.py`, `web/generate_pages.py` e `web/review_pages.py`, `api/v1/generations.py` e `api/v1/items.py`, e o subcomando `mind sm1`.
+
+```mermaid
+flowchart LR
+    F[Formulário Gerar] --> E[Estimativa de custo]
+    F --> J[Job generate_cards]
+    J --> S[Seleção e lotes de trechos]
+    S --> P[GuardedProvider: modelo gerador]
+    P --> V[SourceChecker: citação exata]
+    V -->|ok| D[(item: rascunho)]
+    V -->|falha| X[descartado e contado]
+    D --> R[Tela Revisão]
+    R -->|aprova| B[(item: aprovado = baralho)]
+    R -->|descarta| Z[(item: descartado)]
+    R --> M[Contadores do run para SM-1]
+```
+
+**Entidades em `workspace.db`** (migração `0004`): `topic(id, name único)`; `generation_run(id, kind, subtype, material_id→SET NULL, page_from, page_to, model, requested, generated, discarded_no_source, discarded_invalid, discarded_duplicate, approved, approved_unedited, discarded_review, cost_usd, status, discard_log JSON, job_id, created_at, finished_at)`; `item(id, run_id→CASCADE, kind, subtype, payload_json, payload_version, status [draft|approved|discarded], topic_id→SET NULL, chunk_id→SET NULL, source_title, source_page, quote, edited, origin [generated|manual|error_note], created_at, approved_at)`. A fonte é **copiada** para o item (`source_title`, `source_page`, `quote`), então um card aprovado sobrevive à exclusão do material.
+
+**Regras e comportamentos**
+- **Seleção e lotes:** a geração recebe material, intervalo de páginas opcional, tipo e quantidade (1 a 60). Os trechos do recorte são agrupados em lotes de até ~6 000 caracteres; o número de lotes é `min(ceil(quantidade / 5), lotes disponíveis)`; se houver mais lotes do que o necessário, escolhe lotes espaçados de forma uniforme para cobrir o recorte. Cada lote pede `ceil(quantidade / nº de lotes)` cards; até 2 lotes rodam em paralelo; sobras além da quantidade pedida são cortadas na ordem dos lotes.
+- **Prompt:** instruções em inglês; saída em pt-BR; usar só as informações dos trechos; cada card cita `chunk_id` e uma `quote` copiada **literalmente** do trecho (15 a 300 caracteres); um conceito por card; fórmulas em LaTeX com `$…$`; `topic` curto (até 5 palavras) e consistente; formatos por tipo: **qa** (pergunta e resposta), **cloze** (`{{c1::termo}}` na frente, comentário opcional no verso), **compare** (frente "X vs Y", verso em tabela curta em Markdown), **true_false** (frente é uma afirmação, verso começa por "Verdadeiro" ou "Falso" e explica). O tipo vem da solicitação.
+- **Validação (`SourceChecker`, ADR-5):** normaliza espaços, quebras, hífens/aspas tipográficas e hifenização de fim de linha em citação e trecho; o card só passa se (1) o `chunk_id` foi enviado naquele lote, (2) a `quote` normalizada tem ≥ 15 caracteres e é subcadeia do trecho normalizado. Cards sem fonte válida viram `discarded_no_source`; cards malformados (cloze sem `{{c1::…}}`, frente ou verso vazios, subtipo diferente do pedido) viram `discarded_invalid`; duplicatas (mesmo tipo e frente normalizada, no run ou já no baralho) viram `discarded_duplicate`. O `discard_log` guarda até 20 entradas (motivo e início da frente) para diagnóstico.
+- **Custo:** a estimativa mostra US$ antes de gerar, com base no catálogo de preços (`PriceCatalog.estimate`), 4 caracteres por token e ~150 tokens de saída por card; sem preço conhecido mostra "indisponível". Cada chamada passa pelo `GuardedProvider` (consentimento, limite, registro). `run.cost_usd` soma o custo das chamadas do run.
+- **Falhas:** erro do provedor, falta de consentimento ou limite atingido interrompem o job com o código estável; os rascunhos já gerados ficam e o run vira `partial`. Cancelar entre lotes mantém o que já existe (`cancelled`).
+- **Revisão (`ReviewService`):** aprovar, descartar e editar, individualmente ou em lote, só sobre itens `draft`. Editar altera `payload_json` e marca `edited=true`. Aprovar incrementa `approved` e, se não editado, `approved_unedited`; descartar incrementa `discarded_review`. **SM-1 = `approved_unedited` ÷ (`approved` + `discarded_review`)** sobre itens revisados, além do rendimento do pipeline (válidos ÷ gerados). `mind sm1 [--workspace ID]` imprime o relatório a partir desses contadores.
+- **Tela Gerar** (`/w/{id}/generate`): material (só `indexed`), páginas, tipo, quantidade, estimativa atualizada por HTMX, botão "Gerar" desabilitado sem chave, sem consentimento ou com limite atingido (mensagem com o motivo e link para Configurações); lista dos últimos runs com estado, progresso e atalho "Revisar (n)". **Tela Revisão** (`/w/{id}/review?run=ID`): lista com checkbox, frente e verso renderizados (fórmulas), painel da fonte com o trecho e a citação destacada (`<mark>`), editar em linha, descartar, "Aprovar selecionados", "Aprovar todos" e a contagem de descartes automáticos com seus motivos.
+- **API:** `POST /generations` (202 com o run e o job), `GET /generations`, `GET /generations/{id}`, `POST /generations:estimate`, `GET /items?status=&run_id=&kind=`, `PATCH /items/{id}`, `POST /items:review` (`{approve: [...], discard: [...]}`).
+
+**Fluxo: gerar e revisar**
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário
+    participant W as web/api
+    participant Q as JobQueue
+    participant G as CardGenerator
+    participant L as GuardedProvider
+    participant C as SourceChecker
+    participant D as workspace.db
+    U->>W: Gerar (material, tipo, quantidade)
+    W->>D: cria generation_run
+    W->>Q: submit(generate_cards)
+    W-->>U: 202 / mostra progresso
+    loop cada lote
+        Q->>G: lote de trechos
+        G->>L: complete(CardBatch)
+        L-->>G: cards + uso
+        G->>C: confere citação de cada card
+        C-->>G: válidos e descartados
+        G->>D: grava rascunhos e contadores
+    end
+    U->>W: Revisar
+    W->>D: lista rascunhos com trecho-fonte
+    U->>W: aprovar, editar ou descartar
+    W->>D: atualiza item e contadores do run
+```
+
+**NFR e mecanismos**
+
+| NFR | Mecanismo | Verificação |
+|---|---|---|
+| NFR-2 | 2 lotes em paralelo, progresso por lote, job fora do ciclo de requisição | `tests/perf/test_generation_latency.py` (`perf`): 20 cards com `FakeProvider` de latência controlada em < 60 s, UI responsiva durante o job |
+| NFR-6 | Toda chamada pelo `GuardedProvider`; só trechos do recorte são enviados | testes do guarda (U2) e teste que confere o conteúdo enviado |
+| NFR-8 | Contadores de revisão e `mind sm1`; teste `real_llm` opcional | `tests/eval/test_sm1_script.py` com `FakeProvider`; medição real no gate do BOLT-2 |
+| NFR-10 | Esquemas Pydantic estritos; sem `Any` | CI |
+
+**Decisões de implementação**
+- `FakeProvider` ganha o parâmetro `latency` (espera simulada) para os testes de desempenho; `GuardedProvider.complete` passa a devolver o `Usage` com o custo efetivamente registrado (`cost_usd` preenchido), para o run somar.
+- O destaque da citação usa um mapa de posições entre texto normalizado e original, definido no `SourceChecker` e reaproveitado pela tela de revisão.
+- O baralho é o conjunto de itens `approved` do workspace (sem entidade de baralho). A UNIT-5 trata um item aprovado sem `card_state` como novo.
+
+**Critérios de aceitação → comportamento:** US-4 AC1 (custo antes de confirmar) ← estimativa HTMX; US-4 AC2 (item sem fonte é descartado e contado) ← `SourceChecker` + `discarded_no_source` no relatório; US-5 AC1 (15 aprovados, 5 descartados) ← `ReviewService` em lote; US-5 AC2 (editar mantém a fonte) ← edição altera só `payload_json`, a fonte copiada fica.
+
+### Assumptions & open questions
+- A43: Escrever sempre em pt-BR com material em outro idioma exige traduzir a ideia mantendo a citação original; a qualidade dessa tradução entra na medição de SM-1 e pode levar a uma opção "mesmo idioma do material". (confirmed: yes, escolha do autor)
+- A44: 5 cards por lote, 6 000 caracteres por lote e 150 tokens de saída por card são valores iniciais a calibrar na medição do BOLT-2. (confirmed: no)
+- A45: O texto do card em pt-BR com citação em inglês torna a conferência da fonte mais lenta para o revisor; a tela mostra o trecho original ao lado para compensar. (confirmed: no)
