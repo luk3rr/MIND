@@ -77,7 +77,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Pendências conhecidas: o workflow de CI (T-1.2) só roda no GitHub após o push final; a renderização visual de fórmulas no navegador (T-1.9) e as ligaduras (US-17 AC3) precisam de conferência manual — a lógica de divisão do texto é testada com Node.
 
 ### UNIT-2 Provedor LLM, configurações e custo — Status: pending
-- [ ] T-2.1 `Provider` (Protocol), `Message`, `Usage` e `FakeProvider` com cenários. · FR-19 · teste: `tests/llm/test_fake_provider.py`
+- [x] T-2.1 `Provider` (Protocol), `Message`, `Usage` e `FakeProvider` com cenários. · FR-19 · teste: `tests/llm/test_fake_provider.py` · files: src/mind/llm/{__init__,types,provider,fake}.py, tests/llm/test_fake_provider.py
 - [ ] T-2.2 `OpenRouterProvider` (httpx): modo estruturado com fallback de parse, até 2 repetições, `ProviderError`, uso de tokens. ≈2 h · FR-19 · teste: `tests/llm/test_openrouter.py` com transporte HTTP simulado (sucesso, JSON inválido que repete, falha final)
 - [ ] T-2.3 `SettingsService`: provedor, modelos de geração e de juiz; chave só de ambiente/`.env`; nenhum campo de chave no GET/PATCH. · FR-19, NFR-7 · teste: `tests/settings/test_settings.py`
 - [ ] T-2.4 Filtro de redação de segredos nos logs. · NFR-7 · teste: `tests/settings/test_log_redaction.py`
