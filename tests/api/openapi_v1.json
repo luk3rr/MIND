@@ -1,6 +1,78 @@
 {
   "components": {
     "schemas": {
+      "AnswerIn": {
+        "properties": {
+          "answer": {
+            "description": "The key of the chosen option (A-E, or C and E).",
+            "title": "Answer",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_id",
+          "answer"
+        ],
+        "title": "AnswerIn",
+        "type": "object"
+      },
+      "AnswerOut": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "integer"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "boolean"
+          },
+          "correct_key": {
+            "title": "Correct Key",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/ItemOptionOut"
+            },
+            "title": "Options",
+            "type": "array"
+          }
+        },
+        "required": [
+          "correct",
+          "answer",
+          "correct_key",
+          "explanation",
+          "options",
+          "attempt_id"
+        ],
+        "title": "AnswerOut",
+        "type": "object"
+      },
       "Body_import_material_v1_workspaces__workspace_id__materials_post": {
         "properties": {
           "file": {
@@ -305,6 +377,12 @@
       },
       "GenerationIn": {
         "properties": {
+          "kind": {
+            "default": "card",
+            "description": "card or question.",
+            "title": "Kind",
+            "type": "string"
+          },
           "material_id": {
             "title": "Material Id",
             "type": "integer"
@@ -333,12 +411,12 @@
           },
           "quantity": {
             "default": 20,
-            "description": "1 to 60.",
+            "description": "1 to 60 cards or 1 to 30 questions.",
             "title": "Quantity",
             "type": "integer"
           },
           "subtype": {
-            "description": "qa, cloze, compare or true_false.",
+            "description": "Cards: qa, cloze, compare or true_false. Questions (exam profile): certo_errado, multiple_choice_4 or multiple_choice_5.",
             "title": "Subtype",
             "type": "string"
           }
@@ -392,8 +470,43 @@
         "title": "ItemEdit",
         "type": "object"
       },
+      "ItemOptionOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "why": {
+            "default": "",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "text"
+        ],
+        "title": "ItemOptionOut",
+        "type": "object"
+      },
       "ItemOut": {
         "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Questions only: the correct key.",
+            "title": "Answer"
+          },
           "approved_at": {
             "anyOf": [
               {
@@ -441,6 +554,14 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "options": {
+            "description": "Questions only.",
+            "items": {
+              "$ref": "#/components/schemas/ItemOptionOut"
+            },
+            "title": "Options",
+            "type": "array"
           },
           "origin": {
             "title": "Origin",
@@ -703,6 +824,118 @@
         "title": "MaterialOut",
         "type": "object"
       },
+      "PracticeOptionOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "text"
+        ],
+        "title": "PracticeOptionOut",
+        "type": "object"
+      },
+      "PracticeQuestionOut": {
+        "description": "A question as shown while practising: no answer and no explanations.",
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_correct": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null while never answered.",
+            "title": "Last Correct"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/PracticeOptionOut"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "subtype": {
+            "title": "Subtype",
+            "type": "string"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "id",
+          "subtype",
+          "statement",
+          "options",
+          "attempts",
+          "last_correct"
+        ],
+        "title": "PracticeQuestionOut",
+        "type": "object"
+      },
+      "PracticeSummaryOut": {
+        "properties": {
+          "answered_today": {
+            "title": "Answered Today",
+            "type": "integer"
+          },
+          "correct_today": {
+            "title": "Correct Today",
+            "type": "integer"
+          },
+          "retry": {
+            "title": "Retry",
+            "type": "integer"
+          },
+          "to_practice": {
+            "title": "To Practice",
+            "type": "integer"
+          },
+          "unseen": {
+            "title": "Unseen",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unseen",
+          "retry",
+          "to_practice",
+          "answered_today",
+          "correct_today"
+        ],
+        "title": "PracticeSummaryOut",
+        "type": "object"
+      },
       "Problem": {
         "description": "RFC 9457 problem details with a stable application `code`.",
         "properties": {
@@ -904,6 +1137,11 @@
             "title": "Discarded Review",
             "type": "integer"
           },
+          "discarded_unsupported": {
+            "description": "Questions the judge did not support.",
+            "title": "Discarded Unsupported",
+            "type": "integer"
+          },
           "error_code": {
             "anyOf": [
               {
@@ -1023,6 +1261,7 @@
           "discarded_no_source",
           "discarded_invalid",
           "discarded_duplicate",
+          "discarded_unsupported",
           "approved",
           "approved_unedited",
           "discarded_review",
@@ -3101,6 +3340,296 @@
         "summary": "List the chunks of a material in reading order",
         "tags": [
           "materials"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/practice/answers": {
+      "post": {
+        "operationId": "answer_v1_workspaces__workspace_id__practice_answers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or question not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid answer."
+          }
+        },
+        "summary": "Answer a question and get the correct key, the reasons and the comment",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/practice/queue": {
+      "get": {
+        "operationId": "queue_v1_workspaces__workspace_id__practice_queue_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "redo",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Redo",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topic_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "material_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subtype",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(certo_errado|multiple_choice)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subtype"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PracticeQuestionOut"
+                  },
+                  "title": "Response Queue V1 Workspaces  Workspace Id  Practice Queue Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or question not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid answer."
+          }
+        },
+        "summary": "Questions to practise: never answered first, then the ones answered wrongly",
+        "tags": [
+          "practice"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/practice/summary": {
+      "get": {
+        "operationId": "summary_v1_workspaces__workspace_id__practice_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topic_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "material_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subtype",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(certo_errado|multiple_choice)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subtype"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or question not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid answer."
+          }
+        },
+        "summary": "Practice numbers",
+        "tags": [
+          "practice"
         ]
       }
     },

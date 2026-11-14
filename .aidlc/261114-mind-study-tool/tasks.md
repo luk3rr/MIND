@@ -167,7 +167,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-6.4 Modelo `attempt`, migração e `StudyService.answer`. · FR-14 · teste: `tests/study/test_attempts.py` (grava resultado e tempo) · files: src/mind/practice/service.py, tests/practice/test_practice_service.py
 - [x] T-6.5 Tela Questão: cronômetro, correção, comentário por alternativa, fonte. ≈2 h · FR-9, FR-14, US-6, US-8 · teste: `tests/web/test_question_page.py` · files: src/mind/web/{practice_pages.py,study_pages.py,generate_pages.py,app.py,rendering.py,strings.py,static/{practice.js,app.css}}, src/mind/web/templates/{practice,_practice_question,_practice_feedback,_practice_done,generate,_study_filter,today,review,_review_item,_review_edit}.html, tests/web/test_practice_pages.py
 - [x] T-6.6 Revisão passa a aceitar questões. · US-6 · teste: `tests/review/test_review_questions.py` · files: src/mind/review/service.py, tests/review/test_review_service.py
-- [ ] T-6.7 API de geração de questões e `study/attempts`. · FR-24 · teste: `tests/api/test_questions_contract.py`
+- [x] T-6.7 API de geração de questões e `study/attempts`. · FR-24 · teste: `tests/api/test_questions_contract.py` · files: src/mind/api/{schemas,deps}.py, src/mind/api/v1/{generations,practice,__init__}.py, tests/api/{test_practice_contract.py,openapi_v1.json}
 
 ### UNIT-7 Caderno de erros e estatísticas — Status: pending
 - [ ] T-7.1 `ErrorNotebook`: card (`origin=error_note`) a partir de erro de questão e de avaliação "Errei", com tópico e fonte. · FR-15 · teste: `tests/study/test_error_notebook.py`

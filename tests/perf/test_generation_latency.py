@@ -11,14 +11,18 @@ from pathlib import Path
 import pytest
 
 from mind.config import Settings
-from mind.generation.schemas import CardBatch
+from mind.generation.schemas import CardBatch, JudgeBatch, QuestionBatch
 from mind.generation.service import GenerationRequest, GenerationService
 from mind.ingestion.service import MaterialService
 from mind.jobs.queue import JobQueue
 from mind.llm.fake import FakeProvider
 from mind.services import Services
 from mind.workspaces.registry import WorkspaceRegistry
-from tests.generation.fakes import cards_from_prompt
+from tests.generation.fakes import (
+    cards_from_prompt,
+    judge_supports_everything,
+    questions_from_prompt,
+)
 
 MAX_SECONDS = 60
 MODEL_LATENCY = 1.0  # seconds per model call, a conservative stand-in for a real provider
@@ -75,4 +79,32 @@ async def test_twenty_cards_are_generated_quickly_without_blocking_the_event_loo
     assert (done.status, done.generated) == ("done", 20)
     assert elapsed < MAX_SECONDS
     assert worst_lag < MAX_LOOP_LAG
+    await services.aclose()
+
+
+@pytest.mark.perf
+async def test_ten_questions_with_the_judge_stay_within_the_limit(
+    registry: WorkspaceRegistry, tmp_path: Path
+) -> None:
+    fake = FakeProvider(name="openrouter", requires_consent=False, latency=MODEL_LATENCY)
+    fake.script(QuestionBatch, questions_from_prompt)
+    fake.script(JudgeBatch, judge_supports_everything)
+    services = Services.build(Settings(data_dir=tmp_path), registry, inner_provider=fake)
+    workspace = registry.open(registry.create("PerfQ").id)
+    queue = JobQueue()
+    material = MaterialService(workspace, queue, max_upload_bytes=10**7).import_file(
+        "aula.md", io.BytesIO(TEXT.encode())
+    )
+    await queue.wait(workspace.info.id, material.job_id or 0)
+
+    service = GenerationService(workspace, queue, services)
+    started = time.perf_counter()
+    run = service.start(GenerationRequest(material.id, "multiple_choice_4", 10, kind="question"))
+    await queue.wait(workspace.info.id, run.job_id or 0)
+    elapsed = time.perf_counter() - started
+
+    done = service.get(run.id)
+    print(f"\n10 questions + judge: {elapsed:.2f}s with {MODEL_LATENCY}s per call")
+    assert (done.status, done.generated) == ("done", 10)
+    assert elapsed < MAX_SECONDS
     await services.aclose()
