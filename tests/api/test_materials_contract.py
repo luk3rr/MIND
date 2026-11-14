@@ -100,3 +100,53 @@ def test_errors_are_problem_json(client: TestClient) -> None:
     assert client.get("/api/v1/workspaces/77/search", params={"q": "a"}).status_code == 404
     no_file = client.post(f"{base}/materials")
     assert (no_file.status_code, no_file.json()["code"]) == (422, "VALIDATION_ERROR")
+
+
+def test_a_page_is_imported_by_address_over_the_api(ready: TestClient) -> None:
+    base = workspace(ready)
+    response = ready.post(f"{base}/materials/url", json={"url": "https://exemplo.org/artigo"})
+    assert response.status_code == 202
+    body = response.json()
+    assert (body["kind"], body["source_url"], body["status"]) == (
+        "url",
+        "https://exemplo.org/artigo",
+        "queued",
+    )
+    wait_for(lambda: ready.get(f"{base}/materials/{body['id']}").json()["status"] == "indexed")
+    done = ready.get(f"{base}/materials/{body['id']}").json()
+    assert done["title"] == "Fotossíntese"
+    hits = ready.get(f"{base}/search", params={"q": "cloroplastos"}).json()
+    assert [h["material_id"] for h in hits] == [body["id"]]
+
+
+def test_invalid_addresses_are_validation_problems(ready: TestClient) -> None:
+    base = workspace(ready)
+    for bad in ("", "file:///etc/passwd", "ftp://x.org/a", "https://user:pass@x.org/"):
+        response = ready.post(f"{base}/materials/url", json={"url": bad})
+        assert (response.status_code, response.json()["code"]) == (422, "VALIDATION_ERROR")
+        assert response.json()["errors"][0]["field"] == "url"
+    assert ready.get(f"{base}/materials").json() == []
+    assert (
+        ready.post("/api/v1/workspaces/77/materials/url", json={"url": "https://x.org"}).status_code
+        == 404
+    )
+
+
+def test_a_word_file_and_an_unsupported_format_over_the_api(ready: TestClient) -> None:
+    import io
+
+    import docx
+
+    document = docx.Document()
+    document.add_paragraph("A mitocôndria produz energia para a célula.")
+    buffer = io.BytesIO()
+    document.save(buffer)
+    base = workspace(ready)
+    ok = ready.post(
+        f"{base}/materials",
+        files={"file": ("a.docx", buffer.getvalue(), "application/octet-stream")},
+    )
+    assert (ok.status_code, ok.json()["kind"]) == (202, "docx")
+    bad = ready.post(f"{base}/materials", files={"file": ("a.doc", b"x", "application/msword")})
+    assert bad.status_code == 415
+    assert "Word (.docx)" in bad.json()["detail"]

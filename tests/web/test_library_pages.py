@@ -116,3 +116,63 @@ def test_preview_paginates_long_materials(client: TestClient) -> None:
     assert "Trechos anteriores" not in first
     second = client.get(f"/w/{workspace_id}/library/1?offset=20").text
     assert "Trechos anteriores" in second
+
+
+# --- web pages, Word and OCR labels ------------------------------------------------------------
+
+
+def test_a_web_page_is_imported_from_its_address(ready: TestClient) -> None:
+    workspace_id = new_workspace(ready)
+    page = ready.get(f"/w/{workspace_id}/library").text
+    assert "Importar de um endereço" in page
+    assert 'accept=".pdf,.docx,.md,.markdown,.txt"' in page
+
+    response = ready.post(
+        f"/w/{workspace_id}/library/import-url", data={"url": "https://exemplo.org/artigo"}
+    )
+    assert response.status_code == 303
+    rows = f"/w/{workspace_id}/library/rows"
+    wait_for(lambda: "Indexado" in ready.get(rows).text)
+    html = ready.get(rows).text
+    assert "Fotossíntese" in html
+    assert "Página web" in html
+    assert 'href="https://exemplo.org/artigo"' in html
+    assert 'rel="noopener noreferrer"' in html
+    assert "cloroplastos" in ready.get(f"/w/{workspace_id}/library/1").text
+
+
+def test_an_invalid_address_rerenders_the_form_with_the_reason(ready: TestClient) -> None:
+    workspace_id = new_workspace(ready)
+    response = ready.post(
+        f"/w/{workspace_id}/library/import-url", data={"url": "ftp://exemplo.org/x"}
+    )
+    assert response.status_code == 422
+    assert 'role="alert"' in response.text
+    assert "http://" in response.text
+    assert 'value="ftp://exemplo.org/x"' in response.text
+
+
+def test_a_word_document_is_listed_with_its_type(ready: TestClient) -> None:
+    import io
+
+    import docx
+
+    document = docx.Document()
+    document.add_heading("Biologia", level=1)
+    document.add_paragraph("A mitocôndria produz energia para a célula.")
+    buffer = io.BytesIO()
+    document.save(buffer)
+    workspace_id = new_workspace(ready)
+    assert upload(ready, workspace_id, "aula.docx", buffer.getvalue()) == 303
+    wait_for(lambda: "Indexado" in ready.get(f"/w/{workspace_id}/library/rows").text)
+    assert "Word" in ready.get(f"/w/{workspace_id}/library/rows").text
+
+
+def test_a_scanned_pdf_without_ocr_shows_the_install_hint(
+    ready: TestClient, tmp_path: Path
+) -> None:
+    pdf = make_pdf(tmp_path / "scan.pdf", [""])
+    workspace_id = new_workspace(ready)
+    upload(ready, workspace_id, "scan.pdf", pdf.read_bytes())
+    wait_for(lambda: "Falhou" in ready.get(f"/w/{workspace_id}/library/rows").text)
+    assert "tesseract" in ready.get(f"/w/{workspace_id}/library/rows").text.lower()

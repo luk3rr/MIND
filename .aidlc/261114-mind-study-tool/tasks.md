@@ -201,8 +201,8 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-8.2 Detecção de Tesseract ausente (`OCR_UNAVAILABLE`) e mensagem clara. · FR-3, US-3 · teste: `tests/ingestion/test_ocr_missing.py` · files: src/mind/errors.py (OcrUnavailable), src/mind/ingestion/extractors.py, tests/ingestion/test_ocr.py
 - [x] T-8.3 `UrlExtractor` (httpx + extração do texto principal); só `http`/`https`. · FR-4 · teste: `tests/ingestion/test_url.py` (HTML de amostra; esquema inválido recusado) · files: src/mind/ingestion/web.py, tests/ingestion/test_docx_and_web.py
 - [x] T-8.4 `DocxExtractor` (python-docx). · FR-4 · teste: `tests/ingestion/test_docx.py` · files: src/mind/ingestion/extractors.py (DocxExtractor), tests/ingestion/test_docx_and_web.py
-- [ ] T-8.5 Interface de importação para os novos formatos e alerta de OCR de baixa confiança. · US-3 · teste: `tests/web/test_import_formats.py`
-- [ ] T-8.6 API aceita URL e novos arquivos. · FR-24 · teste: `tests/api/test_materials_new_formats.py`
+- [x] T-8.5 Interface de importação para os novos formatos e alerta de OCR de baixa confiança. · US-3 · teste: `tests/web/test_import_formats.py` · files: src/mind/web/{library_pages.py,strings.py,templates/library.html,templates/_library_rows.html}, tests/web/test_library_pages.py
+- [x] T-8.6 API aceita URL e novos arquivos. · FR-24 · teste: `tests/api/test_materials_new_formats.py` · files: src/mind/api/{schemas.py,v1/materials.py}, tests/api/{test_materials_contract.py,openapi_v1.json}
 
 ### UNIT-9 Treino de pontos fracos — Status: pending
 - [ ] T-9.1 `WeakTopicSelector` com mínimo de tentativas e ordenação por acerto. · FR-17 · teste: `tests/stats/test_weak_topics.py`
