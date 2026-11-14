@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, LargeBinary, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from mind.clock import utcnow
@@ -187,3 +187,31 @@ class Attempt(WorkspaceBase):
     seconds: Mapped[float | None] = mapped_column(Float, default=None)
     answered_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
     day: Mapped[str] = mapped_column(String(10), index=True)
+
+
+class ChatMessage(WorkspaceBase):
+    """One question to the chat and its answer (each question is independent)."""
+
+    __tablename__ = "chat_message"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    question: Mapped[str] = mapped_column(String)
+    answer: Mapped[str] = mapped_column(String)
+    supported: Mapped[bool] = mapped_column(Boolean)
+    citations_json: Mapped[str] = mapped_column(String)
+    model: Mapped[str | None] = mapped_column(String, default=None)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+
+
+class ChunkEmbedding(WorkspaceBase):
+    """The optional vector of a chunk (float32, L2-normalized)."""
+
+    __tablename__ = "chunk_embedding"
+
+    chunk_id: Mapped[int] = mapped_column(
+        ForeignKey("chunk.id", ondelete="CASCADE"), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(String)
+    dim: Mapped[int] = mapped_column(Integer)
+    vector: Mapped[bytes] = mapped_column(LargeBinary)
