@@ -179,7 +179,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Pendências conhecidas: o juiz, o gerador de questões e a tela de prática ainda não foram exercitados com o modelo real: só você consegue gerar algumas questões com a sua chave, revisar, praticar e rodar `uv run mind sm1 --kind question` para validar a qualidade e o custo (esperado: centavos).
 
 ### UNIT-7 Caderno de erros e estatísticas — Status: pending
-- [ ] T-7.1 `ErrorNotebook`: card (`origin=error_note`) a partir de erro de questão e de avaliação "Errei", com tópico e fonte. · FR-15 · teste: `tests/study/test_error_notebook.py`
+- [x] T-7.1 `ErrorNotebook`: card (`origin=error_note`) a partir de erro de questão e de avaliação "Errei", com tópico e fonte. · FR-15 · teste: `tests/study/test_error_notebook.py` · files: src/mind/error_notebook/service.py, src/mind/db/{workspace_models.py,migrations/workspace/versions/0007_item_origin_item.py}, src/mind/generation/service.py, tests/error_notebook/test_error_notebook.py
 - [ ] T-7.2 Botão "Virar card" funcional em Questão. · US-9 · teste: `tests/web/test_error_to_card.py`
 - [ ] T-7.3 Tópicos: extração pelo LLM na geração e edição manual. · FR-16 · teste: `tests/topics/test_topics.py`
 - [ ] T-7.4 `StatsService`: acerto por tópico, retenção, meta diária, sequência. ≈2 h · FR-16 · teste: `tests/stats/test_stats.py` (conjunto de tentativas conhecido)
