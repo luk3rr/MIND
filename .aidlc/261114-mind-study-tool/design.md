@@ -1043,3 +1043,82 @@ sequenceDiagram
 - A46: Os parâmetros padrão do FSRS (21 pesos) bastam sem otimização por usuário; a otimização fica no backlog. (confirmed: no)
 - A47: A janela de aprendizado de 20 minutos e os passos de 1 e 10 minutos seguem os padrões do py-fsrs e do Anki. (confirmed: no)
 - A48: A tecla `E` (editar) do mockup 2.5 e o conflito de atalhos A22 deixam de valer nesta Unit, pois não há edição durante o estudo; o conflito volta a existir na UNIT-6 (questões). (confirmed: no)
+
+### UNIT-6 — Questões verificadas
+
+Decisões confirmadas: [src: Q42–Q43] padrão de **10** questões por geração e máximo de **30**; na prática aparecem primeiro as questões **inéditas** (por ordem de aprovação) e depois as **erradas na última tentativa**, com feedback imediato a cada resposta; as já acertadas não voltam sozinhas.
+
+**Estrutura:** `generation/questions.py` (`QuestionGenerator`), `verification/judge.py` (`Judge`), `practice/service.py` (`PracticeService`), `web/practice_pages.py` com `practice.js`, `api/v1/practice.py`; a geração, a revisão, a tela Gerar e a API de itens passam a tratar `kind = question`. O seletor de estudo ganha o destino "Questões" (leva à prática).
+
+```mermaid
+flowchart LR
+    F[Gerar: Questões + perfil] --> J[Job generate_cards generalizado]
+    J --> Q[QuestionGenerator: modelo gerador]
+    Q --> V1[Forma e SourceChecker: citação exata]
+    V1 -->|ok| JD[Judge: segundo modelo, em lote]
+    V1 -->|falha| X[descartada e contada]
+    JD -->|sustentada| D[(item: rascunho)]
+    JD -->|não sustentada| U[descartada: unsupported]
+    D --> R[Revisão com opções e comentário]
+    R -->|aprova| B[(banco de questões)]
+    B --> P[Prática: inéditas, depois erradas]
+    P --> A[(attempt: resposta, acerto, tempo)]
+```
+
+**Perfis de prova (FR-11):** enum `certo_errado`, `multiple_choice_4` e `multiple_choice_5`; o perfil vira o `subtype` do run e define o tipo e o número de alternativas. O item guarda `subtype` = `certo_errado` ou `multiple_choice`.
+
+**Entidades** (migração `0006` em `workspace.db`): `attempt(id, item_id→CASCADE, answer, correct, seconds, answered_at, day)` com índice em `(item_id, answered_at)`; coluna nova `generation_run.discarded_unsupported`. O `payload_json` de uma questão é `{"statement", "options": [{"key","text","why"}], "answer", "explanation"}`; em Certo/Errado as opções `C` ("Certo") e `E` ("Errado") são montadas pelo código, sem pedir ao modelo.
+
+**Regras e comportamentos**
+- **Geração:** lotes de ~3 questões (mesmo agrupamento de trechos dos cards, 2 lotes em paralelo), idioma pt-BR com citação no idioma original. Prompt: afirmações de Certo/Errado em proporção equilibrada, uma única alternativa correta, distratores plausíveis e distintos entre si, cada alternativa com `why` (por que está certa ou errada), comentário geral, fórmulas em LaTeX, `topic` curto, e a citação literal (15 a 300 caracteres) do trecho que prova o gabarito. Saída `QuestionBatch`.
+- **Validação de forma:** Certo/Errado: `answer` ∈ {C, E} e enunciado não vazio. Múltipla escolha: exatamente 4 ou 5 alternativas conforme o perfil, chaves `A`… em ordem, textos e `why` não vazios, textos distintos, `answer` existente. Falhas viram `discarded_invalid`; fonte inválida, `discarded_no_source` (mesmo `SourceChecker`); mesmo enunciado normalizado já existente, `discarded_duplicate`.
+- **Juiz (FR-10):** uma segunda chamada **por lote**, com o modelo de verificação (`judge_model`, finalidade `judge` no registro de custo), recebe para cada questão o trecho completo, o enunciado, as alternativas e o gabarito proposto e devolve `Verdict(index, supported, reason)`. Só passam as questões `supported = true`; veredito ausente ou resposta inválida do juiz conta como **não sustentada** (conservador) e vira `discarded_unsupported`. Se a chamada do juiz falhar, o lote não grava nada e o run termina `partial` com o código do erro.
+- **Custo e estimativa:** a estimativa soma o gerador (≈ 250 tokens de saída por questão) e o juiz (≈ 60 por questão mais o texto dos trechos); sem preço de algum dos dois modelos fica "indisponível". O custo do run soma as duas chamadas.
+- **Revisão:** a tela mostra o enunciado, as alternativas com a correta marcada e cada `why`, o comentário, a fonte e o trecho destacado; editar permite alterar enunciado, comentário e tópico (as alternativas não são editáveis no MVP, então para corrigi-las descarta-se e regenera-se); aprovar e descartar iguais aos cards, com os mesmos contadores de SM-1 (`mind sm1 --kind question`).
+- **Prática** (`/w/{id}/practice`): uma questão por vez, cronômetro no cliente, alternativas selecionáveis por clique ou pelas teclas das alternativas (`A`–`E`, ou `C` e `E` em Certo/Errado) e `Enter` para responder; o resultado vem na hora com acerto ou erro, a alternativa correta, o `why` de cada alternativa, o comentário e a fonte; `N` (ou o botão) abre a próxima. A fila usa o seletor de estudo (tópico, material, tipo) mais "refazer as acertadas" (`redo=1`). O botão "Virar card" chega na UNIT-7.
+- **Seletor de estudo:** o campo "Conteúdo" passa a ter apenas **Flashcards** e **Questões** (sem "Tudo", que misturaria duas dinâmicas diferentes); "Questões" leva à prática com a mesma seleção; a tela Hoje mostra também as questões para praticar.
+- **API:** `POST /generations` aceita `kind` (`card` ou `question`) e o perfil em `subtype`; `ItemOut` ganha `options`, `answer` e `explanation`; `GET /practice/queue`, `POST /practice/answers` (`item_id`, `answer`, `duration_ms`) e `GET /practice/summary`.
+
+**Fluxo: gerar uma questão verificada**
+
+```mermaid
+sequenceDiagram
+    participant Q as Job
+    participant G as QuestionGenerator
+    participant M as Modelo gerador
+    participant C as SourceChecker
+    participant J as Judge
+    participant V as Modelo de verificação
+    participant D as workspace.db
+    Q->>G: lote (trechos, N questões)
+    G->>M: pede QuestionBatch
+    M-->>G: questões
+    G->>C: forma e citação exata
+    C-->>G: válidas e descartadas
+    G->>J: válidas + trechos
+    J->>V: pede JudgeBatch
+    V-->>J: vereditos por índice
+    J-->>G: sustentadas
+    G->>D: grava rascunhos e contadores
+```
+
+**NFR e mecanismos**
+
+| NFR | Mecanismo | Verificação |
+|---|---|---|
+| NFR-2 | Mesmo paralelismo dos cards; juiz em lote (uma chamada extra por lote) | `tests/perf/test_generation_latency.py` estendido para questões |
+| NFR-6 | Gerador e juiz passam pelo `GuardedProvider`; só trechos do recorte saem | testes do guarda e conteúdo dos prompts |
+| NFR-8 | Contadores de revisão por tipo; `mind sm1 --kind question` | `tests/eval/test_sm1_script.py` |
+| NFR-3 | Fila e resposta por consultas indexadas | teste de latência da prática |
+
+**Decisões de implementação**
+- Um único `GenerationService` atende cards e questões: o pedido ganha `kind`, e `plan_batches` recebe o tamanho do lote por tipo (5 para cards, 3 para questões). Os geradores seguem a mesma interface (`generate_batch`).
+- O estado de um item de questão é derivado dos `attempt`: nunca respondida, última errada, última certa; não há `card_state`.
+- `ItemInfo` passa a expor `payload` e `front`/`back` derivados: `front` = enunciado e `back` = comentário nas questões, para reaproveitar listagens e edição.
+
+**Critérios de aceitação → comportamento:** US-6 AC1 (gabarito, comentário por alternativa e fonte após responder) ← feedback da prática; US-6 AC2 (gabarito não sustentado não chega à revisão) ← `Judge`; US-6 AC3 (formato respeita o perfil) ← validação do perfil; US-8 AC1 (certo/errado, comentário, tempo gravados) ← `attempt`.
+
+### Assumptions & open questions
+- A49: Uma chamada de juiz por lote de 3 questões reduz o custo, mas um lote com veredito mal formatado perde as 3 questões; o ganho de custo compensa e o cenário é contado como `discarded_unsupported`. (confirmed: no)
+- A50: Não editar as alternativas na revisão é uma simplificação do MVP; se pesar no uso, entra no backlog. (confirmed: no)
+- A51: Questões de Certo/Errado de modelos tendem a vir desequilibradas (mais "Certo"); o prompt pede equilíbrio, e a revisão humana corrige o resto. (confirmed: no)

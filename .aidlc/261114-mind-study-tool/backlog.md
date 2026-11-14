@@ -13,3 +13,4 @@ Itens fora do MVP, registrados durante o discovery (1.4). Cada um pode virar um 
 | B-7 | Operações: empacotamento Docker, release e documentação para open source | 1.1 (SM-3) | Fora do perfil mvp (sem fase Operations); tratar em intent próprio |
 | B-8 | Editar o card durante o estudo (tecla `E`) | 3.1 UNIT-5 | Reaproveitar o formulário de edição da Revisão |
 | B-9 | Otimização dos parâmetros do FSRS por usuário | 3.1 UNIT-5 | Pacote opcional `fsrs[optimizer]` (torch) é pesado; avaliar depois |
+| B-10 | Editar as alternativas de uma questão na revisão | 3.1 UNIT-6 | Hoje só enunciado, comentário e tópico |
