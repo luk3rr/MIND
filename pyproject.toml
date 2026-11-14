@@ -25,6 +25,9 @@ dependencies = [
     "trafilatura>=2.3.1",
 ]
 
+[project.optional-dependencies]
+embeddings = ["sentence-transformers>=3.0"]
+
 [project.scripts]
 mind = "mind.__main__:main"
 
@@ -63,7 +66,7 @@ files = ["src", "tests"]
 python_version = "3.12"
 
 [[tool.mypy.overrides]]
-module = ["alembic.*"]
+module = ["alembic.*", "sentence_transformers.*"]
 ignore_missing_imports = true
 
 # PyMuPDF ships without type information, so calls into it are untyped by nature.
