@@ -1,0 +1,27 @@
+{#
+  Filename: settings.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ section_label }} · {{ workspace.name }} · {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ section_label }}</h1>
+<section class="card stack">
+  <h2>{{ t.rename }}</h2>
+  <form method="post" action="/w/{{ workspace.id }}/rename" class="stack">
+    <label for="rename-name">{{ t.workspace_name }}</label>
+    <input id="rename-name" name="name" type="text" maxlength="80" required value="{{ workspace.name }}">
+    <button class="btn" type="submit">{{ t.rename }}</button>
+  </form>
+</section>
+<section class="card stack">
+  <h2>{{ t.delete }}</h2>
+  <p class="alert alert-warn">{{ t.delete_warning }}</p>
+  <form method="post" action="/w/{{ workspace.id }}/delete" class="stack">
+    <label for="confirm">{{ t.delete_confirm_label }} (<strong>{{ workspace.name }}</strong>)</label>
+    <input id="confirm" name="confirm" type="text" autocomplete="off" required>
+    <button class="btn btn-danger" type="submit">{{ t.delete }}</button>
+  </form>
+</section>
+{% endblock %}

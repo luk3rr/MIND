@@ -1,0 +1,51 @@
+{#
+  Filename: base.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/vendor/katex/katex.min.js" defer></script>
+  <script src="/static/math.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">{{ t.skip_link }}</a>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">{{ app_name }}</div>
+      {% if workspaces %}
+      <details class="ws-switcher">
+        <summary aria-label="{{ t.workspace }}">{{ workspace.name if workspace else t.workspace }}</summary>
+        <ul>
+          {% for ws in workspaces %}
+          <li><a href="/w/{{ ws.id }}/today"{% if workspace and ws.id == workspace.id %} aria-current="true"{% endif %}>{{ ws.name }}</a></li>
+          {% endfor %}
+          <li><a href="/welcome">+ {{ t.new_workspace }}</a></li>
+        </ul>
+      </details>
+      {% endif %}
+      {% if workspace %}
+      <nav aria-label="{{ t.main_nav }}">
+        <ul>
+          {% for slug, label in sections %}
+          <li><a href="/w/{{ workspace.id }}/{{ slug }}"{% if active == slug %} aria-current="page"{% endif %}>{{ label }}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+      <button id="theme-toggle" class="btn-ghost" type="button" aria-label="{{ t.toggle_theme }}">◐</button>
+    </aside>
+    <main id="main" class="content" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>
