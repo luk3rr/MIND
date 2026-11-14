@@ -185,7 +185,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-7.4 `StatsService`: acerto por tópico, retenção, meta diária, sequência. ≈2 h · FR-16 · teste: `tests/stats/test_stats.py` (conjunto de tentativas conhecido) · files: src/mind/stats/service.py, tests/stats/test_stats_service.py
 - [x] T-7.5 Tela Estatísticas. · US-10 · teste: `tests/web/test_stats_page.py` · files: src/mind/web/{stats_pages.py,charts.py,formatting.py}, src/mind/web/templates/stats.html, tests/web/test_stats_pages.py
 - [x] T-7.6 Meta diária configurável e progresso em Hoje. · US-10 · teste: `tests/web/test_daily_goal.py` · files: src/mind/web/stats_pages.py (goal form), tests/web/test_stats_pages.py
-- [ ] T-7.7 API `items/{id}/error-card` e `stats`. · FR-24 · teste: `tests/api/test_stats_contract.py`
+- [x] T-7.7 API `items/{id}/error-card` e `stats`. · FR-24 · teste: `tests/api/test_stats_contract.py` · files: src/mind/api/{schemas,deps}.py, src/mind/api/v1/{errors,stats,topics,__init__}.py, tests/api/{test_stats_contract.py,openapi_v1.json}
 
 ### UNIT-8 OCR, URL e DOCX — Status: pending
 - [ ] T-8.1 Extrator OCR (Tesseract) com confiança e prévia. ≈2 h · FR-3 · teste: `tests/ingestion/test_ocr.py` (Tesseract simulado; versão real em `tests/ingestion/test_ocr_real.py`, marcador opcional)
