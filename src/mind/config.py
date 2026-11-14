@@ -24,6 +24,7 @@ class Settings(BaseModel):
     port: int = Field(default=8000, ge=1, le=65535)
     log_level: str = "INFO"
     max_concurrent_jobs: int = Field(default=2, ge=1, le=16)
+    max_upload_mb: int = Field(default=200, ge=1, le=4096)
 
     @property
     def app_db_path(self) -> Path:
@@ -70,4 +71,5 @@ def load_settings(
         port=int(merged.get("MIND_PORT", "8000")),
         log_level=merged.get("MIND_LOG_LEVEL", "INFO").upper(),
         max_concurrent_jobs=int(merged.get("MIND_MAX_JOBS", "2")),
+        max_upload_mb=int(merged.get("MIND_MAX_UPLOAD_MB", "200")),
     )
