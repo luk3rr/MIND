@@ -88,12 +88,17 @@ Ordem: BOLT-1 → BOLT-2 → BOLT-3 → BOLT-4 → BOLT-5 (seguindo o DAG de 2.7
 **Desvios.** (1) **A instalação real não foi feita aqui:** o docker pede senha de sudo sem terminal; a instalação, a reinstalação e o `apt remove` reais com checagem de que `~/.config/mind` permanece estão no job `package` do CI (ainda não executado, pois não há push) e podem ser feitos à mão com `sudo apt install ./dist/mind-study_0.1.0_amd64.deb`. (2) O `pnpm` não está no PATH, então o electron-builder cai para a travessia manual de `node_modules` (resultado equivalente, conferido pelo E2E empacotado). (3) Campos `License` e `Vendor` do `control` geram avisos "unknown-field" no lintian; inofensivos. (4) `react`, `react-dom`, `katex` e `lucide-react` foram movidos para `devDependencies` (o Vite os embute no renderer). (5) O ícone é provisório (A38). (6) O design deste Unit foi escrito e implementado no mesmo turno, porque o autor já havia decidido nome, mantenedor, ícone e verificação; a aprovação formal fica no checkpoint do esqueleto.
 
 
-### UNIT-4 Provedor LLM, configurações e custo   Status: not started
-- [ ] UNIT-4.1 Interface de provedor e cliente OpenRouter com `fetch`, timeouts e erros estáveis [FR-19] — teste: Testes portados com provedor falso
-- [ ] UNIT-4.2 Armazenamento cifrado da chave (AES-256-GCM, 0600) e redação de log [NFR-7] — teste: Teste: chave ausente de log, banco e renderer
-- [ ] UNIT-4.3 Consentimento de envio de trechos [FR-20, NFR-6] — teste: Sem aceite não há envio
-- [ ] UNIT-4.4 Tabela de preços, custo estimado, custo do mês e limite mensal [FR-21] — teste: Limite atingido bloqueia a geração
-- [ ] UNIT-4.5 Telas de setup inicial e Configurações [FR-19] — teste: Testing Library
+### UNIT-4 Provedor LLM, configurações e custo   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-4.1 Interface de provedor e cliente OpenRouter com `fetch`, timeouts e erros estáveis [FR-19] — teste: Testes portados com provedor falso — files: src/core/llm/{provider,openrouter,types,fake}.ts (+ testes)
+- [x] UNIT-4.2 Armazenamento cifrado da chave (AES-256-GCM, 0600) e redação de log [NFR-7] — teste: Teste: chave ausente de log, banco e renderer — files: src/core/secrets.ts, src/core/redaction.ts (+ testes); ADR-2
+- [x] UNIT-4.3 Consentimento de envio de trechos [FR-20, NFR-6] — teste: Sem aceite não há envio — files: src/core/llm/{consent,guarded}.ts
+- [x] UNIT-4.4 Tabela de preços, custo estimado, custo do mês e limite mensal [FR-21] — teste: Limite atingido bloqueia a geração — files: src/core/llm/costs.ts, src/core/settings/service.ts
+- [x] UNIT-4.5 Telas de setup inicial e Configurações [FR-19] — teste: Testing Library — files: src/renderer/src/pages/{SetupPage,SettingsPage}.tsx, components/ProviderForm.tsx, settings-status.tsx, faixa em Shell.tsx
+
+**Resumo do UNIT-4.** `Provider` único com `OpenRouterProvider` (fetch injetável, JSON Schema vindo do zod, recuo sem `response_format`, reenvio com a mensagem de validação, nova tentativa em 429 e 5xx, erros estáveis), `GuardedProvider` (sem aceite não há envio, limite mensal, registro de custo), `PriceCatalog` e `CostLedger` em `app.db`, `ConsentService`, `SettingsService`, `SecretStore` AES-256-GCM com a variável de ambiente prioritária, redação de log, `FakeProvider`, canais `settings:*` (a chave nunca sai do núcleo), telas de setup em 2 passos, faixa de aviso e Configurações (provedor, privacidade, custo do mês). Resultado: verification command exit 0 (197 testes, cobertura 95,6% de linhas e 87,0% de ramos) e E2E 15/15, incluindo a conferência de que a chave não aparece em arquivo algum do perfil e de que os arquivos `ai/*` são 0600.
+
+**Desvios.** (1) A origem da chave é `stored` (cifrada) em vez de `file`, pois o `.env` não existe mais. (2) A UI não restaura rotas de setup após reiniciar (só seções). (3) `settings:getCost` recebe ano e mês explícitos (a UI usa o mês corrente). (4) O custo estimado antes de gerar (`PriceCatalog.estimate`) existe no núcleo, mas a tela Gerar que o mostra é do UNIT-9. (5) Aviso de design: o catálogo de modelos só é buscado quando o usuário pede (botão), como no Python; sem rede o campo de modelo continua livre.
+
 
 ### UNIT-7 Ingestão, busca e biblioteca   Status: not started
 - [ ] UNIT-7.1 Extração de PDF com mupdf em worker [FR-2] — teste: PDF de amostra com texto por página

@@ -7,6 +7,8 @@
 import { useEffect, useState } from "react";
 import { Shell } from "./components/Shell.js";
 import { PlaceholderPage } from "./pages/PlaceholderPage.js";
+import { SettingsPage } from "./pages/SettingsPage.js";
+import { SetupPage } from "./pages/SetupPage.js";
 import { TodayPage } from "./pages/TodayPage.js";
 import { WelcomePage } from "./pages/WelcomePage.js";
 import { RouterProvider, parseRoute, sectionPath, useRouter } from "./router.js";
@@ -35,14 +37,15 @@ function Screen() {
   if (route.name === "section") {
     return (
       <Shell workspaceId={route.workspaceId} section={route.section}>
-        {route.section === "today" ? (
-          <TodayPage workspaceId={route.workspaceId} />
-        ) : (
+        {route.section === "today" && <TodayPage workspaceId={route.workspaceId} />}
+        {route.section === "settings" && <SettingsPage />}
+        {route.section !== "today" && route.section !== "settings" && (
           <PlaceholderPage section={route.section} />
         )}
       </Shell>
     );
   }
+  if (route.name === "setup") return <SetupPage step={route.step} />;
   return <WelcomePage />;
 }
 

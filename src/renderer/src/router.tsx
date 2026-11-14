@@ -11,6 +11,7 @@ import type { SectionSlug } from "./sections.js";
 
 export type Route =
   | { name: "welcome" }
+  | { name: "setup"; step: 1 | 2 }
   | { name: "section"; workspaceId: number; section: SectionSlug }
   | { name: "unknown" };
 
@@ -18,6 +19,8 @@ const SECTION_PATH = /^\/w\/(\d+)\/([a-z]+)$/;
 
 export function parseRoute(path: string): Route {
   if (path === "/welcome") return { name: "welcome" };
+  if (path === "/setup/1") return { name: "setup", step: 1 };
+  if (path === "/setup/2") return { name: "setup", step: 2 };
   const match = SECTION_PATH.exec(path);
   if (match) {
     const section = match[2] as SectionSlug;

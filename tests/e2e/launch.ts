@@ -38,12 +38,15 @@ export function removeProfile(path: string): void {
   rmSync(path, { recursive: true, force: true });
 }
 
-export async function launch(userData: string = newProfile()): Promise<Launched> {
+export async function launch(
+  userData: string = newProfile(),
+  extraEnv: Record<string, string> = {},
+): Promise<Launched> {
   const started = Date.now();
   const app = await electron.launch({
     ...(EXECUTABLE ? { executablePath: EXECUTABLE } : {}),
     args: [...EXTRA_ARGS, ...APP_ARGS],
-    env: { ...process.env, MIND_USER_DATA_DIR: userData },
+    env: { ...process.env, OPENROUTER_API_KEY: "", ...extraEnv, MIND_USER_DATA_DIR: userData },
   });
   const page = await app.firstWindow();
   await page.waitForLoadState("domcontentloaded");

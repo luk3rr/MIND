@@ -7,6 +7,8 @@
 import { app, BrowserWindow, screen, session } from "electron";
 import { join } from "node:path";
 import { createCore } from "../core/index.js";
+import { FakeProvider } from "../core/llm/fake.js";
+import { installLogRedaction } from "../core/redaction.js";
 import type { Core } from "../core/index.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { createRouter } from "./ipc/router.js";
@@ -23,6 +25,7 @@ if (userDataOverride) app.setPath("userData", userDataOverride);
 const devServerUrl = process.env["ELECTRON_RENDERER_URL"];
 let mainWindow: BrowserWindow | null = null;
 let core: Core | null = null;
+let uninstallRedaction: (() => void) | null = null;
 
 function createWindow(state: WindowState): BrowserWindow {
   const saved = state.saved;
@@ -86,10 +89,15 @@ if (!app.requestSingleInstanceLock()) {
     const state = new WindowState();
     core = createCore({
       dataDir: process.env["MIND_DATA_DIR"] ?? app.getPath("userData"),
+      // Offline end-to-end runs only; a packaged app always talks to the real provider.
+      ...(process.env["MIND_E2E_FAKE_LLM"] === "1" && !app.isPackaged
+        ? { provider: new FakeProvider() }
+        : {}),
       onJobEvent: (event) => {
         mainWindow?.webContents.send(`job:${event.type}`, event);
       },
     });
+    uninstallRedaction = installLogRedaction(core.llm.secrets);
     const dispatch = createRouter(createHandlers(core, state));
     ipcMain.handle("mind:invoke", (_event, channel: unknown, payload: unknown) =>
       dispatch(channel, payload),
@@ -110,6 +118,7 @@ if (!app.requestSingleInstanceLock()) {
     // Close the databases and stop the jobs before the process goes away.
     event.preventDefault();
     closing = true;
+    uninstallRedaction?.();
     const closing_ = core.close();
     core = null;
     void closing_.finally(() => app.quit());

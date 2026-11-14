@@ -698,3 +698,52 @@ flowchart LR
 
 - A37 (3.4 UNIT-6): O alvo mínimo do `.deb` (Ubuntu 22.04+/Debian 12+) é aceito porque o Electron embute Node e Chromium; a compatibilidade exata de bibliotecas é validada no CI. — confirmed: no
 - A38 (3.4 UNIT-6): O ícone gerado é provisório até o autor aprovar ou trocar. — confirmed: no
+
+### UNIT-4 — Provedor LLM, configurações e custo (nota de design)
+
+**Objetivo.** A única porta para modelos de linguagem, com consentimento, limite mensal e registro de custo; configurações do provedor; chave cifrada em disco; telas de setup e de Configurações. Porta o comportamento de `llm/`, `secrets.py`, `redaction.py` e `settings_service.py` do Python. [src: FR-19, FR-20, FR-21, NFR-6, NFR-7, ADR-2, codekb]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Interface | `Provider` com `name`, `requiresConsent` e `complete(messages, schema, { model, maxRetries })` que devolve `{ value, usage }`; o esquema é um zod e o JSON Schema enviado ao modelo vem de `z.toJSONSchema` |
+| OpenRouter | `OpenRouterProvider` sobre `fetch` injetável: `response_format` JSON Schema com recuo para instrução no prompt quando o modelo não suporta, tolerância a cerca de código, reenvio com a mensagem de erro de validação (até `maxRetries`), 1 nova tentativa em 429 e 5xx, erros estáveis (`PROVIDER_ERROR`, `PROVIDER_KEY_MISSING`), uso e custo acumulados |
+| Proteções | `GuardedProvider`: sem consentimento não há envio (`CONSENT_REQUIRED`); gasto do mês ≥ limite bloqueia (`MONTHLY_LIMIT_REACHED`); toda chamada é registrada no `cost_ledger`; custo informado pelo provedor tem prioridade, senão tokens vezes preço |
+| Catálogo | `PriceCatalog` em `app.db`, atualizado do catálogo público (24 h de validade, falha branda), estimativa a 4 caracteres por token |
+| Configurações | `SettingsService` com os mesmos padrões do Python: modelos `anthropic/claude-haiku-5.5` (gerar) e `anthropic/claude-sonnet-5.5` (verificar), limite US$ 5; validação por campo; nunca contém a chave |
+| Chave | `SecretStore` (ADR-2): AES-256-GCM, chave local gerada pelo app em `ai/keystore.key` e credenciais em `ai/credentials.enc`, ambos 0600, escrita atômica; a variável de ambiente `OPENROUTER_API_KEY` tem precedência (origem `environment`, senão `stored`); só a camada LLM chama `apiKey()` |
+| Log | `redact` e `installLogRedaction` trocam a chave e qualquer `sk-or-...` por `***` em `console.*` |
+| IPC | `settings:get`, `settings:save`, `settings:clearKey`, `settings:setConsent`, `settings:refreshModels`, `settings:getCost`; a resposta nunca inclui a chave |
+| Teste sem rede | `createCore` aceita um provedor interno; o processo principal usa o `FakeProvider` quando `MIND_E2E_FAKE_LLM=1` e o app não está empacotado |
+| UI | Rotas `/setup/1` (chave, modelos, limite) e `/setup/2` (privacidade e aceite); faixa no topo avisando enquanto faltar chave ou aceite; Configurações com painéis Provedor, Privacidade e Custo do mês (total e linhas); textos em pt-BR iguais aos do app Python |
+
+```mermaid
+sequenceDiagram
+  participant G as Serviço de geração (Units 9, 11, 14)
+  participant P as GuardedProvider
+  participant C as ConsentService
+  participant L as CostLedger
+  participant O as OpenRouterProvider
+  participant S as SecretStore
+  G->>P: complete(mensagens, esquema, modelo)
+  P->>C: consentimento dado?
+  C-->>P: sim (senão CONSENT_REQUIRED)
+  P->>L: gasto do mês < limite?
+  L-->>P: sim (senão MONTHLY_LIMIT_REACHED)
+  P->>O: complete(...)
+  O->>S: apiKey()
+  O->>O: fetch com reenvio e validação zod
+  O-->>P: valor e uso
+  P->>L: registra o custo
+  P-->>G: valor e uso com custo
+```
+
+**NFR (nota).** NFR-6: testes provam que sem aceite nada é enviado e que não há telemetria; NFR-7: a chave não aparece em log, banco, resposta IPC nem arquivo de dados além de `credentials.enc` (cifrado); o E2E procura a chave nos arquivos do perfil.
+
+**Riscos.** (1) A cifra protege contra leitura casual, não contra quem lê os dois arquivos como o mesmo usuário (ADR-2). (2) O formato de resposta do OpenRouter e o catálogo de preços podem mudar; falhas de catálogo são brandas e o custo cai para zero quando o preço é desconhecido, como no Python.
+
+### Assumptions & open questions
+
+- A39 (3.1 UNIT-4): O `maxRetries` e a nova tentativa em 429/5xx seguem os valores do Python (2 e 1). — confirmed: yes
+- A40 (3.1 UNIT-4): O E2E usa o `FakeProvider` por `MIND_E2E_FAKE_LLM=1`, só fora do app empacotado. — confirmed: yes
