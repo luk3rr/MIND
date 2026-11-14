@@ -93,16 +93,20 @@ class CardGenerator:
         chunks: list[SourceChunk],
         model: str,
         remaining: Callable[[], int],
+        topic_id: int | None = None,
+        avoid: list[str] | None = None,
     ) -> BatchOutcome:
         """Ask for `count` cards, then store as many valid drafts as `remaining()` still allows."""
         prompt_chunks = [PromptChunk(c.id, c.label, c.text) for c in chunks]
-        messages = build_card_messages(subtype, count, prompt_chunks)
+        messages = build_card_messages(subtype, count, prompt_chunks, avoid)
         batch, usage = await self._provider.complete(
             messages, CardBatch, model=model, purpose="generation"
         )
         outcome = BatchOutcome(cost_usd=usage.cost_usd or 0.0)
         # No `await` below: validation and storage run atomically with respect to other batches.
-        self._store(run_id, subtype, batch.cards, {c.id: c for c in chunks}, remaining(), outcome)
+        self._store(
+            run_id, subtype, batch.cards, {c.id: c for c in chunks}, remaining(), outcome, topic_id
+        )
         return outcome
 
     def _store(
@@ -113,6 +117,7 @@ class CardGenerator:
         by_id: dict[int, SourceChunk],
         remaining: int,
         outcome: BatchOutcome,
+        forced_topic: int | None = None,
     ) -> None:
         with self._sessions() as session:
             seen = self._existing_fronts(session, subtype)
@@ -143,7 +148,11 @@ class CardGenerator:
                     outcome.discard("duplicate", card)
                     continue
                 seen.add(key)
-                topic = upsert_topic(session, topics, clean_topic(card.topic))
+                topic = (
+                    None
+                    if forced_topic is not None
+                    else upsert_topic(session, topics, clean_topic(card.topic))
+                )
                 session.add(
                     Item(
                         run_id=run_id,
@@ -156,7 +165,9 @@ class CardGenerator:
                             ensure_ascii=False,
                         ),
                         status="draft",
-                        topic_id=topic.id if topic else None,
+                        topic_id=forced_topic
+                        if forced_topic is not None
+                        else (topic.id if topic else None),
                         chunk_id=chunk.id,
                         source_title=chunk.material_title,
                         source_page=chunk.page,

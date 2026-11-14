@@ -41,6 +41,7 @@ from mind.generation.prompts import (
 )
 from mind.generation.questions import QuestionGenerator
 from mind.generation.schemas import CARD_SUBTYPES, PROFILES
+from mind.generation.training import training_material
 from mind.jobs.queue import JobCancelled, JobContext, JobQueue, JobWork
 from mind.services import Services
 from mind.workspaces.registry import OpenWorkspace, WorkspaceRegistry
@@ -57,12 +58,13 @@ CONCURRENT_BATCHES = 2
 
 @dataclass(frozen=True)
 class GenerationRequest:
-    material_id: int
+    material_id: int | None
     subtype: str
     quantity: int = 20
     kind: str = "card"
     page_from: int | None = None
     page_to: int | None = None
+    topic_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -81,6 +83,7 @@ class RunInfo:
     material_id: int | None
     page_from: int | None
     page_to: int | None
+    topic_id: int | None
     model: str
     requested: int
     generated: int
@@ -109,6 +112,7 @@ def _info(row: GenerationRun) -> RunInfo:
         material_id=row.material_id,
         page_from=row.page_from,
         page_to=row.page_to,
+        topic_id=row.topic_id,
         model=row.model,
         requested=row.requested,
         generated=row.generated,
@@ -132,6 +136,8 @@ def _info(row: GenerationRun) -> RunInfo:
 
 def validate_request(request: GenerationRequest) -> None:
     errors: list[FieldError] = []
+    if request.material_id is None and request.topic_id is None:
+        errors.append(FieldError("material_id", "Escolha um material ou um tópico para treinar."))
     if request.kind not in MAX_QUANTITY:
         errors.append(FieldError("kind", "Escolha cards ou questões."))
     else:
@@ -183,6 +189,16 @@ class GenerationService:
         return self._workspace.sessions
 
     def _chunks_for(self, request: GenerationRequest) -> list[SourceChunk]:
+        if request.topic_id is not None:
+            training = training_material(self._sessions, request.topic_id)
+            if not training.chunks:
+                raise ValidationFailed(
+                    "Não há trechos de origem para treinar este tópico.",
+                    errors=[FieldError("topic_id", "Importe material que fale deste tópico.")],
+                )
+            return training.chunks
+        if request.material_id is None:
+            raise ValidationFailed("Escolha um material.")
         with self._sessions() as session:
             material = session.get(Material, request.material_id)
             if material is None:
@@ -204,7 +220,12 @@ class GenerationService:
 
     def estimate(self, request: GenerationRequest) -> EstimateInfo:
         validate_request(request)
-        plan = plan_batches(self._chunks_for(request), request.quantity, per_batch(request.kind))
+        plan = plan_batches(
+            self._chunks_for(request),
+            request.quantity,
+            per_batch(request.kind),
+            spread=request.topic_id is None,
+        )
         settings = self._services.settings.get()
         chunk_chars = sum(len(c.text) for batch in plan for c in batch.chunks)
         if request.kind == "question":
@@ -256,6 +277,7 @@ class GenerationService:
                 material_id=request.material_id,
                 page_from=request.page_from,
                 page_to=request.page_to,
+                topic_id=request.topic_id,
                 model=model,
                 requested=request.quantity,
                 status="queued",
@@ -293,7 +315,17 @@ class GenerationService:
         ctx: JobContext,
     ) -> None:
         self._set_status(run_id, "running")
-        plan = plan_batches(self._chunks_for(request), request.quantity, per_batch(request.kind))
+        plan = plan_batches(
+            self._chunks_for(request),
+            request.quantity,
+            per_batch(request.kind),
+            spread=request.topic_id is None,
+        )
+        avoid = (
+            training_material(self._sessions, request.topic_id).avoid
+            if request.topic_id is not None
+            else []
+        )
         semaphore = asyncio.Semaphore(self._concurrency)
         accepted = 0
         finished = 0
@@ -314,6 +346,8 @@ class GenerationService:
                         model=model,
                         judge_model=judge_model,
                         remaining=remaining,
+                        topic_id=request.topic_id,
+                        avoid=avoid,
                     )
                 else:
                     outcome = await self._generator.generate_batch(
@@ -323,6 +357,8 @@ class GenerationService:
                         chunks=chunks,
                         model=model,
                         remaining=remaining,
+                        topic_id=request.topic_id,
+                        avoid=avoid,
                     )
                 accepted += outcome.accepted
                 finished += 1

@@ -401,3 +401,143 @@ async def test_the_notebook_run_never_shows_up_in_the_generations_list(env: Env)
         session.add(GenerationRun(kind="notebook", subtype="error_note", model="-", requested=0))
         session.commit()
     assert env.generation.list_runs() == []
+
+
+# --- training on a weak topic -------------------------------------------------------------------
+
+
+def make_weak_topic(env: Env, chunk_ids: list[int]) -> int:
+    """A topic with a card rated Errei (chunk 0) and a question missed twice (chunk 1)."""
+    import json
+
+    from mind.db.workspace_models import Attempt, ReviewLog, Topic
+
+    with env.workspace.sessions() as session:
+        topic = Topic(name="Mitocôndria")
+        run = GenerationRun(kind="card", subtype="qa", model="m", requested=2)
+        session.add_all([topic, run])
+        session.flush()
+        card = Item(
+            run_id=run.id,
+            kind="card",
+            subtype="qa",
+            status="approved",
+            topic_id=topic.id,
+            chunk_id=chunk_ids[0],
+            payload_json=json.dumps({"front": "Card existente?", "back": "R"}),
+        )
+        statement = {"statement": "Questão existente?", "options": [], "answer": "C"}
+        question = Item(
+            run_id=run.id,
+            kind="question",
+            subtype="certo_errado",
+            status="approved",
+            topic_id=topic.id,
+            chunk_id=chunk_ids[1],
+            payload_json=json.dumps({**statement, "explanation": "x"}),
+        )
+        session.add_all([card, question])
+        session.flush()
+        session.add(ReviewLog(item_id=card.id, rating=1, day="2026-11-14"))
+        session.add_all(
+            Attempt(item_id=question.id, answer="E", correct=False, day="2026-11-14")
+            for _ in range(2)
+        )
+        session.commit()
+        return topic.id
+
+
+def chunk_ids_of(env: Env) -> list[int]:
+    with env.workspace.sessions() as session:
+        return [c.id for c in session.scalars(select(Chunk).order_by(Chunk.ordinal))]
+
+
+async def test_training_material_starts_with_the_chunks_behind_the_mistakes(env: Env) -> None:
+    from mind.generation.training import training_material
+
+    await env.import_material()
+    ids = chunk_ids_of(env)
+    topic_id = make_weak_topic(env, [ids[5], ids[3]])
+
+    material = training_material(env.workspace.sessions, topic_id)
+
+    assert material.topic_name == "Mitocôndria"
+    found = [c.id for c in material.chunks]
+    assert found[:2] == [ids[3], ids[5]]  # the question missed twice outranks the card missed once
+    assert len(found) == len(set(found))
+    assert len(found) <= 30
+    assert set(material.avoid) == {"Card existente?", "Questão existente?"}
+    assert all(c.material_title == "aula" for c in material.chunks)
+
+
+async def test_a_training_run_forces_the_topic_and_tells_the_model_what_already_exists(
+    env: Env,
+) -> None:
+    await env.import_material()
+    ids = chunk_ids_of(env)
+    topic_id = make_weak_topic(env, [ids[5], ids[3]])
+    env.script_valid_cards()
+
+    run = env.generation.start(GenerationRequest(None, "qa", 5, topic_id=topic_id))
+    assert (run.topic_id, run.material_id) == (topic_id, None)
+    await wait_run(env, run.id)
+
+    done = env.generation.get(run.id)
+    assert (done.status, done.generated) == ("done", 5)
+    with env.workspace.sessions() as session:
+        new = [i for i in session.scalars(select(Item)) if i.run_id == run.id]
+        assert {i.topic_id for i in new} == {topic_id}
+        from mind.db.workspace_models import Topic
+
+        assert [t.name for t in session.scalars(select(Topic))] == ["Mitocôndria"]
+    prompt = env.fake.calls[0].messages[-1].content
+    assert "do not repeat them" in prompt
+    assert "- Card existente?" in prompt
+    assert f"[excerpt {ids[3]} " in prompt  # the most-missed chunk is sent first
+
+
+async def test_question_training_uses_the_judge_and_keeps_the_topic(env: Env) -> None:
+    await env.import_material()
+    ids = chunk_ids_of(env)
+    topic_id = make_weak_topic(env, [ids[5], ids[3]])
+    script_questions(env)
+
+    run = env.generation.start(
+        GenerationRequest(None, "certo_errado", 3, kind="question", topic_id=topic_id)
+    )
+    await wait_run(env, run.id)
+
+    done = env.generation.get(run.id)
+    assert (done.status, done.generated, done.topic_id) == ("done", 3, topic_id)
+    with env.workspace.sessions() as session:
+        assert {i.topic_id for i in session.scalars(select(Item)) if i.run_id == run.id} == {
+            topic_id
+        }
+
+
+async def test_training_requests_are_validated(env: Env) -> None:
+    from mind.db.workspace_models import Topic
+    from mind.errors import TopicNotFound
+
+    with pytest.raises(ValidationFailed):
+        env.generation.start(GenerationRequest(None, "qa", 5))  # neither a material nor a topic
+    with pytest.raises(TopicNotFound):
+        env.generation.start(GenerationRequest(None, "qa", 5, topic_id=99))
+    with env.workspace.sessions() as session:
+        lonely = Topic(name="Sem material")
+        session.add(lonely)
+        session.commit()
+        lonely_id = lonely.id
+    with pytest.raises(ValidationFailed, match="trechos de origem"):
+        env.generation.start(GenerationRequest(None, "qa", 5, topic_id=lonely_id))
+    assert env.generation.list_runs() == []
+
+
+async def test_a_training_estimate_does_not_call_the_model(env: Env) -> None:
+    await env.import_material()
+    ids = chunk_ids_of(env)
+    topic_id = make_weak_topic(env, [ids[5], ids[3]])
+    estimate = env.generation.estimate(GenerationRequest(None, "qa", 10, topic_id=topic_id))
+    assert estimate.chunks >= 2
+    assert estimate.batches >= 1
+    assert env.fake.calls == []

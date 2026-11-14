@@ -97,10 +97,12 @@ class QuestionGenerator:
         model: str,
         judge_model: str,
         remaining: Callable[[], int],
+        topic_id: int | None = None,
+        avoid: list[str] | None = None,
     ) -> BatchOutcome:
         prompt_chunks = [PromptChunk(c.id, c.label, c.text) for c in chunks]
         batch, usage = await self._provider.complete(
-            build_question_messages(profile, count, prompt_chunks),
+            build_question_messages(profile, count, prompt_chunks, avoid),
             QuestionBatch,
             model=model,
             purpose="generation",
@@ -130,7 +132,7 @@ class QuestionGenerator:
                     outcome.note(f"unsupported: {reason}", candidate.question.statement)
             candidates = kept
         # No `await` below: duplicates are re-checked and the drafts stored atomically.
-        self._store(run_id, profile, candidates, remaining(), outcome)
+        self._store(run_id, profile, candidates, remaining(), outcome, topic_id)
         return outcome
 
     def _screen(
@@ -175,6 +177,7 @@ class QuestionGenerator:
         candidates: list[_Candidate],
         remaining: int,
         outcome: BatchOutcome,
+        forced_topic: int | None = None,
     ) -> None:
         with self._sessions() as session:
             seen = self._existing_statements(session)
@@ -191,7 +194,11 @@ class QuestionGenerator:
                     outcome.note("duplicate", question.statement)
                     continue
                 seen.add(key)
-                topic = upsert_topic(session, topics, clean_topic(question.topic))
+                topic = (
+                    None
+                    if forced_topic is not None
+                    else upsert_topic(session, topics, clean_topic(question.topic))
+                )
                 session.add(
                     Item(
                         run_id=run_id,
@@ -201,7 +208,9 @@ class QuestionGenerator:
                             payload_for(question).model_dump(), ensure_ascii=False
                         ),
                         status="draft",
-                        topic_id=topic.id if topic else None,
+                        topic_id=forced_topic
+                        if forced_topic is not None
+                        else (topic.id if topic else None),
                         chunk_id=candidate.chunk.id,
                         source_title=candidate.chunk.material_title,
                         source_page=candidate.chunk.page,
