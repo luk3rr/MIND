@@ -164,7 +164,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-6.1 Prompts e esquema `QuestionBatch`: Certo/Errado e múltipla escolha de 4 ou 5 alternativas; perfil de prova como enum. · FR-9, FR-11 · teste: `tests/generation/test_question_schema.py` (uma correta, 4–5 opções, resposta existente) · files: src/mind/generation/{schemas,prompts}.py, tests/generation/test_question_prompts.py
 - [x] T-6.2 `QuestionGenerator` reaproveitando `SourceChecker`. ≈2 h · FR-9, FR-7 · teste: `tests/generation/test_question_generator.py` · files: src/mind/generation/{questions,topics}.py, src/mind/generation/cards.py (shared outcome and topic helper), tests/generation/test_question_generator.py
 - [x] T-6.3 `Judge` (segunda chamada, modelo configurável) e descarte de gabarito não sustentado. · FR-10 · teste: `tests/verification/test_judge.py` · files: src/mind/generation/judge.py, tests/generation/test_judge.py
-- [ ] T-6.4 Modelo `attempt`, migração e `StudyService.answer`. · FR-14 · teste: `tests/study/test_attempts.py` (grava resultado e tempo)
+- [x] T-6.4 Modelo `attempt`, migração e `StudyService.answer`. · FR-14 · teste: `tests/study/test_attempts.py` (grava resultado e tempo) · files: src/mind/practice/service.py, tests/practice/test_practice_service.py
 - [ ] T-6.5 Tela Questão: cronômetro, correção, comentário por alternativa, fonte. ≈2 h · FR-9, FR-14, US-6, US-8 · teste: `tests/web/test_question_page.py`
 - [x] T-6.6 Revisão passa a aceitar questões. · US-6 · teste: `tests/review/test_review_questions.py` · files: src/mind/review/service.py, tests/review/test_review_service.py
 - [ ] T-6.7 API de geração de questões e `study/attempts`. · FR-24 · teste: `tests/api/test_questions_contract.py`
