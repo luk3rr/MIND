@@ -96,8 +96,8 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 
 ### UNIT-3 Ingestão de PDF/Markdown, busca e biblioteca — Status: pending
 - [x] T-3.1 Modelos `material` e `chunk`, migração do `workspace.db` e tabela virtual FTS5. · FR-5 · teste: `tests/db/test_migrations_workspace.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0003_*.py, tests/ingestion/test_workspace_migrations.py
-- [ ] T-3.2 `PdfExtractor` (PyMuPDF; ver A34): texto por página; PDF corrompido gera `EXTRACTION_FAILED`. · FR-2 · teste: `tests/ingestion/test_pdf.py`
-- [ ] T-3.3 Extratores de Markdown e texto. · FR-2 · teste: `tests/ingestion/test_text.py`
+- [x] T-3.2 `PdfExtractor` (PyMuPDF; ver A34): texto por página; PDF corrompido gera `EXTRACTION_FAILED`. · FR-2 · teste: `tests/ingestion/test_pdf.py` · files: src/mind/ingestion/extractors.py, tests/ingestion/{pdfs,test_extractors}.py, pyproject.toml
+- [x] T-3.3 Extratores de Markdown e texto. · FR-2 · teste: `tests/ingestion/test_text.py` · files: src/mind/ingestion/extractors.py (TextExtractor), tests/ingestion/test_extractors.py
 - [ ] T-3.4 `Chunker` por seção e página com metadados (arquivo, página, seção) e tamanho-alvo. · FR-5 · teste: `tests/ingestion/test_chunker.py`
 - [ ] T-3.5 `Retriever` (Protocol) com BM25 via FTS5, filtros por material e intervalo de páginas. · FR-5, US-2 · teste: `tests/retrieval/test_bm25.py`
 - [ ] T-3.6 Job de importação com progresso (extrair, dividir, indexar) e falha legível. · FR-2, US-2 · teste: `tests/ingestion/test_import_job.py`

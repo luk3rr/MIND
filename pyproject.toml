@@ -63,6 +63,11 @@ python_version = "3.12"
 module = ["alembic.*"]
 ignore_missing_imports = true
 
+# PyMuPDF ships without type information, so calls into it are untyped by nature.
+[[tool.mypy.overrides]]
+module = ["mind.ingestion.extractors", "tests.ingestion.*", "tests.perf.*"]
+disallow_untyped_calls = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
