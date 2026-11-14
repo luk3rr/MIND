@@ -615,3 +615,46 @@ stateDiagram-v2
 
 - A33 (3.1 UNIT-3): O código de erro `INTERRUPTED` de jobs passa para a lista estável de códigos. — confirmed: yes
 - A34 (3.1 UNIT-3): Datas em texto ISO-8601 UTC (o formato do Python era de datetime com fuso), sem necessidade de compatibilidade com bancos antigos (A1). — confirmed: yes
+
+### UNIT-5 — Casca de UI, tema e atalhos (nota de design)
+
+**Objetivo.** A janela passa a ter a casca definitiva do mockup de 2.5: barra lateral com as 8 seções e seletor de workspace, rodapé de status, tema escuro padrão com alternador salvo, atalhos globais, tela Hoje com dados reais, renderização de fórmulas e fontes locais. [src: FR-23, FR-28, FR-29, FR-32, NFR-11, mockups/mind-ui.html]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Roteador | Roteador próprio e mínimo em estado React (rotas `/w/:id/:secao` e `/welcome`), sem dependência nova; a rota atual é gravada por `window:setLastRoute` e restaurada por `window:getState` (FR-27) |
+| Estado | Contexto React e hooks (`useInvoke` com carregando, dado e erro; `useWorkspaces`); sem biblioteca de estado global |
+| Estilo | CSS puro com tokens em `tokens.css` (os de 2.5) e `app.css`; tema por `data-theme` em `<html>`, padrão escuro (Dracula), escolha salva em `localStorage`; barra lateral verde; `prefers-reduced-motion` respeitado |
+| Fontes | Inter e JetBrains Mono locais (woff2 e licenças copiados do Python); sem rede |
+| Ícones | lucide-react (ADR-4) |
+| Fórmulas | `katex` com CSS e fontes empacotados; `splitMath` portado de `math.js` (mesmas regras: `$...$`, `$$...$$`, valores em dinheiro não viram fórmula); fórmula inválida mostra o texto bruto; `cloze` mostra a lacuna como `[termo]` |
+| Seletor de workspace | Lista, troca, criar, renomear e excluir com confirmação (US-1); tela de boas-vindas quando não há workspace |
+| Hoje | Canal novo `today:summary` (`workspaceId`) devolve contagens reais do banco: materiais, cards aprovados e questões aprovadas; os indicadores de estudo (vencidos, aprendendo, novos, feitos, meta) chegam com o FSRS no UNIT-10 e substituem a faixa de resumo, para não mostrar zeros inventados. Estados: vazio (convite a importar), carregando (esqueleto) e erro (mensagem com "Tentar de novo") |
+| Atalhos | Hook `useHotkeys`; `Ctrl+,` abre Configurações e `Ctrl+K` abre o seletor rápido "Ir para..." (as seções; a busca em materiais entra no UNIT-7); Espaço e 1 a 4 de Estudar e Praticar usam o mesmo hook nos Units 10 e 11 |
+| Seções sem tela ainda | Mostram um painel "em construção" com o nome da seção, trocado a cada Unit |
+| Testes | Vitest com jsdom e Testing Library (`// @vitest-environment jsdom` por arquivo), `window.mind` simulado; teste de contraste WCAG AA dos tokens nos dois temas (porte de `test_theme_contrast`); fixtures de fórmulas do Python; E2E percorre as seções, tema e atalhos |
+
+```mermaid
+flowchart TB
+  A[App] --> R[RouterProvider]
+  R --> W{Há workspace?}
+  W -- não --> V[Boas-vindas: criar o primeiro]
+  W -- sim --> S[Shell]
+  S --> SB[Sidebar: marca, seletor de workspace, 8 seções]
+  S --> M[Conteúdo da rota]
+  S --> F[Rodapé: versão, provedor, tema, Ctrl+K]
+  S --> P[Seletor rápido Ctrl+K]
+  M --> T[Hoje: resumo por today:summary]
+  M --> X[Demais seções: painel em construção]
+```
+
+**NFR (nota).** NFR-11: tamanho mínimo da janela já garantido no UNIT-2; contraste AA testado em automático; navegação por teclado (link de pular, `aria-current`, foco visível, diálogo com foco preso e Esc). Tema escuro padrão (FR-29).
+
+**Riscos.** (1) O contraste do verde da barra lateral com texto claro precisa passar AA (o teste cobre os pares usados; ajusto tokens se falhar). (2) KaTeX aumenta o bundle do renderer (~300 kB); aceito, offline é requisito.
+
+### Assumptions & open questions
+
+- A35 (3.1 UNIT-5): Os indicadores de estudo de Hoje só aparecem no UNIT-10; até lá Hoje mostra o resumo da biblioteca. — confirmed: yes
+- A36 (3.1 UNIT-5): O tema é salvo em `localStorage` do renderer, não no banco. — confirmed: yes

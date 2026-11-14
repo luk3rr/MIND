@@ -1,0 +1,50 @@
+/*
+ * Filename: tokens.css
+ * Created on: November 14, 2026
+ * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+ *
+ * Design tokens. The dark theme (Dracula) is the default; the light theme overrides it.
+ */
+
+:root {
+  --bg: #1e1f29;
+  --panel: #282a36;
+  --panel-2: #303243;
+  --line: #44475a;
+  --fg: #f8f8f2;
+  --muted: #a4a9c3;
+  --accent: #50fa7b;
+  --on-accent: #10231a;
+  --side: #1f7a45;
+  --side-ink: #f4fff8;
+  --side-active: rgba(255, 255, 255, 0.18);
+  --danger: #ff6e6e;
+  --warn: #ffb86c;
+  --info: #8be9fd;
+  --purple: #bd93f9;
+  --radius: 12px;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --font-sans: Inter, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f5f7;
+  --panel: #ffffff;
+  --panel-2: #eef1f4;
+  --line: #d8dde3;
+  --fg: #1f2328;
+  --muted: #5b6472;
+  --accent: #177a41;
+  --on-accent: #ffffff;
+  --side: #1f7a45;
+  --side-ink: #ffffff;
+  --side-active: rgba(255, 255, 255, 0.22);
+  --danger: #c62828;
+  --warn: #8f4411;
+  --info: #0b6e99;
+  --purple: #6f42c1;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+  color-scheme: light;
+}

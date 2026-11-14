@@ -62,14 +62,19 @@ Ordem: BOLT-1 → BOLT-2 → BOLT-3 → BOLT-4 → BOLT-5 (seguindo o DAG de 2.7
 **Desvios.** (1) O `better-sqlite3` 13 usa N-API: o mesmo binário carrega no Node 22 e no Node 24 do Electron, então não houve rebuild. (2) Códigos de erro: acrescentado `INTERRUPTED` (A33). (3) Datas em ISO-8601 UTC como texto (A34). (4) Os workers reais (PDF, OCR, embeddings) ficam para os Units 7, 8 e 14; aqui só o pool genérico, testado com workers inline; o mecanismo de empacotamento dos workers (`?nodeWorker` do electron-vite) será validado no UNIT-7. (5) `export`/`import` de workspace ficam no UNIT-15. (6) A regra `security/detect-non-literal-fs-filename` foi desligada: os caminhos vêm do diretório de dados validado.
 
 
-### UNIT-5 Casca de UI, tema e atalhos   Status: not started
-- [ ] UNIT-5.1 Projeto React + Vite, tokens CSS e fontes locais [FR-28, FR-29] — teste: Teste de renderização do tema escuro e claro
-- [ ] UNIT-5.2 Barra lateral com 8 seções, seletor de workspace e rodapé [FR-28] — teste: Testing Library: navegação e item ativo
-- [ ] UNIT-5.3 Tema escuro padrão com alternador salvo [FR-29] — teste: Teste de persistência
-- [ ] UNIT-5.4 Atalhos de teclado (Espaço, 1 a 4, Ctrl+K, Ctrl+,) [FR-32] — teste: Teste de teclado
-- [ ] UNIT-5.5 Tela Hoje com dados reais do banco e estados vazio, carregando e erro [FR-28] — teste: Teste com banco semeado
-- [ ] UNIT-5.6 Renderização de fórmulas com KaTeX, com texto bruto para fórmula inválida [FR-23] — teste: Fixtures de `math` portadas
-- [ ] UNIT-5.7 Verificação de contraste AA nos dois temas [NFR-11] — teste: Teste portado de `test_theme_contrast`
+### UNIT-5 Casca de UI, tema e atalhos   Status: verified (2026-11-14, exit 0)
+- [x] UNIT-5.1 Projeto React + Vite, tokens CSS e fontes locais [FR-28, FR-29] — teste: Teste de renderização do tema escuro e claro — files: src/renderer/src/styles/*.css, assets/fonts/*, electron.vite.config.ts
+- [x] UNIT-5.2 Barra lateral com 8 seções, seletor de workspace e rodapé [FR-28] — teste: Testing Library: navegação e item ativo — files: src/renderer/src/components/{Sidebar,WorkspaceSwitcher,StatusBar,Shell}.tsx
+- [x] UNIT-5.3 Tema escuro padrão com alternador salvo [FR-29] — teste: Teste de persistência — files: src/renderer/src/theme.ts, components/Shell.tsx
+- [x] UNIT-5.4 Atalhos de teclado (Espaço, 1 a 4, Ctrl+K, Ctrl+,) [FR-32] — teste: Teste de teclado — files: src/renderer/src/hooks.ts, components/QuickSwitcher.tsx
+- [x] UNIT-5.5 Tela Hoje com dados reais do banco e estados vazio, carregando e erro [FR-28] — teste: Teste com banco semeado — files: src/renderer/src/pages/TodayPage.tsx, src/core/today/summary.ts, canal today:summary
+- [x] UNIT-5.6 Renderização de fórmulas com KaTeX, com texto bruto para fórmula inválida [FR-23] — teste: Fixtures de `math` portadas — files: src/renderer/src/math.ts, MathText.tsx
+- [x] UNIT-5.7 Verificação de contraste AA nos dois temas [NFR-11] — teste: Teste portado de `test_theme_contrast` — files: tests/ui/contrast.test.ts, src/renderer/src/styles/tokens.css
+
+**Resumo do UNIT-5.** Casca de UI definitiva em React 19: roteador próprio, barra lateral verde com as 8 seções e seletor de workspace (trocar, criar, renomear, excluir com confirmação), rodapé de status, tema escuro padrão (Dracula) com alternador salvo, atalhos (`Ctrl+K` seletor rápido, `Ctrl+,` Configurações, hook `useHotkeys` para Espaço e 1 a 4), tela Hoje com contagens reais via `today:summary` (estados vazio, carregando e erro), boas-vindas, KaTeX com `splitMath` portado e fontes locais. Como rodar: `pnpm dev` ou `xvfb-run -a pnpm e2e`. Resultado: verification command exit 0 (133 testes, cobertura 91,6% de linhas e 81,8% de ramos, limiar 80% imposto), contraste AA verificado nos dois temas, E2E 13/13 sem erros de console.
+
+**Desvios.** (1) Hoje mostra a faixa de resumo da biblioteca; os indicadores de estudo chegam no UNIT-10 (A35). (2) O tema fica em `localStorage` (A36). (3) Contraste: o verde da barra lateral e o acento do tema claro foram escurecidos para passar AA (`--side` #1f7a45, `--accent` claro #177a41), e o vermelho do tema escuro foi clareado (#ff6e6e); o mockup de 2.5 usava valores um pouco diferentes. (4) KaTeX ainda não aparece em nenhuma tela (os Units 9 a 11 usam `MathText`), então seu CSS só entra no bundle quando for usado. (5) O teste de contraste vive em `tests/ui/` porque precisa de tipos do Node.
+
 
 ### UNIT-6 Pacote `.deb` (esqueleto ambulante)   Status: not started
 - [ ] UNIT-6.1 Configurar electron-builder alvo deb, ícone, categoria, `depends` e módulos nativos fora do asar [FR-30] — teste: `pnpm package` gera o `.deb`

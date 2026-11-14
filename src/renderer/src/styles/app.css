@@ -1,0 +1,313 @@
+/*
+ * Filename: app.css
+ * Created on: November 14, 2026
+ * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+ */
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 var(--font-sans);
+}
+:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+}
+h1 {
+  margin: 0 0 16px;
+  font-size: 22px;
+}
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 8px;
+  background: var(--panel);
+  color: var(--fg);
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 8px;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 1fr auto;
+  height: 100%;
+}
+.sidebar {
+  grid-row: 1 / 2;
+  background: var(--side);
+  color: var(--side-ink);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+.brand {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-size: 18px;
+  padding: 4px 10px 10px;
+}
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-button {
+  all: unset;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.nav-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.nav-button[aria-current="page"] {
+  background: var(--side-active);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.nav-button:focus-visible {
+  outline: 2px solid var(--side-ink);
+}
+.spacer {
+  flex: 1;
+}
+.content {
+  grid-row: 1 / 2;
+  padding: 20px 24px;
+  overflow: auto;
+}
+.statusbar {
+  grid-column: 1 / -1;
+  height: 28px;
+  background: #181920;
+  color: #b7bcd3;
+  font-size: 12px;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 0 14px;
+}
+.statusbar button {
+  all: unset;
+  cursor: pointer;
+}
+.statusbar button:focus-visible {
+  outline: 2px solid var(--info);
+}
+
+.workspace-switcher {
+  position: relative;
+  margin-bottom: 8px;
+}
+.workspace-button {
+  all: unset;
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--side-active);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.workspace-button:focus-visible {
+  outline: 2px solid var(--side-ink);
+}
+.menu {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.menu button {
+  all: unset;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.menu button:hover,
+.menu button[aria-current="true"] {
+  background: var(--panel-2);
+}
+.menu hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 4px 0;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+.row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.stat {
+  flex: 1 1 150px;
+  border-left: 4px solid var(--accent);
+}
+.stat b {
+  display: block;
+  font-size: 28px;
+}
+.btn {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--line);
+}
+.btn.danger {
+  background: var(--danger);
+  color: #1b0b0b;
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--panel-2), var(--panel), var(--panel-2));
+  background-size: 200% 100%;
+  border-radius: var(--radius);
+  min-height: 84px;
+  flex: 1 1 150px;
+  animation: shimmer 1.4s infinite linear;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+.alert {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: start center;
+  padding-top: 12vh;
+  z-index: 50;
+}
+.dialog {
+  width: min(460px, 92vw);
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+}
+.dialog h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.dialog label {
+  display: block;
+  margin-bottom: 6px;
+}
+.dialog input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+.dialog .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+.field-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+.quick-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.quick-list button {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.quick-list button:hover,
+.quick-list button[data-active="true"] {
+  background: var(--panel-2);
+}
+.math-error {
+  font-family: var(--font-mono);
+  color: var(--warn);
+}
+code,
+pre {
+  font-family: var(--font-mono);
+  font-variant-ligatures: contextual;
+}

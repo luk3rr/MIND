@@ -17,6 +17,7 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "workspace:create": () => ({ id: 1, name: "x", createdAt: "x" }),
     "workspace:rename": () => ({ id: 1, name: "x", createdAt: "x" }),
     "workspace:delete": () => ({}),
+    "today:summary": () => ({ materials: 0, cards: 0, questions: 0 }),
     ...overrides,
   };
 }

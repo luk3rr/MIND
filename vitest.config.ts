@@ -8,15 +8,19 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    setupFiles: ["src/renderer/test/setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}", "tests/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/**/*.ts"],
+      include: ["src/**/*.{ts,tsx}"],
       exclude: [
-        "src/**/*.test.ts",
+        "src/**/*.test.{ts,tsx}",
         "src/**/index.ts",
         "src/main/window-state.ts",
-        "src/renderer/**",
+        "src/renderer/src/main.tsx",
+        "src/renderer/src/env.d.ts",
+        "src/renderer/test/**",
+        "src/core/test/**",
       ],
       reporter: ["text", "html"],
       thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },

@@ -12,6 +12,7 @@ export const CHANNEL_NAMES = [
   "workspace:create",
   "workspace:rename",
   "workspace:delete",
+  "today:summary",
 ] as const;
 
 /** Names of the events pushed from the main process to the window. */

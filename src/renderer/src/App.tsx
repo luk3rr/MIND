@@ -5,21 +5,73 @@
  */
 
 import { useEffect, useState } from "react";
+import { Shell } from "./components/Shell.js";
+import { PlaceholderPage } from "./pages/PlaceholderPage.js";
+import { TodayPage } from "./pages/TodayPage.js";
+import { WelcomePage } from "./pages/WelcomePage.js";
+import { RouterProvider, parseRoute, sectionPath, useRouter } from "./router.js";
+import { T } from "./strings.js";
+import { WorkspacesProvider } from "./workspaces.js";
+import type { WorkspaceInfo } from "./workspaces.js";
 
-/** Placeholder shell: proves the typed IPC round trip. The real shell arrives in UNIT-5. */
+interface Boot {
+  workspaces: WorkspaceInfo[];
+  route: string | null;
+}
+
+/** Picks the first path to show: the saved route if it still points to a workspace. */
+export function initialPath(boot: Boot): string {
+  const first = boot.workspaces[0];
+  if (!first) return "/welcome";
+  const saved = boot.route ? parseRoute(boot.route) : null;
+  if (saved?.name === "section" && boot.workspaces.some((w) => w.id === saved.workspaceId)) {
+    return boot.route as string;
+  }
+  return sectionPath(first.id, "today");
+}
+
+function Screen() {
+  const { route } = useRouter();
+  if (route.name === "section") {
+    return (
+      <Shell workspaceId={route.workspaceId} section={route.section}>
+        {route.section === "today" ? (
+          <TodayPage workspaceId={route.workspaceId} />
+        ) : (
+          <PlaceholderPage section={route.section} />
+        )}
+      </Shell>
+    );
+  }
+  return <WelcomePage />;
+}
+
+/** Application root: loads the workspaces and the last route, then renders the shell. */
 export function App() {
-  const [route, setRoute] = useState<string | null | undefined>(undefined);
+  const [boot, setBoot] = useState<Boot | "error" | null>(null);
 
   useEffect(() => {
-    void window.mind.invoke("window:getState", {}).then((result) => {
-      if (result.ok) setRoute(result.data.route);
-    });
+    void Promise.all([
+      window.mind.invoke("workspace:list", {}),
+      window.mind.invoke("window:getState", {}),
+    ])
+      .then(([list, state]) => {
+        if (!list.ok || !state.ok) {
+          setBoot("error");
+          return;
+        }
+        setBoot({ workspaces: list.data.workspaces, route: state.data.route });
+      })
+      .catch(() => setBoot("error"));
   }, []);
 
+  if (boot === null) return <p role="status">{T.loading}</p>;
+  if (boot === "error") return <p role="alert">{T.unknownError}</p>;
   return (
-    <main>
-      <h1>MIND</h1>
-      <p data-testid="route">{route === undefined ? "carregando" : (route ?? "sem rota salva")}</p>
-    </main>
+    <WorkspacesProvider initial={boot.workspaces}>
+      <RouterProvider initialPath={initialPath(boot)}>
+        <Screen />
+      </RouterProvider>
+    </WorkspacesProvider>
   );
 }

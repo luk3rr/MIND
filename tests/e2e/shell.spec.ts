@@ -33,7 +33,7 @@ test("opens a native window within 3 seconds (FR-25, NFR-14)", async () => {
   current = await launch(profile());
   expect(current.openMs).toBeLessThan(3000);
   expect(await current.page.title()).toBe("MIND");
-  await expect(current.page.getByRole("heading", { name: "MIND" })).toBeVisible();
+  await expect(current.page.getByRole("heading", { name: "Bem-vindo ao MIND" })).toBeVisible();
 });
 
 test("enforces the minimum window size of 960x600 (FR-25)", async () => {
@@ -141,7 +141,12 @@ test("remembers the window geometry and the last route (FR-27)", async () => {
     BrowserWindow.getAllWindows()[0]?.getBounds(),
   );
   expect(bounds).toMatchObject({ width: 1100, height: 700 });
-  await expect(current.page.getByTestId("route")).toHaveText("/library");
+  expect(
+    await current.page.evaluate(() => window.mind.invoke("window:getState", {})),
+  ).toMatchObject({
+    ok: true,
+    data: { route: "/library" },
+  });
 });
 
 test("keeps workspaces across restarts in the user data directory (FR-1, NFR-17)", async () => {

@@ -6,6 +6,7 @@
 
 import { CONTRACT_VERSION } from "../../core/contracts/index.js";
 import type { Core } from "../../core/core.js";
+import { todaySummary } from "../../core/today/summary.js";
 import type { Handlers } from "./router.js";
 
 /** The last route is a tiny piece of window state kept outside the databases. */
@@ -24,6 +25,7 @@ export function createHandlers(core: Core, routes: RouteStore): Handlers {
     "workspace:list": () => ({ workspaces: core.registry.list() }),
     "workspace:create": ({ name }) => core.registry.create(name),
     "workspace:rename": ({ id, name }) => core.registry.rename(id, name),
+    "today:summary": ({ workspaceId }) => todaySummary(core.registry.open(workspaceId)),
     "workspace:delete": ({ id }) => {
       core.registry.delete(id);
       return {};

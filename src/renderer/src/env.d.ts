@@ -10,4 +10,5 @@ declare global {
   interface Window {
     mind: MindApi;
   }
+  const __APP_VERSION__: string;
 }

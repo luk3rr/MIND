@@ -46,6 +46,14 @@ export const channels = {
     input: z.object({ id: workspaceId, name: workspaceName }).strict(),
     output: workspaceInfo,
   },
+  "today:summary": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({
+      materials: z.number().int().nonnegative(),
+      cards: z.number().int().nonnegative(),
+      questions: z.number().int().nonnegative(),
+    }),
+  },
   "workspace:delete": {
     input: z.object({ id: workspaceId }).strict(),
     output: z.object({}).strict(),

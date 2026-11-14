@@ -6,6 +6,7 @@
 
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CSP } from "./src/main/security.js";
 
@@ -22,6 +23,10 @@ const cspMeta = {
       );
     },
   },
+};
+
+const { version } = JSON.parse(readFileSync(resolve("package.json"), "utf8")) as {
+  version: string;
 };
 
 export default defineConfig({
@@ -43,6 +48,7 @@ export default defineConfig({
   },
   renderer: {
     root: "src/renderer",
+    define: { __APP_VERSION__: JSON.stringify(version) },
     plugins: [react(), cspMeta],
     build: {
       outDir: "out/renderer",

@@ -40,6 +40,6 @@ export async function launch(userData: string = newProfile()): Promise<Launched>
   });
   const page = await app.firstWindow();
   await page.waitForLoadState("domcontentloaded");
-  await page.getByTestId("route").waitFor();
+  await page.locator("#root > *").first().waitFor();
   return { app, page, userData, openMs: Date.now() - started };
 }
