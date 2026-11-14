@@ -7,6 +7,9 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  release:
+    types: [created]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,16 +19,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+      - name: Resolve the tag
+        id: tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          TAG="${RELEASE_TAG:-${GITHUB_REF_NAME}}"
+          echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
       - run: pnpm install --frozen-lockfile
       - run: sudo apt-get update && sudo apt-get install -y lintian desktop-file-utils
       - run: pnpm package
       - run: scripts/verify-deb.sh
-      - name: Publish the .deb as the latest release
-        run: gh release create "$GITHUB_REF_NAME" dist/mind_amd64.deb --generate-notes
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mind-deb
+          path: dist/mind_amd64.deb
+      - name: Attach the .deb to the GitHub Release (created when missing)
+        if: startsWith(steps.tag.outputs.TAG, 'v')
+        run: |
+          TAG="${{ steps.tag.outputs.TAG }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/mind_amd64.deb --clobber
+          else
+            gh release create "$TAG" dist/mind_amd64.deb --title "$TAG" --notes "$(git tag -l --format='%(contents)' "$TAG")" --verify-tag
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
