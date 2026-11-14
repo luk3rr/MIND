@@ -198,6 +198,27 @@ flowchart LR
 
 **Riscos.** (1) `VACUUM INTO` exige SQLite 3.27+ (o better-sqlite3 traz 3.4x); alternativa `sqlite.backup()`. (2) Zip bombs: o limite de 8 GB é conferido pelo tamanho declarado e durante a extração (conta bytes reais).
 
+### UNIT-16 — Fechamento e remoção do Python (nota de design)
+
+**Objetivo.** Provar a paridade e então apagar o Python: checklist por tela, jornada completa de amostra em E2E, medições de desempenho, offline, memória e idioma, remoção de `legacy/` (e do `Dockerfile`, da API e do texto `uvx`), README novo e CI com a checagem de que não resta `.py`. [src: SC-4, SC-5, NFR-3, NFR-4, NFR-5, NFR-13, FR-31]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Checklist de paridade | `construction/parity-checklist.md` liga cada tela e rota do Python (Hoje, Biblioteca com prévia, Gerar com Revisar, Estudar, Praticar, Erros, Estatísticas, Chat, Configurações com assistente inicial, Boas-vindas) ao componente novo e ao teste (Vitest e E2E) que a cobre, e lista o que foi **removido por decisão** (API `/api/v1`, modo navegador, `uvx`, Docker) e o que **mudou** (pasta de dados, backup só no formato novo) |
+| Jornada de amostra | `sample-flow.spec.ts`: cria workspace, importa `samples/fotossintese.md`, gera cards e questões, revisa e aprova, estuda com o teclado, pratica, vê Estatísticas e Erros e conversa no chat, com o provedor roteirizado e sem rede |
+| Medições | `nfr.spec.ts`: troca de card e navegação com p95 abaixo de 300 ms (NFR-3, 30 amostras); toda a jornada com a rede do Electron desligada (`enableNetworkEmulation`) para estudo, revisão, estatísticas e biblioteca (NFR-5); memória residente após a jornada abaixo de 1,5 GB (limite do app dentro dos 4 GB de NFR-4); nenhum texto de interface em inglês fora de nomes próprios, `lang="pt-BR"` e revisão das strings por lista (NFR-13); a checagem de porta (SC-2) continua no E2E existente |
+| Remoção do Python | `git tag legacy-python` no commit atual (o Python e a API ficam recuperáveis com `git show legacy-python:legacy/...`); depois `git rm -r legacy` (inclui `Dockerfile`, `pyproject.toml`, `uv.lock`, CI do Python e o README antigo), `git rm scripts/extract-fixtures/extract_fixtures.py` e ajuste de `.gitignore`; as `fixtures/*.json` e os PDFs ficam como valores de referência congelados, com um `fixtures/README.md` que explica a origem e como regenerá-las pela tag. A tag `pre-squash` permanece |
+| README | Reescrito em inglês: o que é, instalação pelo `.deb`, primeiros passos, privacidade (o que vai ao provedor), onde ficam os dados, desenvolvimento (`pnpm`), arquitetura em um parágrafo, licença; sem `uvx`, sem Docker, sem API |
+| CI | Passo novo "sem Python": `test -z "$(git ls-files '*.py')"`; permanecem verificação, E2E, pacote, `lintian` e teste de instalação/atualização/remoção |
+| Encerramento | `construction/build-and-test.md`, `construction/ci-pipeline.md`, `verification/phase-check-construction.md`, `state.md` em `COMPLETE`, resumo final e perguntas da retrospectiva (memória); o teste de instalação real com `sudo apt install ./dist/mind-study_0.1.0_amd64.deb` fica com o usuário |
+| Commits | 18 (remoção do Python, README, CI) e, se preciso, 19 (medições e documentos de fechamento); sem push |
+
+**NFR (nota).** NFR-4 é medido pela memória residente do processo principal e dos filhos (`app.getAppMetrics`). Segurança: a remoção é reversível pela tag; nada é apagado antes de a jornada e o checklist estarem verdes.
+
+**Riscos.** (1) `git rm -r legacy` é irreversível no diretório de trabalho, mas recuperável pela tag e pelo `pre-squash`. (2) A medição de p95 em máquinas lentas pode oscilar: o teste usa 30 amostras e margem para o CI. (3) Sem `extract_fixtures.py` os valores de referência não são regeneráveis sem voltar à tag; é a troca aceita por não ter Python.
+
 ### Assumptions & open questions
 
 - A7 (1.6): Manter as 8 seções atuais na barra lateral, sem acrescentar seções novas. — confirmed: yes
@@ -981,3 +1002,4 @@ sequenceDiagram
 - A50 (3.1 UNIT-13): O botão "Treinar" só abre a tela Gerar preenchida; nada é gerado nem cobrado até o clique em "Gerar". — confirmed: yes
 - A51 (3.1 UNIT-14): O modelo semântico é o multilíngue MiniLM quantizado (q8, ~130 MB), baixado do Hugging Face só ao ativar, com `onnxruntime-node` nativo; se o pacote passar dos limites, recuamos para WASM. — confirmed: yes
 - A52 (3.1 UNIT-15): Backups do app antigo em Python não são importáveis (o autor não tem dados em uso); o formato novo é o `mind-workspace` versão 1 com a revisão de esquema do app TypeScript. — confirmed: yes
+- A53 (3.1 UNIT-16): O Python, o `extract_fixtures.py`, o Dockerfile e a API são apagados da árvore, mas ficam recuperáveis pela tag `legacy-python` (e por `pre-squash`); as fixtures permanecem como referência congelada. — confirmed: yes

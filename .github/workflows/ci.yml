@@ -19,6 +19,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: No Python is left in the repository
+        run: test -z "$(git ls-files '*.py')"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint

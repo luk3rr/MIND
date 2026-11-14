@@ -12,7 +12,6 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   {
     ignores: [
-      "legacy/**",
       ".aidlc/**",
       "node_modules/**",
       "dist/**",

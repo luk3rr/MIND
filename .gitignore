@@ -3,17 +3,10 @@
 .aidlc/**/archive/
 .aidlc/**/screenshots/
 
-# Python
-__pycache__/
-*.pyc
-.venv/
-venv/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-*.egg-info/
+# Build output
+node_modules/
+out/
 dist/
-build/
 
 # Local data and secrets (user materials, database, API keys)
 .env
@@ -33,15 +26,7 @@ uploads/
 # Logs
 *.log
 
-# Coverage
-.coverage
-.coverage.*
-htmlcov/
-coverage.xml
-node_modules/
-dist/
+# Coverage and test output
 coverage/
-out/
 test-results/
 playwright-report/
-dist/

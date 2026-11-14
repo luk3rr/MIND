@@ -1,13 +1,13 @@
 # AI-DLC State — desktop-ui
 
 - Intent: 261114-desktop-ui
-- Status: IN_PROGRESS
+- Status: COMPLETE
 - Profile: mvp   Depth: Standard   Tests: Standard
 - Project type: brownfield   Repos: ~/Projects/MIND
 - Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-checkpoints (design gates e falhas seguem com aprovação) iteration=unit-major commits=max-20-total-até-o-fim (commit 16 com o UNIT-13)
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-14; válido após as ferramentas do UNIT-1)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.5 Code Generation (UNIT-15 verificado; próximo UNIT-16 (fechamento))   Updated: 2026-11-14T18:39:58.522327-03:00
+- Current: phase=construction COMPLETE (UNIT-1 a UNIT-16 verificados)   Updated: 2026-11-14T18:53:38.670271-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
@@ -27,13 +27,13 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 - [x] 2.8 Contract Design
 - [x] 2.9 Delivery Planning
 ### Construction
-- [>] 3.1 Functional Design (nota por Unit; UNIT-1 feita)
-- [ ] 3.2 NFR Requirements
-- [ ] 3.3 NFR Design
-- [ ] 3.4 Infrastructure Design (empacotamento .deb)
-- [ ] 3.5 Code Generation
-- [ ] 3.6 Build & Test
-- [ ] 3.7 CI Pipeline
+- [x] 3.1 Functional Design (uma nota por Unit, UNIT-1 a UNIT-16)
+- [x] 3.2 NFR Requirements
+- [x] 3.3 NFR Design
+- [x] 3.4 Infrastructure Design (empacotamento .deb)
+- [x] 3.5 Code Generation
+- [x] 3.6 Build & Test
+- [x] 3.7 CI Pipeline
 
 ## Units (filled by 2.7)
 | Unit | Depends on | Status | Verified |
@@ -53,11 +53,11 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-13 Treino de pontos fracos | UNIT-12 | verified | yes |
 | UNIT-14 Chat e busca semântica | UNIT-4, UNIT-7 | verified | yes |
 | UNIT-15 Backup do workspace | UNIT-3 | verified | yes |
-| UNIT-16 Fechamento e remoção do Python | UNIT-6, UNIT-8, UNIT-12, UNIT-13, UNIT-14, UNIT-15 | not started | no |
+| UNIT-16 Fechamento e remoção do Python | UNIT-6, UNIT-8, UNIT-12, UNIT-13, UNIT-14, UNIT-15 | verified | yes |
 
 ## Open assumptions
 
-## Memory candidates  (proposed, not yet approved — a pergunta da retrospectiva ficou sem resposta)
+## Memory candidates  (aprovadas na retrospectiva da Construction e gravadas em memory/project.md como M-4, M-5, M-9, M-10 e M-11)
 - C1 (Inception): Substituir M-4 e M-5 por TypeScript strict, Electron, React + Vite, pnpm, ESLint + Prettier, zod, Vitest, Playwright, LLM mockado — scope: project
 - C2 (Inception): O app nunca abre porta de rede; o renderer só fala com o núcleo por IPC validado — scope: project
 - C3 (Inception): O Python em `legacy/` e as fixtures são a especificação até a paridade e são apagados no UNIT-16 — scope: project
