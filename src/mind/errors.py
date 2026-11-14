@@ -70,6 +70,24 @@ class ProviderError(AppError):
     title = "Falha do provedor de IA"
 
 
+class UnsupportedFile(AppError):
+    code = "UNSUPPORTED_FILE"
+    status = 415
+    title = "Arquivo não suportado"
+
+
+class ExtractionFailed(AppError):
+    code = "EXTRACTION_FAILED"
+    status = 422
+    title = "Não foi possível ler o arquivo"
+
+
+class MaterialNotFound(AppError):
+    code = "MATERIAL_NOT_FOUND"
+    status = 404
+    title = "Material não encontrado"
+
+
 class JobNotActive(AppError):
     code = "JOB_NOT_ACTIVE"
     status = 409
