@@ -45,6 +45,7 @@ class Material(WorkspaceBase):
     job_id: Mapped[int | None] = mapped_column(Integer, default=None)
     error_code: Mapped[str | None] = mapped_column(String(64), default=None)
     error_detail: Mapped[str | None] = mapped_column(String, default=None)
+    source_url: Mapped[str | None] = mapped_column(String, default=None)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
 
     chunks: Mapped[list[Chunk]] = relationship(
@@ -83,6 +84,9 @@ class GenerationRun(WorkspaceBase):
     )
     page_from: Mapped[int | None] = mapped_column(Integer, default=None)
     page_to: Mapped[int | None] = mapped_column(Integer, default=None)
+    topic_id: Mapped[int | None] = mapped_column(
+        ForeignKey("topic.id", ondelete="SET NULL"), default=None
+    )
     model: Mapped[str] = mapped_column(String(128))
     requested: Mapped[int] = mapped_column(Integer)
     generated: Mapped[int] = mapped_column(Integer, default=0)

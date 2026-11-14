@@ -82,6 +82,12 @@ class ExtractionFailed(AppError):
     title = "Não foi possível ler o arquivo"
 
 
+class OcrUnavailable(ExtractionFailed):
+    code = "OCR_UNAVAILABLE"
+    status = 424
+    title = "OCR indisponível"
+
+
 class MaterialNotFound(AppError):
     code = "MATERIAL_NOT_FOUND"
     status = 404
