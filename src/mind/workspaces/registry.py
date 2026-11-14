@@ -75,6 +75,11 @@ class WorkspaceRegistry:
         self._open: dict[int, OpenWorkspace] = {}
         self._remove_orphan_folders()
 
+    @property
+    def app_sessions(self) -> sessionmaker[Session]:
+        """Sessions of the global `app.db` (settings, consent and costs live there)."""
+        return self._sessions
+
     def close(self) -> None:
         for workspace in self._open.values():
             workspace.engine.dispose()
