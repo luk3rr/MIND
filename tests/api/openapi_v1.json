@@ -155,6 +155,24 @@
         "title": "CostsOut",
         "type": "object"
       },
+      "DiscardLogEntry": {
+        "properties": {
+          "front": {
+            "title": "Front",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "front"
+        ],
+        "title": "DiscardLogEntry",
+        "type": "object"
+      },
       "EstimateIn": {
         "properties": {
           "max_completion_tokens": {
@@ -219,6 +237,89 @@
         "title": "FieldErrorOut",
         "type": "object"
       },
+      "GenerationEstimateOut": {
+        "properties": {
+          "batches": {
+            "title": "Batches",
+            "type": "integer"
+          },
+          "chunks": {
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "estimated_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the model price is unknown.",
+            "title": "Estimated Usd"
+          },
+          "prompt_chars": {
+            "title": "Prompt Chars",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "estimated_usd",
+          "chunks",
+          "batches",
+          "prompt_chars"
+        ],
+        "title": "GenerationEstimateOut",
+        "type": "object"
+      },
+      "GenerationIn": {
+        "properties": {
+          "material_id": {
+            "title": "Material Id",
+            "type": "integer"
+          },
+          "page_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page From"
+          },
+          "page_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page To"
+          },
+          "quantity": {
+            "default": 20,
+            "description": "1 to 60.",
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "subtype": {
+            "description": "qa, cloze, compare or true_false.",
+            "title": "Subtype",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "subtype"
+        ],
+        "title": "GenerationIn",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -230,6 +331,150 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ItemEdit": {
+        "properties": {
+          "back": {
+            "default": "",
+            "title": "Back",
+            "type": "string"
+          },
+          "front": {
+            "title": "Front",
+            "type": "string"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "front"
+        ],
+        "title": "ItemEdit",
+        "type": "object"
+      },
+      "ItemOut": {
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "back": {
+            "title": "Back",
+            "type": "string"
+          },
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "edited": {
+            "title": "Edited",
+            "type": "boolean"
+          },
+          "front": {
+            "title": "Front",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "integer"
+          },
+          "source_page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Page"
+          },
+          "source_title": {
+            "title": "Source Title",
+            "type": "string"
+          },
+          "status": {
+            "description": "draft, approved or discarded.",
+            "title": "Status",
+            "type": "string"
+          },
+          "subtype": {
+            "title": "Subtype",
+            "type": "string"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "kind",
+          "subtype",
+          "front",
+          "back",
+          "status",
+          "source_title",
+          "quote",
+          "edited",
+          "origin",
+          "created_at"
+        ],
+        "title": "ItemOut",
         "type": "object"
       },
       "JobOut": {
@@ -473,6 +718,223 @@
           "code"
         ],
         "title": "Problem",
+        "type": "object"
+      },
+      "ReviewIn": {
+        "properties": {
+          "approve": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Approve",
+            "type": "array"
+          },
+          "discard": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Discard",
+            "type": "array"
+          }
+        },
+        "title": "ReviewIn",
+        "type": "object"
+      },
+      "ReviewOut": {
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "integer"
+          },
+          "discarded": {
+            "title": "Discarded",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "approved",
+          "discarded",
+          "skipped"
+        ],
+        "title": "ReviewOut",
+        "type": "object"
+      },
+      "RunOut": {
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "integer"
+          },
+          "approved_unedited": {
+            "title": "Approved Unedited",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "discard_log": {
+            "items": {
+              "$ref": "#/components/schemas/DiscardLogEntry"
+            },
+            "title": "Discard Log",
+            "type": "array"
+          },
+          "discarded_duplicate": {
+            "title": "Discarded Duplicate",
+            "type": "integer"
+          },
+          "discarded_invalid": {
+            "title": "Discarded Invalid",
+            "type": "integer"
+          },
+          "discarded_no_source": {
+            "title": "Discarded No Source",
+            "type": "integer"
+          },
+          "discarded_review": {
+            "title": "Discarded Review",
+            "type": "integer"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Detail"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "generated": {
+            "title": "Generated",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Follow it under /jobs.",
+            "title": "Job Id"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "material_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Id"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "page_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page From"
+          },
+          "page_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page To"
+          },
+          "requested": {
+            "title": "Requested",
+            "type": "integer"
+          },
+          "status": {
+            "description": "queued, running, done, partial or cancelled.",
+            "title": "Status",
+            "type": "string"
+          },
+          "subtype": {
+            "title": "Subtype",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "subtype",
+          "model",
+          "requested",
+          "generated",
+          "discarded_no_source",
+          "discarded_invalid",
+          "discarded_duplicate",
+          "approved",
+          "approved_unedited",
+          "discarded_review",
+          "cost_usd",
+          "status",
+          "discard_log",
+          "created_at"
+        ],
+        "title": "RunOut",
         "type": "object"
       },
       "SearchHitOut": {
@@ -1127,6 +1589,585 @@
         "summary": "Rename a workspace",
         "tags": [
           "workspaces"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/generations": {
+      "get": {
+        "operationId": "list_runs_v1_workspaces__workspace_id__generations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunOut"
+                  },
+                  "title": "Response List Runs V1 Workspaces  Workspace Id  Generations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace, material or generation not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid request."
+          }
+        },
+        "summary": "List recent generations",
+        "tags": [
+          "generations"
+        ]
+      },
+      "post": {
+        "operationId": "start_v1_workspaces__workspace_id__generations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Monthly cost limit reached."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace, material or generation not found."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No API key or consent."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid request."
+          }
+        },
+        "summary": "Start generating cards (returns the run and its job)",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/generations/estimate": {
+      "post": {
+        "operationId": "estimate_v1_workspaces__workspace_id__generations_estimate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationEstimateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace, material or generation not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid request."
+          }
+        },
+        "summary": "Estimate the cost of a generation without starting it",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/generations/{run_id}": {
+      "get": {
+        "operationId": "get_run_v1_workspaces__workspace_id__generations__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace, material or generation not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid request."
+          }
+        },
+        "summary": "Get a generation",
+        "tags": [
+          "generations"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/items": {
+      "get": {
+        "operationId": "list_items_v1_workspaces__workspace_id__items_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(draft|approved|discarded)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ItemOut"
+                  },
+                  "title": "Response List Items V1 Workspaces  Workspace Id  Items Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid text for this card type."
+          }
+        },
+        "summary": "List items",
+        "tags": [
+          "items"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/items/review": {
+      "post": {
+        "operationId": "review_items_v1_workspaces__workspace_id__items_review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid text for this card type."
+          }
+        },
+        "summary": "Approve and discard drafts in bulk",
+        "tags": [
+          "items"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/items/{item_id}": {
+      "get": {
+        "operationId": "get_item_v1_workspaces__workspace_id__items__item_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid text for this card type."
+          }
+        },
+        "summary": "Get an item",
+        "tags": [
+          "items"
+        ]
+      },
+      "patch": {
+        "operationId": "edit_item_v1_workspaces__workspace_id__items__item_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace or item not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid text for this card type."
+          }
+        },
+        "summary": "Edit an item's text and topic",
+        "tags": [
+          "items"
         ]
       }
     },
