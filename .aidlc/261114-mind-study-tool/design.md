@@ -1122,3 +1122,55 @@ sequenceDiagram
 - A49: Uma chamada de juiz por lote de 3 questões reduz o custo, mas um lote com veredito mal formatado perde as 3 questões; o ganho de custo compensa e o cenário é contado como `discarded_unsupported`. (confirmed: no)
 - A50: Não editar as alternativas na revisão é uma simplificação do MVP; se pesar no uso, entra no backlog. (confirmed: no)
 - A51: Questões de Certo/Errado de modelos tendem a vir desequilibradas (mais "Certo"); o prompt pede equilíbrio, e a revisão humana corrige o resto. (confirmed: no)
+
+### UNIT-7 — Caderno de erros e estatísticas
+
+Decisões confirmadas: [src: Q44–Q45] a sequência de dias conta **qualquer atividade** no dia de estudo (virada às 04:00; o dia corrente ainda não quebra a sequência); uma questão errada só vira card quando o usuário clica em **"Virar card"** (nenhum card é criado sozinho), e um card avaliado como "Errei" **não é duplicado**: ele já volta na mesma sessão e apenas aparece listado no caderno.
+
+**Estrutura:** `src/mind/errors_notebook/service.py` (`ErrorNotebook`), `src/mind/stats/service.py` (`StatsService`, `TopicService`), `web/errors_pages.py`, `web/stats_pages.py` e `api/v1/{errors,stats,topics}.py`. A barra lateral ganha a seção **Erros**.
+
+```mermaid
+flowchart LR
+    P[Prática: erro em questão] -->|clique em Virar card| N[ErrorNotebook.create_card]
+    N --> C[(item card aprovado, origin=error_note)]
+    C --> S[Fila de estudo FSRS]
+    S -->|nota Errei| L[review_log rating=1]
+    L --> E[Caderno de erros: lista]
+    C --> E
+    A[(attempt)] --> ST[StatsService]
+    L --> ST
+    ST --> T[Acerto por tópico]
+    ST --> R[Retenção, meta e sequência]
+```
+
+**Entidades** (migração `0007`): coluna `item.origin_item_id` (inteiro, nulo, com índice) que liga o card de erro à questão de origem e impede duplicatas. O card de erro pertence a um `generation_run` especial (`kind = "notebook"`, `subtype = "error_note"`, `status = "done"`, criado uma vez por workspace), para respeitar a chave estrangeira sem poluir as gerações: a lista da tela Gerar e o `mind sm1` ignoram `kind = "notebook"`.
+
+**Regras e comportamentos**
+- **Virar card (FR-15):** só vale para uma questão aprovada **já respondida de forma errada** (existe tentativa incorreta). Cria um card **já aprovado**, `origin = error_note`, com a fonte copiada da questão (`chunk_id`, título, página e citação) e o mesmo tópico. Múltipla escolha vira card `qa`: frente = enunciado seguido das alternativas (`A) texto`), verso = "Resposta: B) texto" mais o comentário. Certo/Errado vira `true_false`: frente = afirmação, verso começa por "Verdadeiro" (gabarito C) ou "Falso" (gabarito E) e traz o comentário. A operação é **idempotente**: se já existe card com `origin_item_id` igual, devolve o existente sem criar outro.
+- **Caderno de erros:** lista (1) os cards de erro criados a partir de questões e (2) os cards cuja última avaliação, ou algum lapso, foi "Errei" (`lapses > 0` ou última nota 1), com tipo da entrada, texto da frente, tópico, fonte, data do último erro e número de erros; filtro por tópico; contadores no topo.
+- **Tópicos (FR-16):** continuam sendo extraídos pelo modelo na geração e editáveis na revisão; esta Unit adiciona a gestão de tópicos: listar com contagem de itens aprovados, **renomear** (nome único sem diferenciar caixa), **mesclar** um tópico em outro (os itens migram) e **excluir** (os itens ficam sem tópico).
+- **Estatísticas (FR-16):**
+  - *Acerto por tópico:* para cada tópico, cards (avaliações com nota ≥ 2 sobre o total) e questões (tentativas certas sobre o total) e um acerto combinado; tópicos com menos de 5 eventos aparecem marcados como "amostra pequena". O mesmo cálculo alimenta a geração por pontos fracos (UNIT-9).
+  - *Retenção:* percentual de revisões de cards que já estavam em fase de revisão e foram avaliadas com nota ≥ 2, por dia de estudo, nos últimos 30 dias, e o total do período.
+  - *Meta e sequência:* avaliações e respostas do dia contra a meta (`daily_goal`), sequência atual e maior sequência, e a atividade dos últimos 30 dias (barras).
+- **Tela Estatísticas** (`/w/{id}/stats`): meta do dia com formulário para editar a meta diária e o limite de novos por dia, sequência, tabela de acerto por tópico (com `<progress>` acessível e o número ao lado), gráfico SVG de atividade e linha de retenção (SVG gerado no servidor, sem biblioteca de gráficos), e a gestão de tópicos. **Tela Erros** (`/w/{id}/errors`). O botão "Virar card" aparece no feedback da prática quando o usuário errou; ao clicar, o botão é trocado por "Card criado" (ou "Já está no baralho").
+- **API:** `POST /items/{id}/error-card`, `GET /errors`, `GET /stats/topics`, `GET /stats/summary`, `GET /stats/retention?days=`, `GET /topics`, `PATCH /topics/{id}`, `DELETE /topics/{id}` e `POST /topics/{id}/merge`.
+
+**NFR e mecanismos**
+
+| NFR | Mecanismo | Verificação |
+|---|---|---|
+| NFR-3 | Agregações em SQL com índices em `review_log.day` e `attempt.day`; retenção sobre 30 dias | teste de latência da tela Estatísticas com 5 000 avaliações |
+| NFR-5 | Estatísticas, caderno e tópicos não usam rede | testes sem provedor |
+| NFR-11 | Gráficos em SVG com `role="img"` e descrição, tabelas com `<th scope>`, nada só por cor | `tests/web/test_stats_pages.py` |
+
+**Decisões de implementação**
+- As estatísticas consideram só itens `approved`; itens descartados e rascunhos não entram.
+- O dia de estudo e o fuso vêm de `study_day` (UNIT-5), com o mesmo ponto de virada.
+- A mesclagem e a exclusão de tópicos rodam em uma transação; a mesclagem preserva o nome do destino.
+
+**Critérios de aceitação → comportamento:** US-9 AC1 (virar card) ← `ErrorNotebook.create_card`; US-9 AC2 (card "Errei" aparece no caderno) ← listagem por lapso/última nota; US-10 AC1 (acerto por tópico) ← `StatsService.topic_stats`; US-10 AC2 (meta do dia) ← resumo e formulário da meta.
+
+### Assumptions & open questions
+- A52: "Acerto" de cards usa a nota ≥ 2 (Difícil conta como acerto), como no cálculo de retenção do Anki; avaliar se vale separar "Difícil" se o resultado parecer otimista. (confirmed: no)
+- A53: Tópicos gerados pelo modelo podem ficar fragmentados (sinônimos); a mesclagem é a ferramenta para corrigir, e uma sugestão automática de mesclagem fica no backlog. (confirmed: no)
