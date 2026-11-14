@@ -24,6 +24,12 @@ def test_upgrade_is_idempotent(tmp_path: Path) -> None:
     assert migrate.current_revision(engine) == migrate.head_revision("app")
 
 
+def test_upgrade_creates_the_provider_tables(tmp_path: Path) -> None:
+    engine = migrate.upgrade("app", tmp_path / "app.db")
+    tables = set(inspect(engine).get_table_names())
+    assert {"setting", "consent", "cost_ledger", "model_price"} <= tables
+
+
 def test_upgrade_from_base_revision(tmp_path: Path) -> None:
     path = tmp_path / "app.db"
     engine = migrate.upgrade("app", path, target="0001")
