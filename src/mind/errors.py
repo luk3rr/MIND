@@ -118,6 +118,18 @@ class JobNotActive(AppError):
     title = "A tarefa não está em execução"
 
 
+class ArchiveIncompatible(AppError):
+    code = "ARCHIVE_INCOMPATIBLE"
+    status = 422
+    title = "Arquivo de backup incompatível"
+
+
+class ArchiveInvalid(AppError):
+    code = "ARCHIVE_INVALID"
+    status = 422
+    title = "Arquivo de backup inválido"
+
+
 @dataclass(frozen=True)
 class ErrorInfo:
     """Serializable representation of an `AppError`."""

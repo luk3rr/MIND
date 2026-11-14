@@ -34,6 +34,11 @@ def head_revision(kind: Kind) -> str:
     return head
 
 
+def known_revisions(kind: Kind) -> set[str]:
+    """Every revision this version of the app knows how to read or migrate from."""
+    return {r.revision for r in ScriptDirectory.from_config(_config(kind)).walk_revisions()}
+
+
 def current_revision(engine: Engine) -> str | None:
     with engine.connect() as connection:
         return MigrationContext.configure(connection).get_current_revision()

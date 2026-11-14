@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import shutil
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -129,6 +130,36 @@ class WorkspaceRegistry:
                 "Já existe um workspace com esse nome.",
                 errors=[FieldError("name", "Nome já em uso.")],
             ) from exc
+        except Exception:
+            shutil.rmtree(root, ignore_errors=True)
+            raise
+
+    def create_from(self, raw_name: str, populate: Callable[[Path], None]) -> WorkspaceInfo:
+        """Create a workspace whose folder `populate` fills (used by the backup import).
+
+        `populate` receives the new folder and must leave a `workspace.db` and a `files/` folder
+        in it; the database is migrated to the current schema afterwards. A failure removes the
+        folder, so nothing half-imported is left behind.
+        """
+        name, key = normalize_name(raw_name)
+        with self._sessions() as session:
+            if session.scalar(select(Workspace.id).where(Workspace.name_key == key)):
+                raise ValidationFailed(
+                    "Já existe um workspace com esse nome.",
+                    errors=[FieldError("name", "Nome já em uso.")],
+                )
+        folder = uuid.uuid4().hex
+        root = self._folder_path(folder)
+        try:
+            root.mkdir(parents=True)
+            populate(root)
+            (root / "files").mkdir(exist_ok=True)
+            migrate.upgrade("workspace", root / "workspace.db").dispose()
+            with self._sessions() as session:
+                row = Workspace(name=name, name_key=key, folder=folder)
+                session.add(row)
+                session.commit()
+                return self._info(row)
         except Exception:
             shutil.rmtree(root, ignore_errors=True)
             raise

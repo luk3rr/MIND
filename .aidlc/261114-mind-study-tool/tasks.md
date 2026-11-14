@@ -239,7 +239,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - Pendências conhecidas: o modelo real de embeddings não foi baixado nem testado (A62); perguntas só com palavras comuns ainda chamam o modelo, que então recusa (custo pequeno).
 
 ### UNIT-11 Backup e distribuição — Status: pending
-- [ ] T-11.1 `WorkspaceArchive`: exportar e importar `.zip` com `manifest.json`; recusa e migra versões. ≈2 h · FR-22, US-15 · teste: `tests/workspaces/test_archive.py` (ida e volta; `ARCHIVE_INCOMPATIBLE`)
+- [x] T-11.1 `WorkspaceArchive`: exportar e importar `.zip` com `manifest.json`; recusa e migra versões. ≈2 h · FR-22, US-15 · teste: `tests/workspaces/test_archive.py` (ida e volta; `ARCHIVE_INCOMPATIBLE`)
 - [ ] T-11.2 Interface e API de backup. · FR-22, FR-24, US-15 · teste: `tests/api/test_backup_contract.py`
 - [ ] T-11.3 README em pt-BR, `.env.example`, instruções com `uv`/`uvx` e Tesseract; aviso sobre a API sem autenticação. · NFR-9, US-16 · teste: revisão por lista de conferência registrada no gate
 - [ ] T-11.4 Dockerfile opcional com Tesseract. · NFR-9 · teste: build da imagem e execução do `/api/docs`
