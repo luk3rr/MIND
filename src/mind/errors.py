@@ -46,6 +46,30 @@ class JobNotFound(AppError):
     title = "Tarefa não encontrada"
 
 
+class ProviderKeyMissing(AppError):
+    code = "PROVIDER_KEY_MISSING"
+    status = 409
+    title = "Chave de API não configurada"
+
+
+class ConsentRequired(AppError):
+    code = "CONSENT_REQUIRED"
+    status = 409
+    title = "É preciso aceitar o envio de trechos ao provedor"
+
+
+class MonthlyLimitReached(AppError):
+    code = "MONTHLY_LIMIT_REACHED"
+    status = 402
+    title = "Limite mensal de custo atingido"
+
+
+class ProviderError(AppError):
+    code = "PROVIDER_ERROR"
+    status = 502
+    title = "Falha do provedor de IA"
+
+
 class JobNotActive(AppError):
     code = "JOB_NOT_ACTIVE"
     status = 409
