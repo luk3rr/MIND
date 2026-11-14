@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from mind.clock import utcnow
 from mind.db.workspace_models import Attempt, GenerationRun, Item, ReviewLog, Topic
 from mind.errors import ItemNotFound, ValidationFailed
+from mind.workspaces.registry import WorkspaceRegistry
 
 NOTEBOOK_KIND = "notebook"
 ERROR_NOTE = "error_note"
@@ -185,3 +186,13 @@ class ErrorNotebook:
             from_questions=sum(1 for e in entries if e.from_question),
             failed_cards=sum(1 for e in entries if e.failures > 0),
         )
+
+
+class NotebookFactory:
+    """Builds the `ErrorNotebook` of a workspace on demand."""
+
+    def __init__(self, registry: WorkspaceRegistry) -> None:
+        self._registry = registry
+
+    def for_workspace(self, workspace_id: int) -> ErrorNotebook:
+        return ErrorNotebook(self._registry.open(workspace_id).sessions)

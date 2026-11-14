@@ -13,12 +13,15 @@ from fastapi import Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from mind.error_notebook.service import NotebookFactory
 from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
 from mind.practice.service import PracticeFactory
 from mind.review.service import ReviewFactory
 from mind.services import Services
+from mind.stats.service import StatsFactory
 from mind.study.service import StudyFactory
+from mind.web.formatting import br_datetime, br_day, percent
 from mind.web.math import cloze_plain, render_math
 from mind.web.strings import APP_NAME, SECTIONS, T
 from mind.workspaces.registry import WorkspaceInfo, WorkspaceRegistry
@@ -28,6 +31,9 @@ BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 templates.env.filters["math"] = render_math
 templates.env.filters["cloze"] = cloze_plain
+templates.env.filters["pct"] = percent
+templates.env.filters["br_datetime"] = br_datetime
+templates.env.filters["br_day"] = br_day
 
 
 def get_registry(request: Request) -> WorkspaceRegistry:
@@ -55,6 +61,16 @@ def get_review(request: Request) -> ReviewFactory:
     return factory
 
 
+def get_stats(request: Request) -> StatsFactory:
+    factory: StatsFactory = request.app.state.stats
+    return factory
+
+
+def get_notebook(request: Request) -> NotebookFactory:
+    factory: NotebookFactory = request.app.state.notebook
+    return factory
+
+
 def get_practice(request: Request) -> PracticeFactory:
     factory: PracticeFactory = request.app.state.practice
     return factory
@@ -72,6 +88,8 @@ GenerationDep = Annotated[GenerationFactory, Depends(get_generation)]
 ReviewDep = Annotated[ReviewFactory, Depends(get_review)]
 StudyDep = Annotated[StudyFactory, Depends(get_study)]
 PracticeDep = Annotated[PracticeFactory, Depends(get_practice)]
+StatsDep = Annotated[StatsFactory, Depends(get_stats)]
+NotebookDep = Annotated[NotebookFactory, Depends(get_notebook)]
 
 
 def render(

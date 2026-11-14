@@ -16,8 +16,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from mind.clock import utcnow
 from mind.db.workspace_models import Attempt, Item, ReviewLog, Topic
+from mind.stats.topics import TopicService
 from mind.study.scheduler import study_day
 from mind.study.service import StudyService
+from mind.workspaces.registry import WorkspaceRegistry
 
 MIN_EVENTS = 5  # below this a topic's accuracy is flagged as a small sample
 REVIEW_STATE = 2
@@ -279,3 +281,16 @@ class StatsService:
             total_reviews=total_reviews,
             total_attempts=total_attempts,
         )
+
+
+class StatsFactory:
+    """Builds the statistics and topic services of a workspace on demand."""
+
+    def __init__(self, registry: WorkspaceRegistry) -> None:
+        self._registry = registry
+
+    def stats(self, workspace_id: int) -> StatsService:
+        return StatsService(self._registry.open(workspace_id).sessions)
+
+    def topics(self, workspace_id: int) -> TopicService:
+        return TopicService(self._registry.open(workspace_id).sessions)
