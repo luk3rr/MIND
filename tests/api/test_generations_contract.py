@@ -91,7 +91,7 @@ def test_items_can_be_filtered_paginated_edited_and_reviewed(ready: TestClient) 
     assert [
         i["id"] for i in ready.get(f"{base}/items", params={"limit": 2, "offset": 1}).json()
     ] == ids[1:3]
-    assert ready.get(f"{base}/items/{ids[0]}").json()["front"] == "Pergunta número 0?"
+    assert ready.get(f"{base}/items/{ids[0]}").json()["front"].endswith("número 0?")
 
     edited = ready.patch(
         f"{base}/items/{ids[0]}",

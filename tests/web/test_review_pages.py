@@ -24,7 +24,7 @@ def test_review_lists_drafts_with_the_highlighted_source(ready: TestClient) -> N
     assert len(draft_ids(page)) == 5
     assert "<mark>" in page
     assert "A mitocôndria produz energia para a célula" in page
-    assert "Pergunta número 0?" in page
+    assert "número 0?" in page
     assert "Aprovar selecionados" in page
     assert "5 pendentes" in page
 
@@ -94,7 +94,8 @@ def test_edit_form_saves_marks_the_card_and_validates(ready: TestClient) -> None
 
 def test_cloze_cards_show_their_gap_in_brackets(ready: TestClient) -> None:
     _, page = start(ready, subtype="cloze")
-    assert "Sobre [energia]: parte 0." in page
+    assert "Sobre [energia] no trecho" in page
+    assert "parte 0." in page
 
 
 def test_review_without_any_run_is_an_empty_page(ready: TestClient) -> None:

@@ -26,15 +26,15 @@ def cards_from_prompt(messages: Sequence[Message], model: str) -> CardBatch:
     chunk_id, text = int(excerpt.group(1)), excerpt.group(2)
     subtype = subtype_match.group(1)
     front = {
-        "cloze": "Sobre {{c1::energia}}: parte %d.",
-        "true_false": "Afirmação número %d.",
-    }.get(subtype, "Pergunta número %d?")
+        "cloze": "Sobre {{c1::energia}} no trecho %d: parte %d.",
+        "true_false": "Afirmação %d número %d.",
+    }.get(subtype, "Pergunta %d número %d?")
     back = "Verdadeiro. Está no texto." if subtype == "true_false" else "Resposta."
     return CardBatch(
         cards=[
             CardOut(
                 subtype=subtype,  # type: ignore[arg-type]
-                front=front % n if "%d" in front else front,
+                front=front % (chunk_id, n),
                 back=back,
                 topic="Biologia",
                 source=SourceRef(chunk_id=chunk_id, quote=text[:60]),
