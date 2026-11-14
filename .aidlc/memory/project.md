@@ -6,3 +6,4 @@
 - M-4: Python 3.12+ com uv; código totalmente tipado (`mypy --strict`), dados e saídas do LLM em Pydantic; lint e formato com ruff. [gate 2.2]
 - M-5: Testes com pytest; o LLM é sempre mockado nos testes. Commits convencionais direto na `main`; CI no GitHub Actions. [gate 2.2]
 - M-6: O MIND é licenciado em AGPL-3.0 e usa PyMuPDF para PDF; novas dependências devem ter licença compatível com AGPL. [gate 2.9]
+- M-7: Commits atômicos e contidos sempre que possível; nenhum `git push` até o fim da Construction, salvo pedido explícito. [pedido do autor, início da Construction]

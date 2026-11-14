@@ -28,10 +28,10 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 - [x] 2.8 Contract Design
 - [x] 2.9 Delivery Planning
 ### Construction
-- [ ] 3.1 Functional Design
-- [ ] 3.2 NFR Requirements
-- [ ] 3.3 NFR Design
-- [ ] 3.4 Infrastructure Design
+- [>] 3.1 Functional Design (nota de design por Unit, funde 3.1–3.3)
+- [S] 3.2 NFR Requirements (fundida em 3.1 por Unit)
+- [S] 3.3 NFR Design (fundida em 3.1 por Unit)
+- [S] 3.4 Infrastructure Design (sem nuvem; Docker na UNIT-11)
 - [ ] 3.5 Code Generation
 - [ ] 3.6 Build & Test
 - [ ] 3.7 CI Pipeline

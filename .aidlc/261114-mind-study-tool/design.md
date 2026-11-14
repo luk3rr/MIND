@@ -634,3 +634,100 @@ Conteúdo: `manifest.json`, `workspace.db`, `files/…`. O `manifest.json` cont�
 - A31: A API não tem autenticação no MVP porque o servidor só escuta em `127.0.0.1`; quem a expor na rede assume o risco, e o README avisa. (confirmed: no)
 - A32: O `Completion` mostrado no snippet de `Provider` é ilustrativo; a assinatura final (`tuple[T, Usage]`) é a normativa e o tipo auxiliar será removido na Construction. (confirmed: no)
 - A33: Perfis de prova (FR-11) são configurações de prompt e de formato, sem entidade própria no MVP; o campo escolhido por requisição é um enum (`certo_errado`, `multiple_choice_4`, `multiple_choice_5`). (confirmed: no)
+
+## 3.1 Functional design (por Unit)
+
+Nota única por Unit (funde 3.1, 3.2 e 3.3; 3.4 é `[S]`). Cada nota traz comportamento, regras, erros, NFR com mecanismo e decisões de implementação.
+
+### UNIT-1 — Fundação e workspaces
+
+**Estrutura do pacote** (`src/mind/`)
+
+```mermaid
+flowchart TB
+    subgraph mind
+        config[config.py: Settings do ambiente]
+        errors[errors.py: AppError e códigos]
+        db[db/: base, modelos, sessão, migrações]
+        ws[workspaces/: WorkspaceRegistry]
+        jobs[jobs/: JobQueue]
+        web[web/: app, rotas HTML, templates, static]
+        api[api/v1/: roteador JSON]
+    end
+    web --> ws
+    web --> jobs
+    api --> ws
+    api --> jobs
+    ws --> db
+    jobs --> db
+    web --> errors
+    api --> errors
+    ws --> config
+    db --> config
+```
+
+Banco: `db/app/` (modelos e migrações do `app.db`) e `db/workspace/` (modelos e migrações do `workspace.db`), cada um com seu ambiente Alembic. Os arquivos de migração ficam em `src/mind/db/migrations/{app,workspace}/` e são aplicados programaticamente na abertura de cada banco.
+
+**Entidades da UNIT-1**
+- `Workspace` (`app.db`): `id` (int), `name` (1–80 caracteres, único sem diferenciar maiúsculas), `folder` (nome opaco de pasta, `uuid4().hex`), `created_at`.
+- `Job` (`workspace.db`): `id`, `type`, `state`, `progress` (0–1), `message`, `error_code`, `error_detail`, `created_at`, `started_at`, `finished_at`.
+
+**Regras e comportamentos**
+- Criar workspace: valida o nome, cria a pasta `<data_dir>/workspaces/<folder>/` com `files/`, cria e migra `workspace.db`, insere a linha. Se qualquer passo falhar, desfaz o que foi criado (pasta e linha) e devolve o erro.
+- Renomear: valida a unicidade; não mexe na pasta.
+- Excluir: exige confirmação (rota HTML pede o nome; API aceita `DELETE`); remove a linha e depois a pasta; falha ao apagar a pasta deixa um aviso no log e a pasta órfã é removida na próxima abertura do app.
+- Isolamento: nenhuma sessão de `workspace.db` é aberta sem passar por `registry.open(workspace_id)`; os caminhos são sempre derivados de `folder` e verificados para ficarem dentro de `<data_dir>/workspaces/`.
+- URL de HTML: `/` redireciona para `/w/{id}/hoje` do primeiro workspace (ou para `/boas-vindas` sem workspaces); `/w/{id}/hoje` é a tela Hoje vazia do esqueleto; o seletor da barra lateral lista os workspaces e leva a `/w/{id}/hoje`.
+- Job: estados `queued → running → done | failed | cancelled`; concorrência máxima configurável (padrão 2); cancelamento cooperativo (o trabalho consulta `ctx.cancelled`); no arranque, `running` vira `failed` com `INTERRUPTED`; progresso é gravado com limite de frequência para não saturar o SQLite.
+- Erros: `AppError(code, status, title, detail)` e subclasses (`WorkspaceNotFound`, `ValidationFailed`…). A API devolve `application/problem+json`; as rotas HTML devolvem um fragmento de alerta (HTMX) ou a página de erro.
+
+**Fluxo: criar workspace**
+
+```mermaid
+sequenceDiagram
+    participant U as Navegador (HTMX)
+    participant W as web/rotas
+    participant R as WorkspaceRegistry
+    participant A as app.db
+    participant D as workspace.db + pasta
+    U->>W: POST /workspaces (nome)
+    W->>R: create(nome)
+    R->>R: valida nome e unicidade
+    R->>D: cria pasta, files/, workspace.db migrado
+    R->>A: insere Workspace
+    alt falha em qualquer passo
+        R->>D: remove o que criou
+        R-->>W: AppError
+        W-->>U: fragmento de alerta
+    else sucesso
+        R-->>W: Workspace
+        W-->>U: redireciona para /w/{id}/hoje
+    end
+```
+
+**NFR e mecanismos**
+
+| NFR | Mecanismo na UNIT-1 | Verificação |
+|---|---|---|
+| NFR-3 | Rotas simples, sessões curtas, sem trabalho pesado no ciclo de requisição | Teste de latência (T-5.8 cobre as telas de estudo; aqui, só o esqueleto) |
+| NFR-5 | HTMX, KaTeX, fontes e CSS em `static/`; nenhuma URL externa nos templates | Teste que varre templates e CSS em busca de `http://`/`https://` externos |
+| NFR-7 | Bind em `127.0.0.1` por padrão; cabeçalho `Content-Security-Policy: default-src 'self'`; sem CORS aberto | `tests/test_config.py`, `tests/web/test_security_headers.py` |
+| NFR-10 | `mypy --strict`, ruff, cobertura ≥ 80% | Comando de verificação |
+| NFR-11 | Variáveis CSS, contraste ≥ 4,5:1, foco visível, link de salto, `prefers-reduced-motion` | `tests/web/test_theme_contrast.py`, `test_a11y_basics.py` |
+| NFR-12 | Alembic por banco; abrir sempre aplica `upgrade head` | `tests/db/test_migrations_*.py` |
+| NFR-13 | Textos em pt-BR centralizados em `web/strings.py` | `test_a11y_basics.py` verifica a ausência de textos soltos em inglês nos templates |
+
+**Decisões de implementação (desvios ou escolhas dentro da UNIT)**
+- **mypy** (não pyright) para a tipagem estrita, resolvendo A12: o SQLAlchemy 2 tem tipagem nativa com `Mapped[...]`, sem plugin.
+- **Dependências de execução:** `fastapi`, `uvicorn`, `jinja2`, `sqlalchemy>=2`, `alembic`, `pydantic>=2`, `platformdirs`, `python-multipart`. **Desenvolvimento:** `pytest`, `pytest-cov`, `pytest-asyncio`, `httpx`, `ruff`, `mypy`.
+- **Ativos estáticos empacotados no repositório** (`src/mind/web/static/vendor/`): HTMX, KaTeX (CSS, JS e fontes), Inter e JetBrains Mono, com os arquivos de licença ao lado. Baixados de pacotes npm com versão fixada e checksum registrado em `vendor/README.md`; nada é buscado em tempo de execução.
+- **Seleção do workspace** pela URL (`/w/{id}/...`), sem cookie nem estado de servidor.
+- **Tema:** atributo `data-theme` no `<html>` (`light`/`dark`/ausente = sistema), guardado em `localStorage`, com os tokens de 2.5 como variáveis CSS.
+- **Renderização de fórmulas:** o servidor entrega o texto com `$…$`/`$$…$$` escapado; o KaTeX roda no navegador sobre elementos marcados (`data-math`), com `throwOnError: false` e fallback para o texto bruto. `render_math` no servidor só protege os delimitadores durante o escape do HTML.
+- **Teste de contraste:** calcula a razão de contraste WCAG entre os pares de tokens (`--fg/--bg`, `--accent/--bg`, `--muted/--bg`, etc.) e falha abaixo de 4,5:1; se um par oficial do Alucard falhar, o token é ajustado e a diferença é anotada em A20.
+
+**Critérios de aceitação → comportamento:** US-1 AC1 (isolamento) e AC2 (exclusão com confirmação) ← criar/excluir/isolar; US-17 AC1–AC2 ← `data-math` com fallback (AC3, ligaduras, ← CSS `font-variant-ligatures`); US-18 AC1–AC2 ← OpenAPI em `/api/docs` e `problem+json`.
+
+### Assumptions & open questions
+- A37: Os ativos de terceiros serão baixados de `npm pack` ou GitHub Releases; se algum não estiver acessível sem credenciais, peço o arquivo ao autor. (confirmed: no)
+- A38: Nenhuma ação destrutiva roda no diretório de dados do usuário durante os testes: todos os testes usam `tmp_path` (`MIND_DATA_DIR` apontado a ele). (confirmed: no)
