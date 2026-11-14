@@ -10,6 +10,8 @@ import { createCore } from "../core/index.js";
 import { scriptedCardProvider } from "../core/llm/scripted.js";
 import { installLogRedaction } from "../core/redaction.js";
 import type { Core } from "../core/index.js";
+import { createEmbedWorker } from "./embed-worker.js";
+import { FakeEmbedder } from "../core/retrieval/fake-embedder.js";
 import { extractWithWorker } from "./extract-worker.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { createRouter } from "./ipc/router.js";
@@ -92,6 +94,13 @@ if (!app.requestSingleInstanceLock()) {
       dataDir: process.env["MIND_DATA_DIR"] ?? app.getPath("userData"),
       extract: extractWithWorker,
       tessdataDir: join(app.getPath("userData"), "cache", "tessdata"),
+      modelsDir: join(app.getPath("userData"), "cache", "models"),
+      // Offline end-to-end runs use a model-free embedder; a packaged app downloads the real one.
+      ...(process.env["MIND_E2E_FAKE_LLM"] === "1" &&
+      process.env["MIND_E2E_REAL_EMBEDDINGS"] !== "1" &&
+      !app.isPackaged
+        ? { embedder: new FakeEmbedder({ ready: false }) }
+        : { createEmbedWorker }),
       // Offline end-to-end runs only; a packaged app always talks to the real provider.
       ...(process.env["MIND_E2E_FAKE_LLM"] === "1" && !app.isPackaged
         ? { provider: scriptedCardProvider() }
@@ -103,6 +112,27 @@ if (!app.requestSingleInstanceLock()) {
     uninstallRedaction = installLogRedaction(core.llm.secrets);
     const dispatch = createRouter(
       createHandlers(core, state, {
+        appVersion: app.getVersion(),
+        pickSavePath: async (defaultName) => {
+          const options = {
+            defaultPath: join(app.getPath("documents"), defaultName),
+            filters: [{ name: "Backup do MIND", extensions: ["zip"] }],
+          };
+          const result = mainWindow
+            ? await dialog.showSaveDialog(mainWindow, options)
+            : await dialog.showSaveDialog(options);
+          return result.canceled || !result.filePath ? null : result.filePath;
+        },
+        pickBackup: async () => {
+          const options = {
+            properties: ["openFile"] as "openFile"[],
+            filters: [{ name: "Backup do MIND", extensions: ["zip"] }],
+          };
+          const result = mainWindow
+            ? await dialog.showOpenDialog(mainWindow, options)
+            : await dialog.showOpenDialog(options);
+          return result.canceled ? null : (result.filePaths[0] ?? null);
+        },
         pickFiles: async () => {
           const options = {
             properties: ["openFile", "multiSelections"] as ("openFile" | "multiSelections")[],

@@ -9,8 +9,8 @@ import { Shell } from "./components/Shell.js";
 import { GeneratePage } from "./pages/GeneratePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { MaterialPreviewPage } from "./pages/MaterialPreviewPage.js";
-import { PlaceholderPage } from "./pages/PlaceholderPage.js";
 import { ReviewPage } from "./pages/ReviewPage.js";
+import { ChatPage } from "./pages/ChatPage.js";
 import { ErrorsPage } from "./pages/ErrorsPage.js";
 import { PracticePage } from "./pages/PracticePage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
@@ -78,9 +78,7 @@ function Screen() {
         )}
         {route.section === "stats" && <StatsPage workspaceId={route.workspaceId} />}
         {route.section === "errors" && <ErrorsPage workspaceId={route.workspaceId} />}
-        {!["today", "settings", "library", "generate", "study", "stats", "errors"].includes(
-          route.section,
-        ) && <PlaceholderPage section={route.section} />}
+        {route.section === "chat" && <ChatPage workspaceId={route.workspaceId} />}
       </Shell>
     );
   }

@@ -33,6 +33,11 @@ export function buildMatchQuery(query: string): string | null {
   return terms.map((term) => `"${term}"`).join(" OR ");
 }
 
+/** Anything that finds chunks for a query: BM25 now, semantic and hybrid when enabled. */
+export interface Retriever {
+  search(query: string, options?: SearchOptions): RetrievedChunk[] | Promise<RetrievedChunk[]>;
+}
+
 /** BM25 search over the `chunk_fts` index. */
 export class Bm25Retriever {
   constructor(private readonly connection: WorkspaceConnection) {}

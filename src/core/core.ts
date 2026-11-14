@@ -24,6 +24,12 @@ import { SettingsService } from "./settings/service.js";
 import { AppError } from "./contracts/errors.js";
 import { GenerationService } from "./generation/service.js";
 import { ReviewService } from "./review/service.js";
+import type { Worker } from "node:worker_threads";
+import { ChatService } from "./chat/service.js";
+import { EmbeddingsService } from "./retrieval/embeddings.js";
+import type { Embedder } from "./retrieval/embeddings.js";
+import { UnavailableEmbedder } from "./retrieval/fake-embedder.js";
+import { TransformersEmbedder } from "./retrieval/transformers-embedder.js";
 import { ErrorNotebook } from "./notebook/service.js";
 import { PracticeService } from "./practice/service.js";
 import { StatsService } from "./stats/service.js";
@@ -51,6 +57,12 @@ export interface CoreOptions {
   tessdataDir?: string;
   /** How web pages are downloaded; defaults to the global fetch. */
   pageFetch?: PageFetchLike;
+  /** Replaces the semantic-search model (tests and offline runs). */
+  embedder?: Embedder;
+  /** Folder of the semantic-search model (a cache); the model is downloaded there on demand. */
+  modelsDir?: string;
+  /** Creates the worker thread that runs the model (the app passes the bundled worker). */
+  createEmbedWorker?: () => Worker;
 }
 
 /** Everything the provider layer needs; the guarded provider is the only door to a model. */
@@ -80,6 +92,8 @@ export interface Core {
   stats(workspaceId: number): StatsService;
   topics(workspaceId: number): TopicService;
   retriever(workspaceId: number): Bm25Retriever;
+  chat(workspaceId: number): ChatService;
+  embeddings(workspaceId: number): EmbeddingsService;
   close(): Promise<void>;
 }
 
@@ -97,6 +111,11 @@ export function createCore(options: CoreOptions): Core {
   const consent = new ConsentService(app, clock);
   const catalog = new PriceCatalog(app, clock);
   const ledger = new CostLedger(app, catalog, clock);
+  const embedder: Embedder =
+    options.embedder ??
+    (options.createEmbedWorker && options.modelsDir
+      ? new TransformersEmbedder(options.modelsDir, options.createEmbedWorker)
+      : new UnavailableEmbedder());
   const fetchImpl: FetchLike = options.fetch ?? ((url, init) => fetch(url, init));
   const inner = options.provider ?? new OpenRouterProvider(secrets, { fetch: fetchImpl });
   const provider = new GuardedProvider(inner, consent, ledger, settings, clock);
@@ -168,8 +187,28 @@ export function createCore(options: CoreOptions): Core {
         ...(options.pageFetch ? { fetch: options.pageFetch } : {}),
       }),
     retriever: (workspaceId) => new Bm25Retriever(registry.open(workspaceId).connection),
+    embeddings: (workspaceId) => {
+      const workspace = registry.open(workspaceId);
+      return new EmbeddingsService(workspace.info.id, workspace.connection, queue, embedder);
+    },
+    chat: (workspaceId) => {
+      const workspace = registry.open(workspaceId);
+      const embeddings = new EmbeddingsService(
+        workspace.info.id,
+        workspace.connection,
+        queue,
+        embedder,
+      );
+      return new ChatService(
+        workspace,
+        llm,
+        embeddings.retriever(new Bm25Retriever(workspace.connection)),
+        clock,
+      );
+    },
     async close() {
       await queue.shutdown();
+      if (embedder instanceof TransformersEmbedder) embedder.close();
       registry.close();
     },
   };

@@ -7,7 +7,7 @@
 - Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous-checkpoints (design gates e falhas seguem com aprovação) iteration=unit-major commits=max-20-total-até-o-fim (commit 16 com o UNIT-13)
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-14; válido após as ferramentas do UNIT-1)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.5 Code Generation (UNIT-13 verificado; próximo UNIT-14)   Updated: 2026-11-14T18:06:49.037261-03:00
+- Current: phase=construction stage=3.5 Code Generation (UNIT-15 verificado; próximo UNIT-16 (fechamento))   Updated: 2026-11-14T18:39:58.522327-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
@@ -51,8 +51,8 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-11 Questões verificadas e prática | UNIT-9 | verified | yes |
 | UNIT-12 Caderno de erros e estatísticas | UNIT-10, UNIT-11 | verified | yes |
 | UNIT-13 Treino de pontos fracos | UNIT-12 | verified | yes |
-| UNIT-14 Chat e busca semântica | UNIT-4, UNIT-7 | not started | no |
-| UNIT-15 Backup do workspace | UNIT-3 | not started | no |
+| UNIT-14 Chat e busca semântica | UNIT-4, UNIT-7 | verified | yes |
+| UNIT-15 Backup do workspace | UNIT-3 | verified | yes |
 | UNIT-16 Fechamento e remoção do Python | UNIT-6, UNIT-8, UNIT-12, UNIT-13, UNIT-14, UNIT-15 | not started | no |
 
 ## Open assumptions

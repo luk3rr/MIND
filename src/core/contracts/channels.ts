@@ -215,6 +215,42 @@ const errorEntry = z.object({
   lastErrorAt: z.string(),
 });
 
+const citationInfo = z.object({
+  chunkId: z.number().int(),
+  materialId: z.number().int(),
+  materialTitle: z.string(),
+  page: z.number().int().nullable(),
+  section: z.string().nullable(),
+  quote: z.string(),
+});
+
+const chatReply = z.object({
+  id: z.number().int(),
+  question: z.string(),
+  answer: z.string(),
+  supported: z.boolean(),
+  citations: z.array(citationInfo),
+  costUsd: z.number(),
+  createdAt: z.string(),
+});
+
+const embeddingStatus = z.object({
+  modelReady: z.boolean(),
+  enabled: z.boolean(),
+  indexed: z.number().int(),
+  total: z.number().int(),
+  model: z.string(),
+  /** The latest vectorizing job (progress while it runs, the error when it failed). */
+  job: z
+    .object({
+      state: z.string(),
+      progress: z.number(),
+      message: z.string(),
+      errorDetail: z.string().nullable(),
+    })
+    .nullable(),
+});
+
 export const channels = {
   "window:getState": {
     input: z.object({}).strict(),
@@ -555,6 +591,43 @@ export const channels = {
         }),
       ),
     }),
+  },
+  "workspace:export": {
+    input: z.object({ id: z.number().int().positive() }).strict(),
+    output: z.object({ cancelled: z.boolean(), path: z.string().nullable() }),
+  },
+  "workspace:import": {
+    input: z.object({}).strict(),
+    output: z.object({
+      cancelled: z.boolean(),
+      workspace: z
+        .object({ id: z.number().int(), name: z.string(), createdAt: z.string() })
+        .nullable(),
+    }),
+  },
+  "chat:history": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ messages: z.array(chatReply) }),
+  },
+  "chat:ask": {
+    input: z.object({ workspaceId, question: z.string().max(5000) }).strict(),
+    output: chatReply,
+  },
+  "chat:clear": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ cleared: z.number().int() }),
+  },
+  "embeddings:status": {
+    input: z.object({ workspaceId }).strict(),
+    output: embeddingStatus,
+  },
+  "embeddings:enable": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ jobId: z.number().int().nullable() }),
+  },
+  "embeddings:disable": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({}).strict(),
   },
   "settings:get": {
     input: z.object({}).strict(),

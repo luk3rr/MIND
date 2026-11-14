@@ -11,12 +11,14 @@ export function ConfirmDialog({
   title,
   body,
   confirmLabel,
+  tone = "danger",
   onConfirm,
   onClose,
 }: {
   title: string;
   body: string;
   confirmLabel: string;
+  tone?: "danger" | "primary";
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -29,7 +31,7 @@ export function ConfirmDialog({
         </button>
         <button
           type="button"
-          className="btn danger"
+          className={tone === "danger" ? "btn danger" : "btn"}
           onClick={() => {
             onConfirm();
             onClose();

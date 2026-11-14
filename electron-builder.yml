@@ -18,6 +18,12 @@ files:
   - "!node_modules/better-sqlite3/{src,deps}/**"
   - "!node_modules/better-sqlite3/prebuilds/{win32-*,darwin-*,linuxmusl-*,linux-arm64}.node"
   - "!node_modules/better-sqlite3/lib/{win32-*,darwin-*,linuxmusl-*,linux-arm64}.js"
+  # Semantic search runs the model with onnxruntime-node; the browser runtime and the binaries
+  # of other platforms and architectures stay out of the package.
+  - "!node_modules/onnxruntime-web/**"
+  - "!node_modules/onnxruntime-node/bin/napi-v3/{darwin,win32}/**"
+  - "!node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/**"
+  - "!node_modules/@img/*{musl,arm,arm64,darwin,win32,s390x,ppc64,riscv64}*/**"
 
 asar: true
 # The native SQLite binding cannot be loaded from inside the asar archive.
@@ -27,6 +33,11 @@ asarUnpack:
   - node_modules/tesseract.js/**
   - node_modules/tesseract.js-core/**
   - node_modules/@tesseract.js-data/**
+  # The embedding model needs the native onnxruntime (and sharp, which transformers.js loads).
+  - node_modules/onnxruntime-node/**
+  - node_modules/onnxruntime-common/**
+  - node_modules/sharp/**
+  - node_modules/@img/**
 
 linux:
   target:

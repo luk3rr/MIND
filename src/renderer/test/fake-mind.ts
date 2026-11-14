@@ -25,6 +25,8 @@ export type FakeStudyCard = NonNullable<OutputOf<"study:next">["card"]>;
 export type FakeErrorEntry = OutputOf<"errors:list">["entries"][number];
 export type FakeTopic = OutputOf<"topics:list">["topics"][number];
 export type FakeOverview = OutputOf<"stats:overview">;
+export type FakeReply = OutputOf<"chat:ask">;
+export type FakeEmbeddings = OutputOf<"embeddings:status">;
 export type FakeQuestion = NonNullable<OutputOf<"practice:next">["question"]>;
 
 export interface FakeState {
@@ -49,6 +51,17 @@ export interface FakeState {
   topicList: FakeTopic[];
   overview: FakeOverview;
   madeCards: number[];
+  chat: FakeReply[];
+  /** What the next question gets; the default answers with one valid citation. */
+  chatReply: ((question: string) => Omit<FakeReply, "id" | "question" | "createdAt">) | null;
+  embeddings: FakeEmbeddings;
+  /** When set, enabling the semantic search fails with this message. */
+  embeddingsFailure: string | null;
+  /** Where the next export "saves"; null means the user cancels the dialog. */
+  exportPath: string | null;
+  /** Name of the workspace the next import creates; null means the user cancels the dialog. */
+  importName: string | null;
+  backupFailure: string | null;
   importResult: OutputOf<"material:import">;
   searchHits: OutputOf<"material:search">["hits"];
   provider: {
@@ -128,6 +141,13 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     topicList: [],
     overview: emptyOverview(),
     madeCards: [],
+    chat: [],
+    chatReply: null,
+    embeddings: { modelReady: false, enabled: false, indexed: 0, total: 3, model: "m", job: null },
+    embeddingsFailure: null,
+    exportPath: null,
+    importName: null,
+    backupFailure: null,
     importResult: { materials: [], errors: [] },
     searchHits: [],
     provider: {
@@ -171,6 +191,21 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         };
         state.workspaces.push(created);
         return ok(created);
+      }
+      case "workspace:export": {
+        if (state.backupFailure) return failure("INTERNAL_ERROR", state.backupFailure);
+        return ok({ cancelled: state.exportPath === null, path: state.exportPath });
+      }
+      case "workspace:import": {
+        if (state.backupFailure) return failure("ARCHIVE_INVALID", state.backupFailure);
+        if (state.importName === null) return ok({ cancelled: true, workspace: null });
+        const created = {
+          id: state.nextId++,
+          name: state.importName,
+          createdAt: "2026-01-01T00:00:00.000Z",
+        };
+        state.workspaces.push(created);
+        return ok({ cancelled: false, workspace: created });
       }
       case "workspace:rename": {
         const { id, name } = payload as InputOf<"workspace:rename">;
@@ -471,6 +506,70 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       }
       case "stats:overview":
         return ok(state.overview);
+      case "chat:history":
+        return ok({ messages: [...state.chat] });
+      case "chat:ask": {
+        const input = payload as InputOf<"chat:ask">;
+        if (!input.question.trim()) {
+          return failure("VALIDATION_ERROR", "Escreva uma pergunta.", "question");
+        }
+        const made = state.chatReply?.(input.question) ?? {
+          answer: `Resposta para ${input.question}`,
+          supported: true,
+          citations: [
+            {
+              chunkId: 4,
+              materialId: 1,
+              materialTitle: "apostila",
+              page: 2,
+              section: null,
+              quote: "trecho citado do material",
+            },
+          ],
+          costUsd: 0.001,
+        };
+        const reply: FakeReply = {
+          id: state.chat.length + 1,
+          question: input.question,
+          createdAt: "2026-11-14T10:00:00.000Z",
+          ...made,
+        };
+        state.chat.push(reply);
+        return ok(reply);
+      }
+      case "chat:clear": {
+        const cleared = state.chat.length;
+        state.chat = [];
+        return ok({ cleared });
+      }
+      case "embeddings:status":
+        return ok(state.embeddings);
+      case "embeddings:enable": {
+        if (state.embeddingsFailure) {
+          state.embeddings = {
+            ...state.embeddings,
+            enabled: true,
+            job: {
+              state: "failed",
+              progress: 0,
+              message: "",
+              errorDetail: state.embeddingsFailure,
+            },
+          };
+          return ok({ jobId: 1 });
+        }
+        state.embeddings = {
+          ...state.embeddings,
+          enabled: true,
+          modelReady: true,
+          indexed: state.embeddings.total,
+          job: { state: "done", progress: 1, message: "", errorDetail: null },
+        };
+        return ok({ jobId: 1 });
+      }
+      case "embeddings:disable":
+        state.embeddings = { ...state.embeddings, enabled: false };
+        return ok({});
       case "settings:get": {
         const p = state.provider;
         return ok({

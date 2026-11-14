@@ -152,6 +152,52 @@ flowchart LR
 
 **Riscos.** (1) A rota com query: o `parseRoute` aceita `?topic=` e `?subtype=` sem abrir brecha para rotas externas (já validadas). (2) Mudar o contrato de `generation:*` exige atualizar os stubs de teste.
 
+### UNIT-14 — Chat e busca semântica (nota de design)
+
+**Objetivo.** Perguntar à base do workspace e receber resposta só com o que está nos trechos, com citações verificadas; e, opcionalmente, melhorar a recuperação com busca semântica (transformers.js) cujo modelo é baixado sob demanda. Porta `chat/` e `retrieval/embeddings.py`. [src: FR-18, US-12, NFR-8, NFR-18]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Chat | `ChatService.ask`: pergunta limpa (1 a 1000 caracteres, erro no campo `question`), recupera até 8 trechos (BM25, ou híbrido quando a busca semântica está ligada); sem trechos, **não chama o modelo** e responde "Não encontrei suporte no material para responder a essa pergunta."; com trechos, `ensureReady`, modelo de geração, esquema `ChatAnswer` (`supported`, `answer`, `citations[chunk_id, quote]`); só ficam citações cujo trecho existe e cuja `quote` passa no `SourceChecker`; sem suporte, sem citação válida ou resposta vazia vira a recusa (custo registrado); cada pergunta é independente e fica em `chat_message` |
+| Prompt | `CHAT_SYSTEM` e `buildChatMessages` com o texto do Python, conferidos por uma fixture nova em `prompts.json` |
+| Histórico | `history(50)` do mais antigo ao mais novo e `clear()` com confirmação |
+| Embeddings | `Embedder { modelName, embed(textos) }`; implementação real `@huggingface/transformers` com o modelo `Xenova/paraphrase-multilingual-MiniLM-L12-v2` quantizado (q8, 384 dimensões, cerca de 130 MB) rodando em worker thread (`runInWorker`), nunca na thread da janela (NFR-18); o modelo é baixado do Hugging Face **só** quando o usuário ativa a busca semântica, para `userData/cache/models`, com progresso; nenhum dado do usuário sai (só o download do modelo) |
+| Índice | Vetores normalizados em `chunk_embedding` (float32 BLOB, como no Python), interruptor por workspace em `meta` (`embeddings` = on/off), job `embeddings` em lotes de 32 com progresso e cancelamento, só para trechos ainda sem vetor do modelo atual; busca por produto escalar em memória (suficiente para uma biblioteca pessoal) |
+| Fusão | `HybridRetriever`: RRF de BM25 e semântica (k = 60, candidatos 40, empate pelo id); se o embedder falhar (modelo ausente e sem rede), o chat segue só com BM25 e a tela avisa |
+| Estado | `embeddings:status` (disponível, ligado, indexados, total, modelo baixado), `enable` (baixa o modelo se preciso e vetoriza; devolve o job), `disable` (desliga; mantém vetores) |
+| IPC | `chat:history`, `chat:ask`, `chat:clear`, `embeddings:status|enable|disable` |
+| UI | Chat: campo de pergunta, histórico com resposta, citações clicáveis que abrem o trecho na Biblioteca (`materialPath` com `chunk`), recusa destacada, limpar histórico; painel "Busca semântica" com estado, aviso de download (cerca de 130 MB, uma vez), ativar/desativar e progresso |
+| Pacote | `@huggingface/transformers` 3.7.5 e `onnxruntime-node` (nativo) entram no `asarUnpack`; binários de outras plataformas e arquiteturas são excluídos do `.deb` (estimativa: +25 MB no `.deb` e +80 MB instalado, dentro dos limites de 500 MB e 1 GB) |
+| Testes | Chat com provedor falso (citações válidas e inválidas, sem trechos, recusa, validação, histórico); embeddings com um embedder determinístico (ida e volta dos vetores, indexação só dos pendentes com progresso, ranking por cosseno com filtros, fusão, fallback); teste real do modelo atrás de `MIND_TEST_REAL_EMBEDDINGS=1` (rede), rodado manualmente aqui; E2E com embedder falso |
+
+**NFR (nota).** NFR-18: embeddings e download em worker, a janela segue respondendo. NFR-8: o chat usa o modelo de geração configurado e respeita limite mensal e consentimento (`ensureReady`). Segurança: o nome do modelo é fixo no código; o download usa só a URL do hub, sem entrada do usuário.
+
+**Riscos.** (1) Sem rede, ativar falha com mensagem clara e o chat segue em BM25. (2) O `onnxruntime-node` em Electron: validar no `.deb` empacotado (desempacotar o nativo) e medir o tamanho; se estourar, recuo para WASM. (3) Valores numéricos diferem um pouco do `sentence-transformers` (q8 contra float32); só a ordenação importa.
+
+### UNIT-15 — Backup do workspace (nota de design)
+
+**Objetivo.** Exportar um workspace (dados, progresso e arquivos originais) para um `.zip` local e importá-lo de volta, em outra instalação ou como cópia, sem nunca incluir chave de API nem configurações globais. Porta `workspaces/archive.py`. [src: FR-22, NFR-17]
+
+**Decisões.**
+
+| Tema | Decisão |
+|---|---|
+| Formato | `.zip` com `manifest.json` (`format: "mind-workspace"`, `format_version: 1`, `app_version`, `schema_revision` = última migração do workspace, `workspace_name`, `exported_at`), `workspace.db` (cópia consistente por `VACUUM INTO`/backup do SQLite, mesmo com o WAL pendente) e `files/…` (originais). Sem segredos |
+| Exportar | `archive.exportWorkspace(id, destino)`: escreve em streaming (yazl), então arquivos grandes não passam inteiros pela memória; nome sugerido `mind-<nome>-AAAA-MM-DD.zip` |
+| Importar | Valida antes de gravar: é um zip legível, tem manifesto válido do formato `mind-workspace`, versão de formato e revisão de esquema conhecidas (mais novas viram `ARCHIVE_INCOMPATIBLE`; qualquer outra coisa, `ARCHIVE_INVALID`), tem `workspace.db`, no máximo 100 mil membros e 8 GB descompactados, e **só** os caminhos `manifest.json`, `workspace.db` e `files/…` (rejeita `..`, caminho absoluto, barra invertida e qualquer outro membro: proteção contra *zip slip*). Extrai em streaming (yauzl) para a pasta de um workspace novo, migra o banco para o esquema atual e só então registra o workspace; falha em qualquer ponto remove a pasta (nada pela metade) |
+| Nome | Mantém o nome do backup; se já existir, sufixo "(importado)", "(importado 2)", … (até 50 tentativas) |
+| Registro | `WorkspaceRegistry.createFrom(nome, popular)` com a mesma garantia do Python (pasta removida em caso de erro) |
+| Compatibilidade | Backups do app antigo em Python não são importados (esquema diferente; o autor não tem dados em uso, A-confirmada em 2.1): aparecem como `ARCHIVE_INCOMPATIBLE` com mensagem clara |
+| IPC | `workspace:export` (`id`) abre o diálogo nativo "Salvar como" e devolve `{ path }` ou `{ cancelled: true }`; `workspace:import` abre o diálogo "Abrir" (`.zip`) e devolve o workspace criado ou `{ cancelled: true }`; o renderer nunca escolhe o caminho |
+| UI | Menu do workspace ganha "Exportar…" e "Importar…"; a tela de boas-vindas ganha "Importar backup"; mensagens de sucesso e de erro em pt-BR; depois de importar, o app abre o novo workspace |
+| Testes | Ida e volta (dados, arquivos e nome com sufixo), instantâneo consistente (`integrity_check`), formato novo e esquema desconhecido recusados sem deixar workspace pela metade, membros inseguros recusados (`../evil`, `/abs`, `other/x`, `files/../../evil`), arquivos que não são backup, manifesto ausente e de outro formato, limite de membros, falha no meio remove a pasta |
+
+**NFR (nota).** NFR-17: exportar/importar nunca toca o diretório de instalação nem os dados de outro workspace. NFR-18: a cópia roda em streaming, sem travar a janela. Segurança: o caminho de saída vem do diálogo nativo; o de entrada, idem.
+
+**Riscos.** (1) `VACUUM INTO` exige SQLite 3.27+ (o better-sqlite3 traz 3.4x); alternativa `sqlite.backup()`. (2) Zip bombs: o limite de 8 GB é conferido pelo tamanho declarado e durante a extração (conta bytes reais).
+
 ### Assumptions & open questions
 
 - A7 (1.6): Manter as 8 seções atuais na barra lateral, sem acrescentar seções novas. — confirmed: yes
@@ -933,3 +979,5 @@ sequenceDiagram
 - A48 (3.1 UNIT-11): A prática fica em `/w/:id/study/practice`, dentro da seção Estudar. — confirmed: yes
 - A49 (3.1 UNIT-12): "Virar card" aparece na lista de erros e logo após um erro na prática; a meta diária é editada em Estatísticas. — confirmed: yes
 - A50 (3.1 UNIT-13): O botão "Treinar" só abre a tela Gerar preenchida; nada é gerado nem cobrado até o clique em "Gerar". — confirmed: yes
+- A51 (3.1 UNIT-14): O modelo semântico é o multilíngue MiniLM quantizado (q8, ~130 MB), baixado do Hugging Face só ao ativar, com `onnxruntime-node` nativo; se o pacote passar dos limites, recuamos para WASM. — confirmed: yes
+- A52 (3.1 UNIT-15): Backups do app antigo em Python não são importáveis (o autor não tem dados em uso); o formato novo é o `mind-workspace` versão 1 com a revisão de esquema do app TypeScript. — confirmed: yes

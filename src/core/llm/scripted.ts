@@ -93,6 +93,17 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
     });
     return { questions };
   });
+  provider.script("ChatAnswer", (messages: readonly { content: string }[]) => {
+    const prompt = messages.at(-1)?.content ?? "";
+    const question = /Question: ([\s\S]*)$/.exec(prompt)?.[1]?.trim() ?? "";
+    const first = parseExcerpts(prompt)[0];
+    if (!first) return { supported: false, answer: "Sem trechos.", citations: [] };
+    return {
+      supported: true,
+      answer: `Segundo o material: ${first.text.slice(0, 80)} (pergunta: ${question})`,
+      citations: [{ chunk_id: first.id, quote: first.text.slice(0, 60) }],
+    };
+  });
   provider.script("JudgeBatch", (messages: readonly { content: string }[]) => {
     const total = (messages.at(-1)?.content.match(/\[question \d+\]/g) ?? []).length;
     return {

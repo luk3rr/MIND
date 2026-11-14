@@ -9,6 +9,7 @@ import { useState } from "react";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { isErrorInfo, useWorkspaces } from "../workspaces.js";
+import { useBackup } from "./BackupDialog.js";
 import { ConfirmDialog } from "./ConfirmDialog.js";
 import { PromptDialog } from "./PromptDialog.js";
 
@@ -20,6 +21,7 @@ export function WorkspaceSwitcher({ activeId }: { activeId: number }) {
   const { navigate } = useRouter();
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
+  const backup = useBackup();
   const active = workspaces.find((workspace) => workspace.id === activeId);
 
   const choose = (next: Modal): void => {
@@ -68,6 +70,26 @@ export function WorkspaceSwitcher({ activeId }: { activeId: number }) {
           <button type="button" role="menuitem" onClick={() => choose("rename")}>
             {T.renameWorkspace}
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              backup.exportBackup(activeId);
+            }}
+          >
+            {T.exportWorkspace}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              backup.importBackup();
+            }}
+          >
+            {T.importWorkspace}
+          </button>
           <button type="button" role="menuitem" onClick={() => choose("delete")}>
             {T.deleteWorkspace}
           </button>
@@ -114,6 +136,7 @@ export function WorkspaceSwitcher({ activeId }: { activeId: number }) {
           }}
         />
       )}
+      {backup.notice}
     </div>
   );
 }

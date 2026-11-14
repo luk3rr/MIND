@@ -10,6 +10,7 @@ import type { Core } from "../../core/core.js";
 import { todaySummary } from "../../core/today/summary.js";
 import { cardSides } from "../../core/study/rendering.js";
 import { Rating } from "../../core/study/scheduler.js";
+import { downloadName, exportWorkspace, importWorkspace } from "../../core/workspaces/archive.js";
 import type { Handlers } from "./router.js";
 import { AppError } from "../../core/contracts/errors.js";
 import { basename } from "node:path";
@@ -40,6 +41,11 @@ function settingsView(core: Core): OutputOf<"settings:get"> {
 export interface UiBridge {
   /** Opens the native file dialog and returns the chosen paths (empty when cancelled). */
   pickFiles(): Promise<string[]>;
+  /** Opens the native "save as" dialog; null when cancelled. */
+  pickSavePath?(defaultName: string): Promise<string | null>;
+  /** Opens the native dialog for a backup `.zip`; null when cancelled. */
+  pickBackup?(): Promise<string | null>;
+  appVersion?: string;
 }
 
 const PREVIEW_PAGE_SIZE = 20;
@@ -53,6 +59,20 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     },
     "workspace:list": () => ({ workspaces: core.registry.list() }),
     "workspace:create": ({ name }) => core.registry.create(name),
+    "workspace:export": async ({ id }) => {
+      const info = core.registry.get(id);
+      const path = (await ui.pickSavePath?.(downloadName(info))) ?? null;
+      if (path === null) return { cancelled: true, path: null };
+      await exportWorkspace(core.registry, id, path, {
+        ...(ui.appVersion ? { appVersion: ui.appVersion } : {}),
+      });
+      return { cancelled: false, path };
+    },
+    "workspace:import": async () => {
+      const path = (await ui.pickBackup?.()) ?? null;
+      if (path === null) return { cancelled: true, workspace: null };
+      return { cancelled: false, workspace: await importWorkspace(core.registry, path) };
+    },
     "workspace:rename": ({ id, name }) => core.registry.rename(id, name),
     "today:summary": ({ workspaceId }) => todaySummary(core.registry.open(workspaceId)),
     "material:list": ({ workspaceId }) => ({ materials: core.materials(workspaceId).listViews() }),
@@ -226,6 +246,15 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         retention: stats.retention(),
         activity: stats.activity(),
       };
+    },
+    "chat:history": ({ workspaceId }) => ({ messages: core.chat(workspaceId).history() }),
+    "chat:ask": ({ workspaceId, question }) => core.chat(workspaceId).ask(question),
+    "chat:clear": ({ workspaceId }) => ({ cleared: core.chat(workspaceId).clear() }),
+    "embeddings:status": ({ workspaceId }) => core.embeddings(workspaceId).status(),
+    "embeddings:enable": ({ workspaceId }) => ({ jobId: core.embeddings(workspaceId).enable() }),
+    "embeddings:disable": ({ workspaceId }) => {
+      core.embeddings(workspaceId).disable();
+      return {};
     },
     "settings:get": () => settingsView(core),
     "settings:save": (input) => {

@@ -88,6 +88,23 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "stats:overview": () => {
       throw new Error("unused");
     },
+    "workspace:export": () => ({ cancelled: true, path: null }),
+    "workspace:import": () => ({ cancelled: true, workspace: null }),
+    "chat:history": () => ({ messages: [] }),
+    "chat:ask": () => {
+      throw new Error("unused");
+    },
+    "chat:clear": () => ({ cleared: 0 }),
+    "embeddings:status": () => ({
+      modelReady: false,
+      enabled: false,
+      indexed: 0,
+      total: 0,
+      model: "m",
+      job: null,
+    }),
+    "embeddings:enable": () => ({ jobId: null }),
+    "embeddings:disable": () => ({}),
     "settings:get": () => ({
       provider: "openrouter",
       generationModel: "a",

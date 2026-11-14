@@ -15,11 +15,13 @@ interface WorkspacesValue {
   create(name: string): Promise<ErrorInfo | WorkspaceInfo>;
   rename(id: number, name: string): Promise<ErrorInfo | WorkspaceInfo>;
   remove(id: number): Promise<ErrorInfo | null>;
+  exportBackup(id: number): Promise<ErrorInfo | OutputOf<"workspace:export">>;
+  importBackup(): Promise<ErrorInfo | OutputOf<"workspace:import">>;
 }
 
 const WorkspacesContext = createContext<WorkspacesValue | null>(null);
 
-export function isErrorInfo(value: ErrorInfo | WorkspaceInfo | null): value is ErrorInfo {
+export function isErrorInfo(value: object | null): value is ErrorInfo {
   return value !== null && "code" in value;
 }
 
@@ -55,6 +57,16 @@ export function WorkspacesProvider({
         const result = await window.mind.invoke("workspace:rename", { id, name });
         if (!result.ok) return result.error;
         await refresh();
+        return result.data;
+      },
+      async exportBackup(id) {
+        const result = await window.mind.invoke("workspace:export", { id });
+        return result.ok ? result.data : result.error;
+      },
+      async importBackup() {
+        const result = await window.mind.invoke("workspace:import", {});
+        if (!result.ok) return result.error;
+        if (!result.data.cancelled) await refresh();
         return result.data;
       },
       async remove(id) {

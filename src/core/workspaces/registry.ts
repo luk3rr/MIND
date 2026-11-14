@@ -151,6 +151,36 @@ export class WorkspaceRegistry {
     }
   }
 
+  /**
+   * Creates a workspace whose folder `populate` fills (the backup import). `populate` receives the
+   * new folder and must leave a `workspace.db` and may add `files/`; the database is migrated to
+   * the current schema afterwards. Any failure removes the folder, so nothing half-imported stays.
+   */
+  async createFrom(
+    rawName: string,
+    populate: (root: string) => Promise<void>,
+  ): Promise<WorkspaceInfo> {
+    const { name, key } = normalizeName(rawName);
+    if (this.isNameKeyTaken(key)) throw nameTaken();
+    const folder = randomUUID().replaceAll("-", "");
+    const root = this.folderPath(folder);
+    try {
+      mkdirSync(root, { recursive: true });
+      await populate(root);
+      mkdirSync(join(root, "files"), { recursive: true });
+      openWorkspaceDatabase(join(root, "workspace.db")).close();
+      const row = this.app.db
+        .insert(workspace)
+        .values({ name, nameKey: key, folder, createdAt: isoNow(this.clock) })
+        .returning()
+        .get();
+      return WorkspaceRegistry.info(row);
+    } catch (error) {
+      rmSync(root, { recursive: true, force: true });
+      throw error;
+    }
+  }
+
   list(): WorkspaceInfo[] {
     return this.app.db
       .select()

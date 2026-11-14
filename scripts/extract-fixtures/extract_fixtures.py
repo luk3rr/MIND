@@ -39,6 +39,7 @@ from mind.ingestion.extractors import (
     markdown_segments,
     reflow_paragraphs,
 )
+from mind.chat.prompts import CHAT_SYSTEM, build_chat_messages
 from mind.db import migrate
 from mind.db.base import make_session_factory
 from mind.db.workspace_models import Attempt, GenerationRun, Item, ReviewLog, Topic
@@ -212,6 +213,12 @@ def prompts_fixture() -> dict[str, object]:
             for item in judge_items
         ],
         "judge_messages": judge,
+        "chat_system": CHAT_SYSTEM,
+        "chat_question": "Como funciona a busca binária?",
+        "chat_messages": [
+            {"role": m.role, "content": m.content}
+            for m in build_chat_messages("Como funciona a busca binária?", chunks)
+        ],
     }
 
 
