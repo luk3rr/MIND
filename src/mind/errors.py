@@ -88,6 +88,12 @@ class MaterialNotFound(AppError):
     title = "Material não encontrado"
 
 
+class ItemNotFound(AppError):
+    code = "ITEM_NOT_FOUND"
+    status = 404
+    title = "Item não encontrado"
+
+
 class GenerationRunNotFound(AppError):
     code = "RUN_NOT_FOUND"
     status = 404

@@ -48,19 +48,24 @@ def clean_topic(raw: str | None) -> str | None:
     return topic or None
 
 
-def card_problem(card: CardOut, subtype: str) -> str | None:
-    """Return why a card is malformed, or `None` when its shape is fine."""
-    if card.subtype != subtype:
-        return "wrong_subtype"
-    if not card.front.strip():
+def payload_problem(subtype: str, front: str, back: str) -> str | None:
+    """Return why a card's text is malformed for its type, or `None` when it is fine."""
+    if not front.strip():
         return "empty_front"
-    if subtype != "cloze" and not card.back.strip():
+    if subtype != "cloze" and not back.strip():
         return "empty_back"
-    if subtype == "cloze" and not CLOZE_GAP.search(card.front):
+    if subtype == "cloze" and not CLOZE_GAP.search(front):
         return "cloze_without_gap"
-    if subtype == "true_false" and not TRUE_FALSE_BACK.match(card.back):
+    if subtype == "true_false" and not TRUE_FALSE_BACK.match(back):
         return "true_false_without_verdict"
     return None
+
+
+def card_problem(card: CardOut, subtype: str) -> str | None:
+    """Return why a generated card is malformed, or `None` when its shape is fine."""
+    if card.subtype != subtype:
+        return "wrong_subtype"
+    return payload_problem(subtype, card.front, card.back)
 
 
 class CardGenerator:
