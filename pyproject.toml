@@ -20,6 +20,9 @@ dependencies = [
     "python-multipart>=0.0.12",
 ]
 
+[project.scripts]
+mind = "mind.__main__:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",
