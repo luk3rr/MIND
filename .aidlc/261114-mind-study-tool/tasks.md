@@ -115,7 +115,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 
 **BOLT-1 (Esqueleto: UNIT-1, 2 e 3) concluído.** Itens da meta: app abre no navegador com workspaces e tema ✓; `FakeProvider` e OpenRouter atrás da interface ✓; PDF e Markdown importados e pesquisáveis ✓; verificação passa ✓; CI verde: workflow criado, **só roda após o push final**.
 
-### UNIT-4 Flashcards com fonte e revisão — Status: pending
+### UNIT-4 Flashcards com fonte e revisão — Status: verified (2026-11-14), gate do BOLT-2 pendente
 - [x] T-4.1 Modelos `item`, `topic`, `generation_run` e migração. · FR-6 · teste: `tests/db/test_items_migration.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0004_*.py, tests/generation/test_generation_migration.py
 - [x] T-4.2 Prompts e esquema `CardBatch` para P/R, cloze, comparativo e V/F, com orientação de LaTeX. ≈2 h · FR-6, FR-23 · teste: `tests/generation/test_card_prompts.py` · files: src/mind/generation/{schemas,prompts}.py, tests/generation/test_prompts.py
 - [x] T-4.3 `SourceChecker`: citação como substring normalizada (espaços, quebras, hifenização). · FR-7 · teste: `tests/verification/test_source_checker.py` · files: src/mind/verification/source_checker.py, tests/verification/test_source_checker.py
@@ -127,6 +127,14 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-4.9 API `generations` e `items` (`:review`). · FR-24 · teste: `tests/api/test_generation_contract.py` · files: src/mind/api/{deps,schemas}.py, src/mind/api/v1/{generations,items,__init__}.py, tests/api/{test_generations_contract.py,openapi_v1.json}, tests/{helpers.py,conftest.py}
 - [x] T-4.10 Script de avaliação de SM-1: amostra fixa, relatório de taxa de aprovação sem edição. · NFR-8 · teste: `tests/eval/test_sm1_script.py` com `FakeProvider`; execução real (`real_llm`) no gate do BOLT-2 · files: src/mind/sm1.py, src/mind/__main__.py, tests/eval/{test_sm1_script,test_sm1_real,sample_text}.py
 - [x] T-4.11 Desempenho: 20 itens em < 60 s com latência controlada, sem travar a UI. · NFR-2 · teste: `tests/perf/test_generation_latency.py` (marcador `perf`) · files: tests/perf/test_generation_latency.py (measured: 20 cards in 2.03 s with 1 s per call; loop lag 8 ms)
+
+**Resumo da UNIT-4 (2026-11-14)**
+
+- Verificação: comando aprovado → exit 0; 346 testes, cobertura 98%, `mypy --strict` sem erros em 139 arquivos. Desempenho (`pytest -m perf`): **20 cards em 2,03 s** com 1 s de latência simulada por chamada ao modelo (4 chamadas, 2 em paralelo) e 8 ms de atraso máximo do laço de eventos; limite: 60 s.
+- Como usar: `/w/{id}/generate` (escolher material, páginas, tipo, quantidade; ver a estimativa; gerar), `/w/{id}/review` (revisar com a fonte destacada) e `uv run mind sm1` para a taxa SM-1.
+- Comportamento verificado por testes: citação inexistente, curta ou de trecho fora do lote é descartada e contada; cloze sem lacuna, verdadeiro/falso sem veredito, tipo errado e duplicados são descartados; só rascunhos podem ser revisados; editar mantém a fonte; erro do provedor mantém os rascunhos já gerados (`partial`); cancelar para a geração; sem chave, consentimento ou com o limite atingido a geração é recusada antes de criar o run (409/402).
+- Desvios e adições: (1) as rotas da API são `POST /generations/estimate` e `POST /items/review` (o design 2.8 previa `:estimate` e `:review`); (2) `GuardedProvider` passou a devolver o custo registrado no `Usage` e `FakeProvider` ganhou `latency`; (3) `Services.ensure_ready` valida chave, consentimento e limite antes de iniciar uma geração; (4) o formulário de edição usa HTMX (sem JavaScript a edição em linha não funciona, os demais fluxos funcionam); (5) o SM-1 é calculado a partir dos contadores de revisão, sem planilha externa; (6) teste opt-in `real_llm` mede o rendimento do pipeline com modelo de verdade (pulado sem chave).
+- **Pendente para fechar o BOLT-2 (gate de SM-1):** o modelo real ainda não foi exercitado. É preciso gerar cards de um PDF real com a chave do OpenRouter, revisar pelo menos 30 cards e rodar `uv run mind sm1`. Meta: ≥ 90% aprovados sem edição. Também confirmar os slugs de modelo (A39), o formato de `usage.cost` (A40), o chunking (A41, A44) e a qualidade da tradução para pt-BR (A43, A45).
 
 ### UNIT-5 Estudo com FSRS e Hoje — Status: pending
 - [ ] T-5.1 Modelos `card_state` e `review_log` e migração. · FR-12 · teste: `tests/db/test_study_migration.py`
