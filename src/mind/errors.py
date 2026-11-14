@@ -88,6 +88,12 @@ class MaterialNotFound(AppError):
     title = "Material não encontrado"
 
 
+class GenerationRunNotFound(AppError):
+    code = "RUN_NOT_FOUND"
+    status = 404
+    title = "Geração não encontrada"
+
+
 class JobNotActive(AppError):
     code = "JOB_NOT_ACTIVE"
     status = 409

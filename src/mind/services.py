@@ -10,7 +10,9 @@ from dataclasses import dataclass
 
 import httpx
 
+from mind.clock import utcnow
 from mind.config import Settings
+from mind.errors import ConsentRequired, MonthlyLimitReached, ProviderKeyMissing
 from mind.llm.consent import ConsentService
 from mind.llm.costs import CostLedger, PriceCatalog
 from mind.llm.guarded import GuardedProvider
@@ -62,6 +64,21 @@ class Services:
         if not self.provider.requires_consent:
             return False
         return not (self.secrets.is_configured() and self.consent.is_given(self.provider.name))
+
+    def ensure_ready(self) -> None:
+        """Raise a stable error when a model call would be refused (key, consent or limit)."""
+        if self.provider.requires_consent:
+            if not self.secrets.is_configured():
+                raise ProviderKeyMissing("Configure a chave do OpenRouter em Configurações.")
+            if not self.consent.is_given(self.provider.name):
+                raise ConsentRequired("Aceite o envio de trechos ao provedor em Configurações.")
+        limit = self.settings.get().monthly_limit_usd
+        spent = self.ledger.spent_this_month()
+        if spent >= limit:
+            now = utcnow()
+            raise MonthlyLimitReached(
+                f"Gasto de US$ {spent:.2f} de US$ {limit:.2f} em {now.year}-{now.month:02d}."
+            )
 
     async def aclose(self) -> None:
         await self.client.aclose()
