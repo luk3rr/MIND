@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from mind.config import Settings
 from mind.db.app_models import ModelPrice
-from mind.db.workspace_models import Chunk, Item
+from mind.db.workspace_models import Chunk, GenerationRun, Item
 from mind.errors import (
     ConsentRequired,
     GenerationRunNotFound,
@@ -394,3 +394,10 @@ async def test_a_judge_failure_keeps_the_run_partial_and_stores_nothing_from_tha
     assert (done.status, done.error_code, done.generated) == ("partial", "PROVIDER_ERROR", 0)
     with env.workspace.sessions() as session:
         assert list(session.scalars(select(Item))) == []
+
+
+async def test_the_notebook_run_never_shows_up_in_the_generations_list(env: Env) -> None:
+    with env.workspace.sessions() as session:
+        session.add(GenerationRun(kind="notebook", subtype="error_note", model="-", requested=0))
+        session.commit()
+    assert env.generation.list_runs() == []

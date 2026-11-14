@@ -395,7 +395,10 @@ class GenerationService:
     def list_runs(self, *, limit: int = 20) -> list[RunInfo]:
         with self._sessions() as session:
             rows = session.scalars(
-                select(GenerationRun).order_by(GenerationRun.id.desc()).limit(limit)
+                select(GenerationRun)
+                .where(GenerationRun.kind != "notebook")
+                .order_by(GenerationRun.id.desc())
+                .limit(limit)
             ).all()
             return [_info(row) for row in rows]
 
