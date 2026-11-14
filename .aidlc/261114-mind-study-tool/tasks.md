@@ -55,7 +55,7 @@ flowchart LR
 Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes que envolvem LLM usam o `FakeProvider`.
 
 ### UNIT-1 Fundação e workspaces — Status: pending
-- [ ] T-1.1 Criar o projeto com uv: `pyproject.toml`, pacote `src/mind`, `tests/`, ruff, mypy strict e pytest-cov (≥80%). · NFR-10 · teste: `tests/test_smoke.py` e o comando de verificação passando
+- [x] T-1.1 Criar o projeto com uv: `pyproject.toml`, pacote `src/mind`, `tests/`, ruff, mypy strict e pytest-cov (≥80%). · NFR-10 · teste: `tests/test_smoke.py` e o comando de verificação passando · files: pyproject.toml, uv.lock, .python-version, src/mind/__init__.py, tests/test_smoke.py, README.md
 - [ ] T-1.2 Workflow de CI no GitHub Actions com o comando de verificação. · NFR-10 · teste: execução do workflow verde após o push
 - [ ] T-1.3 Configuração por ambiente (`MIND_DATA_DIR`, `MIND_HOST`, `MIND_PORT`, `MIND_LOG_LEVEL`) com `platformdirs` e padrão `127.0.0.1`. · NFR-7 · teste: `tests/test_config.py` (padrões e sobreposição)
 - [ ] T-1.4 Banco global `app.db` com SQLAlchemy 2 tipado e Alembic; tabela `workspace`. · NFR-12 · teste: `tests/db/test_migrations_app.py` (banco novo e a partir de revisão anterior)
