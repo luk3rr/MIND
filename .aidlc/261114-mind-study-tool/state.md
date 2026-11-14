@@ -40,7 +40,7 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | Unit | Depends on | Status | Verified |
 |---|---|---|---|
 | UNIT-1 Fundação e workspaces (+ API v1 base) | — | verified | yes |
-| UNIT-2 Provedor LLM, configurações e custo | UNIT-1 | pending | no |
+| UNIT-2 Provedor LLM, configurações e custo | UNIT-1 | verified | yes |
 | UNIT-3 Ingestão PDF/MD, busca e biblioteca | UNIT-1 | pending | no |
 | UNIT-4 Flashcards com fonte e revisão | UNIT-2, UNIT-3 | pending | no |
 | UNIT-5 Estudo FSRS e Hoje | UNIT-4 | pending | no |
