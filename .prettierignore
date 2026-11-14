@@ -1,0 +1,8 @@
+legacy
+.aidlc
+node_modules
+dist
+coverage
+fixtures
+samples
+pnpm-lock.yaml
