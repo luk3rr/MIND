@@ -1,0 +1,12 @@
+{#
+  Filename: _estimate.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% if estimate_error %}
+<span class="alert alert-danger">{{ estimate_error }}</span>
+{% elif estimate %}
+{{ t.gen_estimate }}:
+{% if estimate.estimated_usd is not none %}{{ t.usd }} {{ "%.4f"|format(estimate.estimated_usd) }}{% else %}{{ t.gen_estimate_unknown }}{% endif %}
+· {{ t.gen_estimate_detail.format(batches=estimate.batches, chunks=estimate.chunks) }}
+{% endif %}

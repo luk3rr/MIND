@@ -1,0 +1,7 @@
+# Filename: __init__.py
+# Created on: November 14, 2026
+# Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+
+"""MIND: a local-first study tool."""
+
+__version__ = "0.1.0"

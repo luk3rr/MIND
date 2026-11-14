@@ -1,0 +1,18 @@
+{#
+  Filename: _study_done.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+<section id="study-card" class="card study" aria-live="polite">
+  <h2>{{ t.study_done_title }}</h2>
+  <p>{% if selection and not selection.is_empty %}{{ t.study_done_filtered }}{% else %}{{ t.study_done_text }}{% endif %}</p>
+  <p class="muted">{{ t.study_done_summary }}: {{ counts.reviewed_today }}</p>
+  {% if distribution %}
+  <p class="muted">{{ t.study_distribution }}:
+    {% for rating, label in [(1, t.study_again), (2, t.study_hard), (3, t.study_good), (4, t.study_easy)] %}
+    {% if distribution.get(rating) %}{{ label }} {{ distribution[rating] }}{% if not loop.last %} · {% endif %}{% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+  <p><a class="btn" href="/w/{{ workspace_id }}/today">{{ t.study_done_back }}</a></p>
+</section>

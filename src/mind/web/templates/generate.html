@@ -1,0 +1,52 @@
+{#
+  Filename: generate.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ t.generate_title }} · {{ workspace.name }} · {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t.generate_title }}</h1>
+{% if form_error %}<p class="alert alert-danger" role="alert">{{ form_error }}</p>{% endif %}
+{% if ready_error %}
+<p class="alert alert-warn" role="status">{{ t.gen_not_ready }} {{ ready_error.detail or ready_error.title }} <a href="/settings">{{ t.gen_go_settings }}</a></p>
+{% endif %}
+{% if not indexed and not training_topic %}
+<p class="muted">{{ t.gen_no_material }}</p>
+{% else %}
+<form method="post" action="/w/{{ workspace.id }}/generate" class="card stack"
+      hx-post="/w/{{ workspace.id }}/generate/estimate" hx-trigger="change, load" hx-target="#estimate" hx-swap="innerHTML"
+      hx-boost="false">
+  {% if training_topic %}
+  <p class="alert alert-warn" role="status">{{ t.train_banner }} <strong>{{ training_topic.name }}</strong>. {{ t.train_hint }}
+    <a href="/w/{{ workspace.id }}/generate">{{ t.train_cancel }}</a></p>
+  <input type="hidden" name="topic_id" value="{{ training_topic.id }}">
+  {% else %}
+  <label for="material_id">{{ t.gen_material }}</label>
+  <select id="material_id" name="material_id" required>
+    {% for m in indexed %}<option value="{{ m.id }}">{{ m.title }}{% if m.page_count %} ({{ m.page_count }} {{ t.col_pages }}){% endif %}</option>{% endfor %}
+  </select>
+  <label for="page_from">{{ t.gen_pages_from }}</label>
+  <input id="page_from" name="page_from" type="text" inputmode="numeric">
+  <label for="page_to">{{ t.gen_pages_to }}</label>
+  <input id="page_to" name="page_to" type="text" inputmode="numeric">
+  {% endif %}
+  <label for="subtype">{{ t.gen_type }}</label>
+  <select id="subtype" name="subtype">
+    <optgroup label="{{ t.gen_group_cards }}">
+      {% for s in card_types %}<option value="{{ s }}"{% if s == defaults.subtype %} selected{% endif %}>{{ t['type_' ~ s] }}</option>{% endfor %}
+    </optgroup>
+    <optgroup label="{{ t.gen_group_questions }}">
+      {% for s in question_profiles %}<option value="{{ s }}"{% if s == defaults.subtype %} selected{% endif %}>{{ t['type_' ~ s] }}</option>{% endfor %}
+    </optgroup>
+  </select>
+  <label for="quantity">{{ t.gen_quantity }}</label>
+  <input id="quantity" name="quantity" type="number" min="1" max="60" value="{{ defaults.quantity }}">
+  <p class="muted">{{ t.gen_quantity_hint }}</p>
+  <div id="estimate" class="muted" aria-live="polite"></div>
+  <button class="btn" type="submit"{% if ready_error %} disabled{% endif %}>{{ t.gen_submit }}</button>
+</form>
+{% endif %}
+<h2>{{ t.gen_runs }}</h2>
+{% include "_runs.html" %}
+{% endblock %}

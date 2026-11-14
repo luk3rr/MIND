@@ -1,0 +1,52 @@
+{#
+  Filename: today.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ t.today_title }} · {{ workspace.name }} · {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t.today_title }}</h1>
+{% if not has_materials %}
+<section class="card">
+  <h2>{{ t.today_steps }}</h2>
+  <p class="muted">{{ t.today_setup_step }}</p>
+  <ol>
+    <li>{{ t.step_import }}</li>
+    <li>{{ t.step_generate }}</li>
+    <li>{{ t.step_study }}</li>
+  </ol>
+  <p><a class="btn" href="/w/{{ workspace.id }}/library">{{ t.today_go_library }}</a></p>
+</section>
+{% elif approved_cards == 0 and not questions.to_practice and not questions.answered_today %}
+<section class="card">
+  <p>{{ t.today_no_cards }}</p>
+  <p><a class="btn" href="/w/{{ workspace.id }}/generate">{{ t.today_go_generate }}</a></p>
+</section>
+{% else %}
+<div class="stats-grid">
+  <div class="card"><div class="stat-number">{{ counts.review }}</div><div class="muted">{{ t.today_due }}</div></div>
+  <div class="card"><div class="stat-number">{{ counts.learning }}</div><div class="muted">{{ t.today_learning }}</div></div>
+  <div class="card"><div class="stat-number">{{ counts.new_available }}</div><div class="muted">{{ t.today_new }}</div></div>
+  <div class="card"><div class="stat-number">{{ counts.reviewed_today }}</div><div class="muted">{{ t.today_done_today }}</div></div>
+</div>
+<section class="card">
+  <h2>{{ t.today_goal }}</h2>
+  <progress class="goal-bar" max="{{ goal }}" value="{{ [counts.reviewed_today, goal]|min }}" aria-label="{{ t.today_goal }}"></progress>
+  <p class="muted">{{ counts.reviewed_today }} / {{ goal }}{% if goal_met %} · {{ t.today_goal_met }}{% endif %}</p>
+</section>
+{% set workspace_id = workspace.id %}
+{% include "_weak_topics.html" %}
+{% if questions.to_practice %}
+<section class="card">
+  <h2>{{ t.today_questions }}: {{ questions.to_practice }}</h2>
+  <p><a class="btn" href="/w/{{ workspace.id }}/practice">{{ t.today_practice }}</a></p>
+</section>
+{% endif %}
+{% if counts.to_study %}
+<p><a class="btn" href="/w/{{ workspace.id }}/study">{{ t.today_study_now }} ({{ counts.to_study }})</a> <a class="btn btn-ghost" href="/w/{{ workspace.id }}/study#f-kind">{{ t.study_choose }}</a></p>
+{% else %}
+<p class="muted">{{ t.today_all_done }}</p>
+{% endif %}
+{% endif %}
+{% endblock %}

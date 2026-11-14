@@ -1,0 +1,40 @@
+# AI-DLC: versioned knowledge and plans, local logs (same policy as MOINEX/DUSK)
+.aidlc/**/audit.md
+.aidlc/**/archive/
+.aidlc/**/screenshots/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Local data and secrets (user materials, database, API keys)
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+*.sqlite*
+data/
+uploads/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Logs
+*.log
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml

@@ -1,0 +1,44 @@
+{#
+  Filename: _runs.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+<div id="runs"{% if any_active %} hx-get="/w/{{ workspace_id }}/generate/runs" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if not runs %}
+  <p class="muted">{{ t.gen_runs_empty }}</p>
+  {% else %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">{{ t.gen_col_run }}</th>
+        <th scope="col">{{ t.gen_col_status }}</th>
+        <th scope="col">{{ t.gen_col_result }}</th>
+        <th scope="col">{{ t.gen_col_cost }}</th>
+        <th scope="col">{{ t.col_actions }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in runs %}
+      <tr>
+        <td>#{{ r.id }} · {{ t['type_' ~ r.subtype] }}<br><span class="muted">{% if r.topic_id %}{{ t.train_run }}: {{ topic_names.get(r.topic_id, "–") }}{% else %}{{ titles.get(r.material_id, "–") }}{% endif %}</span></td>
+        <td>{{ t['run_' ~ r.status] }}{% if r.error_detail %}<br><span class="alert alert-danger">{{ r.error_detail }}</span>{% endif %}</td>
+        <td>
+          {{ r.generated }} / {{ r.requested }}
+          {% set auto = r.discarded_no_source + r.discarded_invalid + r.discarded_duplicate %}
+          {% if auto %}<br><span class="muted">{{ auto }} {{ t.gen_discarded }}</span>{% endif %}
+        </td>
+        <td>{{ t.usd }} {{ "%.4f"|format(r.cost_usd) }}</td>
+        <td>
+          {% if drafts.get(r.id) %}<a href="/w/{{ workspace_id }}/review?run={{ r.id }}">{{ t.gen_review }} ({{ drafts[r.id] }})</a>{% endif %}
+          {% if r.status in ("queued", "running") %}
+          <form method="post" action="/w/{{ workspace_id }}/generate/{{ r.id }}/cancel" class="inline-form">
+            <button class="btn btn-ghost" type="submit">{{ t.gen_cancel }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>

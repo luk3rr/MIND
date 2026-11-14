@@ -1,0 +1,110 @@
+{#
+  Filename: stats.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ t.stats_title }} · {{ workspace.name }} · {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t.stats_title }}</h1>
+{% if form_error %}<p class="alert alert-danger" role="alert">{{ form_error }}</p>{% endif %}
+<div class="stats-grid">
+  <div class="card"><div class="stat-number">{{ summary.reviewed_today }}</div><div class="muted">{{ t.today_done_today }}</div></div>
+  <div class="card"><div class="stat-number">{{ summary.answered_today }}</div><div class="muted">{{ t.practice_answered_today }}</div></div>
+  <div class="card"><div class="stat-number">{{ summary.current_streak }}</div><div class="muted">{{ t.stats_streak }}</div></div>
+  <div class="card"><div class="stat-number">{{ summary.longest_streak }}</div><div class="muted">{{ t.stats_longest_streak }}</div></div>
+  <div class="card"><div class="stat-number">{{ retention.rate|pct }}</div><div class="muted">{{ t.stats_retention }} ({{ period_days }} {{ t.stats_days }})</div></div>
+</div>
+
+<section class="card">
+  <h2>{{ t.today_goal }}</h2>
+  <progress class="goal-bar" max="{{ summary.goal }}" value="{{ [summary.reviewed_today, summary.goal]|min }}" aria-label="{{ t.today_goal }}"></progress>
+  <p class="muted">{{ summary.reviewed_today }} / {{ summary.goal }}{% if summary.goal_met %} · {{ t.today_goal_met }}{% endif %}</p>
+  <form method="post" action="/w/{{ workspace.id }}/stats/goal" class="toolbar">
+    <label for="daily_goal">{{ t.stats_goal_field }}</label>
+    <input id="daily_goal" name="daily_goal" type="number" min="1" max="2000" value="{{ study_settings.daily_goal }}">
+    <label for="new_per_day">{{ t.stats_new_field }}</label>
+    <input id="new_per_day" name="new_per_day" type="number" min="0" max="500" value="{{ study_settings.new_per_day }}">
+    <button class="btn" type="submit">{{ t.save }}</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>{{ t.stats_activity }} ({{ period_days }} {{ t.stats_days }})</h2>
+  <svg class="chart" viewBox="0 0 300 80" role="img" aria-label="{{ t.stats_activity }}" preserveAspectRatio="none">
+    {% for bar in bars %}{% if bar.height > 0 %}<rect class="bar" x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}"><title>{{ bar.label }}</title></rect>{% endif %}{% endfor %}
+  </svg>
+</section>
+
+<section class="card">
+  <h2>{{ t.stats_retention }} ({{ period_days }} {{ t.stats_days }})</h2>
+  {% if retention_points %}
+  <svg class="chart" viewBox="0 0 300 80" role="img" aria-label="{{ t.stats_retention }}" preserveAspectRatio="none">
+    <polyline class="line" points="{{ retention_points }}" fill="none"/>
+  </svg>
+  <p class="muted">{{ retention.reviews }} {{ t.stats_reviews_counted }} · {{ retention.rate|pct }}</p>
+  {% else %}
+  <p class="muted">{{ t.stats_retention_empty }}</p>
+  {% endif %}
+</section>
+
+{% include "_weak_topics.html" %}
+<section class="card">
+  <h2>{{ t.stats_by_topic }}</h2>
+  {% if not topic_stats %}
+  <p class="muted">{{ t.stats_no_topics }}</p>
+  {% else %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">{{ t.review_topic }}</th>
+        <th scope="col">{{ t.stats_col_accuracy }}</th>
+        <th scope="col">{{ t.stats_col_cards }}</th>
+        <th scope="col">{{ t.stats_col_questions }}</th>
+        <th scope="col">{{ t.stats_col_events }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in topic_stats %}
+      <tr>
+        <td>{{ s.name or t.stats_no_topic }}</td>
+        <td>
+          {% if s.accuracy is not none %}<progress max="1" value="{{ s.accuracy }}" aria-label="{{ t.stats_col_accuracy }}"></progress> {{ s.accuracy|pct }}{% else %}–{% endif %}
+          {% if s.small_sample and s.events %}<span class="muted">({{ t.stats_small_sample }})</span>{% endif %}
+        </td>
+        <td>{{ s.card_accuracy|pct }} ({{ s.card_reviews }})</td>
+        <td>{{ s.question_accuracy|pct }} ({{ s.question_attempts }})</td>
+        <td>{{ s.events }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
+<section class="card" id="topics">
+  <h2>{{ t.stats_manage_topics }}</h2>
+  {% if not topics %}
+  <p class="muted">{{ t.stats_no_topics }}</p>
+  {% endif %}
+  {% for topic in topics %}
+  <div class="topic-row">
+    <form method="post" action="/w/{{ workspace.id }}/stats/topics/{{ topic.id }}/rename" class="toolbar">
+      <label for="topic-name-{{ topic.id }}" class="muted">{{ topic.cards }} {{ t.stats_col_cards }} · {{ topic.questions }} {{ t.stats_col_questions }}</label>
+      <input id="topic-name-{{ topic.id }}" name="name" type="text" maxlength="80" value="{{ topic.name }}" required>
+      <button class="btn btn-ghost" type="submit">{{ t.rename }}</button>
+    </form>
+    <form method="post" action="/w/{{ workspace.id }}/stats/topics/{{ topic.id }}/merge" class="toolbar">
+      <label for="merge-{{ topic.id }}" class="muted">{{ t.stats_merge_into }}</label>
+      <select id="merge-{{ topic.id }}" name="target">
+        {% for other in topics %}{% if other.id != topic.id %}<option value="{{ other.id }}">{{ other.name }}</option>{% endif %}{% endfor %}
+      </select>
+      <button class="btn btn-ghost" type="submit"{% if topics|length < 2 %} disabled{% endif %}>{{ t.stats_merge }}</button>
+    </form>
+    <form method="post" action="/w/{{ workspace.id }}/stats/topics/{{ topic.id }}/delete" class="toolbar">
+      <button class="btn btn-ghost" type="submit">{{ t.delete_material }}</button>
+    </form>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

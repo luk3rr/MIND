@@ -1,0 +1,51 @@
+{#
+  Filename: errors.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ t.errors_title }} · {{ workspace.name }} · {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t.errors_title }}</h1>
+<div class="stats-grid">
+  <div class="card"><div class="stat-number">{{ counts.total }}</div><div class="muted">{{ t.errors_total }}</div></div>
+  <div class="card"><div class="stat-number">{{ counts.from_questions }}</div><div class="muted">{{ t.errors_from_questions }}</div></div>
+  <div class="card"><div class="stat-number">{{ counts.failed_cards }}</div><div class="muted">{{ t.errors_failed_cards }}</div></div>
+</div>
+<form method="get" action="/w/{{ workspace.id }}/errors" class="toolbar">
+  <label for="topic">{{ t.review_topic }}</label>
+  <select id="topic" name="topic">
+    <option value="">{{ t.study_filter_all_topics }}</option>
+    {% for topic in topics %}<option value="{{ topic.id }}"{% if selected_topic == topic.id %} selected{% endif %}>{{ topic.name }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-ghost" type="submit">{{ t.study_filter_apply }}</button>
+</form>
+{% if not entries %}
+<p class="muted">{{ t.errors_empty }}</p>
+{% else %}
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">{{ t.errors_col_card }}</th>
+      <th scope="col">{{ t.review_topic }}</th>
+      <th scope="col">{{ t.review_source }}</th>
+      <th scope="col">{{ t.errors_col_origin }}</th>
+      <th scope="col">{{ t.errors_col_failures }}</th>
+      <th scope="col">{{ t.errors_col_last }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in entries %}
+    <tr>
+      <td class="chunk-text"><span class="math-text" data-math>{{ e.front }}</span></td>
+      <td>{{ e.topic or "–" }}</td>
+      <td>{{ e.source_title }}{% if e.source_page %} · {{ t.preview_page }} {{ e.source_page }}{% endif %}</td>
+      <td>{% if e.from_question %}{{ t.errors_origin_question }}{% else %}{{ t.errors_origin_card }}{% endif %}</td>
+      <td>{{ e.failures }}</td>
+      <td>{{ e.last_error_at|br_datetime }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

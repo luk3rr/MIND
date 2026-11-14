@@ -1,0 +1,12 @@
+{#
+  Filename: error.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ error.title }} · {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ error.title }}</h1>
+{% if error.detail %}<p class="alert alert-danger" role="alert">{{ error.detail }}</p>{% endif %}
+<p><a href="/">{{ t.back_home }}</a></p>
+{% endblock %}

@@ -1,0 +1,41 @@
+{#
+  Filename: provider.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ t.provider_nav }} · {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t.provider_nav }}</h1>
+<section class="card">
+  <h2>{{ t.spent_month }} ({{ month }})</h2>
+  <p>{{ t.usd }} {{ "%.2f"|format(spent) }} / {{ t.usd }} {{ "%.2f"|format(provider_settings.monthly_limit_usd) }}</p>
+</section>
+<form method="post" action="/settings" class="card stack">
+  {% include "_provider_form.html" %}
+  <button class="btn" type="submit">{{ t.save }}</button>
+</form>
+{% if key_source == "file" %}
+<form method="post" action="/settings/key/clear" class="stack">
+  <button class="btn btn-ghost" type="submit">{{ t.key_remove }}</button>
+</form>
+{% endif %}
+<section class="card stack">
+  <h2>{{ t.privacy_title }}</h2>
+  <p>{{ t.privacy_text }}</p>
+  <p class="muted">{% if consent_given %}{{ t.consent_given }}{% else %}{{ t.consent_missing }}{% endif %}</p>
+  <form method="post" action="/settings/consent" class="stack">
+    {% if consent_given %}
+    <input type="hidden" name="action" value="revoke">
+    <button class="btn btn-ghost" type="submit">{{ t.consent_revoke }}</button>
+    {% else %}
+    <input type="hidden" name="action" value="give">
+    <button class="btn" type="submit">{{ t.accept }}</button>
+    {% endif %}
+  </form>
+</section>
+<form method="post" action="/settings/models/refresh" class="stack">
+  <button class="btn btn-ghost" type="submit">{{ t.refresh_models }}</button>
+  <p class="muted">{{ t.models_known }}: {{ known_models|length }}</p>
+</form>
+{% endblock %}

@@ -1,0 +1,42 @@
+{#
+  Filename: _study_filter.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+<form method="get" action="/w/{{ workspace.id }}/study" class="card study-filter">
+  <h2>{{ t.study_filter_title }}</h2>
+  <div class="filter-grid">
+    <div class="stack">
+      <label for="f-kind">{{ t.study_filter_kind }}</label>
+      <select id="f-kind" name="kind">
+        <option value="card"{% if selection.kind != "question" %} selected{% endif %}>{{ t.study_filter_cards }} ({{ facets.cards }})</option>
+        <option value="question"{% if selection.kind == "question" %} selected{% endif %}{% if not facets.questions %} disabled{% endif %}>{{ t.study_filter_questions }} ({{ facets.questions }})</option>
+      </select>
+    </div>
+    <div class="stack">
+      <label for="f-topic">{{ t.review_topic }}</label>
+      <select id="f-topic" name="topic">
+        <option value="">{{ t.study_filter_all_topics }}</option>
+        {% for f in facets.topics %}<option value="{{ f.key }}"{% if selection.topic_id == f.key %} selected{% endif %}>{{ f.label }} ({{ f.count }})</option>{% endfor %}
+      </select>
+    </div>
+    <div class="stack">
+      <label for="f-material">{{ t.gen_material }}</label>
+      <select id="f-material" name="material">
+        <option value="">{{ t.study_filter_all_materials }}</option>
+        {% for f in facets.materials %}<option value="{{ f.key }}"{% if selection.material_id == f.key %} selected{% endif %}>{{ f.label }} ({{ f.count }})</option>{% endfor %}
+      </select>
+    </div>
+    <div class="stack">
+      <label for="f-subtype">{{ t.gen_type }}</label>
+      <select id="f-subtype" name="subtype">
+        <option value="">{{ t.study_filter_all_types }}</option>
+        {% for f in facets.subtypes %}<option value="{{ f.key }}"{% if selection.subtype == f.key %} selected{% endif %}>{{ t['type_' ~ f.key] }} ({{ f.count }})</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button class="btn" type="submit">{{ t.study_filter_apply }}</button>
+    {% if not selection.is_empty %}<a class="btn btn-ghost" href="/w/{{ workspace.id }}/study">{{ t.study_filter_clear }}</a>{% endif %}
+  </div>
+</form>

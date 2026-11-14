@@ -1,0 +1,39 @@
+{#
+  Filename: _study_card.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% macro text(segments) -%}
+{%- for seg in segments -%}
+{%- if seg.hit -%}<mark><span class="math-text" data-math>{{ seg.text }}</span></mark>{%- else -%}<span class="math-text" data-math>{{ seg.text }}</span>{%- endif -%}
+{%- endfor -%}
+{%- endmacro %}
+<section id="study-card" class="card study" data-item-id="{{ card.item.id }}" aria-live="polite">
+  <p class="muted">
+    {{ t['study_' ~ kind] }} · {{ counts.to_study }} {{ t.study_remaining }}
+    {% if card.item.topic %} · {{ card.item.topic }}{% endif %}
+  </p>
+  <div class="study-front card-front" aria-label="{{ t.study_front }}">{{ text(sides.front) }}</div>
+  <div class="study-back card-back" aria-label="{{ t.study_back }}" id="study-back" hidden>
+    <hr>
+    {{ text(sides.back) }}
+    <p class="muted">{{ t.study_source }}: {{ card.item.source_title }}{% if card.item.source_page %} · {{ t.preview_page }} {{ card.item.source_page }}{% endif %}</p>
+  </div>
+  <p><button id="reveal" class="btn" type="button" aria-controls="study-back">{{ t.study_reveal }} ({{ t.study_reveal_hint }})</button></p>
+  <form id="rate-form" class="rating-row" method="post" action="/w/{{ workspace_id }}/study/rate"
+        hx-post="/w/{{ workspace_id }}/study/rate" hx-target="#study-card" hx-swap="outerHTML">
+    <input type="hidden" name="item_id" value="{{ card.item.id }}">
+    <input type="hidden" name="elapsed_ms" value="">
+    {% for key, value in filter_params.items() %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+    {% for number, name in ratings %}
+    <button class="btn rating rating-{{ name }}" type="submit" name="rating" value="{{ number }}">
+      <span class="rating-label">{{ number }} · {{ t['study_' ~ name] }}</span>
+      <span class="rating-interval">{{ previews[number] }}</span>
+    </button>
+    {% endfor %}
+  </form>
+  <form method="post" action="/w/{{ workspace_id }}/study/undo" hx-post="/w/{{ workspace_id }}/study/undo" hx-target="#study-card" hx-swap="outerHTML">
+    {% for key, value in filter_params.items() %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+    <button id="undo" class="btn btn-ghost" type="submit">{{ t.study_undo }}</button>
+  </form>
+</section>

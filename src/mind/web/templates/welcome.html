@@ -1,0 +1,33 @@
+{#
+  Filename: welcome.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ t.welcome_title }} · {{ app_name }}<section class="card stack">
+  <h2>{{ t.backup_import_title }}</h2>
+  <form method="post" action="/workspaces/import" enctype="multipart/form-data" class="stack" hx-boost="false">
+    <label for="backup-file">{{ t.backup_import_file }}</label>
+    <input id="backup-file" name="file" type="file" accept=".zip,application/zip" required>
+    <button class="btn" type="submit">{{ t.backup_import }}</button>
+  </form>
+</section>
+{% endblock %}
+{% block content %}
+<h1>{{ t.welcome_title }}</h1>
+<p>{{ t.welcome_text }}</p>
+{% if form_error %}<p class="alert alert-danger" role="alert">{{ form_error }}</p>{% endif %}
+<form method="post" action="/workspaces" class="stack">
+  <label for="name">{{ t.workspace_name }}</label>
+  <input id="name" name="name" type="text" maxlength="80" required value="{{ form_name or '' }}">
+  <button class="btn" type="submit">{{ t.create }}</button>
+</form>
+<section class="card stack">
+  <h2>{{ t.backup_import_title }}</h2>
+  <form method="post" action="/workspaces/import" enctype="multipart/form-data" class="stack" hx-boost="false">
+    <label for="backup-file">{{ t.backup_import_file }}</label>
+    <input id="backup-file" name="file" type="file" accept=".zip,application/zip" required>
+    <button class="btn" type="submit">{{ t.backup_import }}</button>
+  </form>
+</section>
+{% endblock %}
