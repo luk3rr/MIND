@@ -84,7 +84,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-2.5 `ConsentService` e guarda que bloqueia envio sem aceite (`CONSENT_REQUIRED`). · FR-20, US-13, NFR-6 · teste: `tests/llm/test_consent_guard.py` (sem aceite, nenhuma chamada sai) · files: src/mind/llm/{consent,guarded}.py, tests/llm/test_consent_guard.py
 - [x] T-2.6 `CostLedger`: registro por chamada, estimativa antes de gerar, soma mensal, limite com `MONTHLY_LIMIT_REACHED`. · FR-21, US-14 · teste: `tests/llm/test_cost_ledger.py` · files: src/mind/llm/{costs,guarded}.py, src/mind/db/migrations/app/versions/0002_*.py, tests/llm/test_cost_ledger.py
 - [x] T-2.7 Tela Configurações e passos 1–2 do assistente de primeiro uso. · FR-19, FR-20, US-13 · teste: `tests/web/test_settings_pages.py` · files: src/mind/web/{provider_pages.py,strings.py,app.py,static/app.css}, src/mind/web/templates/{provider,setup_key,setup_consent,_provider_form,base}.html, tests/web/test_provider_pages.py
-- [ ] T-2.8 API `settings`, `consent`, `costs`, `costs/estimate`. · FR-24 · teste: `tests/api/test_settings_contract.py` (a chave nunca é devolvida)
+- [x] T-2.8 API `settings`, `consent`, `costs`, `costs/estimate`. · FR-24 · teste: `tests/api/test_settings_contract.py` (a chave nunca é devolvida) · files: src/mind/api/{deps,schemas}.py, src/mind/api/v1/{settings,costs,__init__}.py, tests/api/{test_settings_contract.py,openapi_v1.json}
 
 ### UNIT-3 Ingestão de PDF/Markdown, busca e biblioteca — Status: pending
 - [ ] T-3.1 Modelos `material` e `chunk`, migração do `workspace.db` e tabela virtual FTS5. · FR-5 · teste: `tests/db/test_migrations_workspace.py`
