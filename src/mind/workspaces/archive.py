@@ -11,12 +11,14 @@ The API key and the global settings are never part of an archive.
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import sqlite3
 import tempfile
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, BinaryIO
 
 from mind import __version__
 from mind.db import migrate
@@ -130,3 +132,34 @@ def import_workspace(registry: WorkspaceRegistry, source: Path) -> WorkspaceInfo
                 if not any(e.field == "name" for e in exc.errors) or suffix >= 50:
                     raise
                 suffix += 1
+
+
+def export_to_temp(registry: WorkspaceRegistry, workspace_id: int) -> Path:
+    """Export into a new temporary file; the caller deletes it after sending it."""
+    handle, name = tempfile.mkstemp(prefix="mind-export-", suffix=".zip")
+    os.close(handle)
+    try:
+        return export_workspace(registry, workspace_id, Path(name))
+    except Exception:
+        Path(name).unlink(missing_ok=True)
+        raise
+
+
+def import_upload(registry: WorkspaceRegistry, content: BinaryIO) -> WorkspaceInfo:
+    """Import an uploaded archive (the stream is copied to a temporary file first)."""
+    handle, name = tempfile.mkstemp(prefix="mind-import-", suffix=".zip")
+    path = Path(name)
+    try:
+        with os.fdopen(handle, "wb") as out:
+            shutil.copyfileobj(content, out)
+        return import_workspace(registry, path)
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def download_name(info: WorkspaceInfo) -> str:
+    """A safe file name such as `mind-biologia-2026-11-14.zip`."""
+    slug = (
+        "".join(c if c.isalnum() else "-" for c in info.name.casefold()).strip("-") or "workspace"
+    )
+    return f"mind-{slug}-{datetime.now(UTC):%Y-%m-%d}.zip"

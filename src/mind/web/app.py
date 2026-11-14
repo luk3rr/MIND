@@ -6,15 +6,17 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
 import httpx
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
 
 from mind.api.app import create_api_app
 from mind.chat.factory import ChatFactory
@@ -54,6 +56,7 @@ from mind.web.security import install_security
 from mind.web.stats_pages import router as stats_router
 from mind.web.strings import SECTIONS
 from mind.web.study_pages import router as study_router
+from mind.workspaces.archive import download_name, export_to_temp, import_upload
 from mind.workspaces.registry import WorkspaceInfo, WorkspaceRegistry
 
 
@@ -181,6 +184,24 @@ def create_app(
             has_materials=bool(materials.for_workspace(workspace_id).list_materials()),
             approved_cards=review.for_workspace(workspace_id).count(status="approved", kind="card"),
         )
+
+    @app.get("/w/{workspace_id}/export", response_model=None)
+    async def export_workspace_backup(workspace_id: int, registry: Registry) -> Response:
+        info = current(registry, workspace_id)
+        path = await asyncio.to_thread(export_to_temp, registry, workspace_id)
+        return FileResponse(
+            path,
+            media_type="application/zip",
+            filename=download_name(info),
+            background=BackgroundTask(path.unlink, missing_ok=True),
+        )
+
+    @app.post("/workspaces/import", response_model=None)
+    async def import_workspace_backup(
+        registry: Registry, file: Annotated[UploadFile, File()]
+    ) -> Response:
+        info = await asyncio.to_thread(import_upload, registry, file.file)
+        return RedirectResponse(f"/w/{info.id}/today", status_code=303)
 
     @app.post("/w/{workspace_id}/rename", response_model=None)
     async def rename_workspace(

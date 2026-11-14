@@ -101,6 +101,21 @@
         "title": "AnswerOut",
         "type": "object"
       },
+      "Body_import_backup_v1_workspaces_import_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "A MIND backup.",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_backup_v1_workspaces_import_post",
+        "type": "object"
+      },
       "Body_import_material_v1_workspaces__workspace_id__materials_post": {
         "properties": {
           "file": {
@@ -2642,6 +2657,47 @@
         ]
       }
     },
+    "/v1/workspaces/import": {
+      "post": {
+        "operationId": "import_backup_v1_workspaces_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_backup_v1_workspaces_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Invalid or incompatible backup."
+          }
+        },
+        "summary": "Create a new workspace from a backup (.zip)",
+        "tags": [
+          "backup"
+        ]
+      }
+    },
     "/v1/workspaces/{workspace_id}": {
       "delete": {
         "operationId": "delete_workspace_v1_workspaces__workspace_id__delete",
@@ -3209,6 +3265,51 @@
         "summary": "Cards made from mistakes and cards rated Errei",
         "tags": [
           "errors"
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}/export": {
+      "get": {
+        "operationId": "export_v1_workspaces__workspace_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "title": "Workspace Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Workspace not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download a backup (.zip) of the workspace: data and original files, no API key",
+        "tags": [
+          "backup"
         ]
       }
     },

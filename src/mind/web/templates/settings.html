@@ -16,6 +16,19 @@
   </form>
 </section>
 <section class="card stack">
+  <h2>{{ t.backup_title }}</h2>
+  <p class="muted">{{ t.backup_hint }}</p>
+  <p><a class="btn" href="/w/{{ workspace.id }}/export" download>{{ t.backup_download }}</a></p>
+</section>
+<section class="card stack">
+  <h2>{{ t.backup_import_title }}</h2>
+  <form method="post" action="/workspaces/import" enctype="multipart/form-data" class="stack" hx-boost="false">
+    <label for="backup-file">{{ t.backup_import_file }}</label>
+    <input id="backup-file" name="file" type="file" accept=".zip,application/zip" required>
+    <button class="btn" type="submit">{{ t.backup_import }}</button>
+  </form>
+</section>
+<section class="card stack">
   <h2>{{ t.delete }}</h2>
   <p class="alert alert-warn">{{ t.delete_warning }}</p>
   <form method="post" action="/w/{{ workspace.id }}/delete" class="stack">

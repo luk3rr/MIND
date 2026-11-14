@@ -324,5 +324,14 @@ T: dict[str, str] = {
     "emb_disable": "Desativar",
     "emb_on": "Ativada",
     "emb_off": "Desativada",
+    "backup_title": "Backup",
+    "backup_hint": (
+        "O arquivo .zip leva materiais, cards, questões, histórico e chat. "
+        "A chave da API nunca é incluída."
+    ),
+    "backup_download": "Baixar backup",
+    "backup_import_title": "Importar backup",
+    "backup_import_file": "Arquivo de backup (.zip)",
+    "backup_import": "Importar como novo workspace",
     "today_setup_step": "Passo 3 de 3: importe seu primeiro material.",
 }

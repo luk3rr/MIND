@@ -7,6 +7,7 @@
 from fastapi import APIRouter
 
 from mind.api.v1 import (
+    backup,
     chat,
     costs,
     errors,
@@ -24,6 +25,7 @@ from mind.api.v1 import (
 
 router = APIRouter(prefix="/v1")
 router.include_router(workspaces.router)
+router.include_router(backup.router)
 router.include_router(jobs.router)
 router.include_router(materials.router)
 router.include_router(generations.router)
