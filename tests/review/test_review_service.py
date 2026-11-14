@@ -206,3 +206,90 @@ def test_approve_all_takes_every_remaining_draft_of_a_run(
     assert result.approved == 3
     assert review.count(run_id=run_id, status="draft") == 0
     assert review.count(run_id=other, status="draft") == 1
+
+
+# --- questions ---------------------------------------------------------------------------------
+
+
+def add_question(
+    sessions: sessionmaker[Session], run_id: int, statement: str = "A mitocôndria respira?"
+) -> int:
+    payload = {
+        "statement": statement,
+        "options": [
+            {"key": "C", "text": "Certo", "why": ""},
+            {"key": "E", "text": "Errado", "why": ""},
+        ],
+        "answer": "C",
+        "explanation": "Está no texto.",
+    }
+    with sessions() as session:
+        item = Item(
+            run_id=run_id,
+            kind="question",
+            subtype="certo_errado",
+            payload_json=json.dumps(payload),
+            source_title="Aula",
+            quote="citação do trecho original",
+        )
+        session.add(item)
+        session.commit()
+        return item.id
+
+
+def test_a_question_exposes_statement_comment_options_and_answer(
+    workspace_sessions: sessionmaker[Session], review: ReviewService
+) -> None:
+    item_id = add_question(workspace_sessions, make_run(workspace_sessions))
+    info = review.get(item_id)
+    assert (info.kind, info.front, info.back, info.answer) == (
+        "question",
+        "A mitocôndria respira?",
+        "Está no texto.",
+        "C",
+    )
+    assert [o["key"] for o in info.options] == ["C", "E"]
+    assert [i.id for i in review.list_items(kind="question")] == [item_id]
+    assert review.list_items(kind="card") == []
+
+
+def test_editing_a_question_changes_the_statement_and_comment_but_not_the_options(
+    workspace_sessions: sessionmaker[Session], review: ReviewService
+) -> None:
+    item_id = add_question(workspace_sessions, make_run(workspace_sessions))
+    edited = review.edit(item_id, "A mitocôndria produz energia?", "Comentário novo.", "Células")
+    assert (edited.front, edited.back, edited.edited, edited.topic) == (
+        "A mitocôndria produz energia?",
+        "Comentário novo.",
+        True,
+        "Células",
+    )
+    assert [o["key"] for o in edited.options] == ["C", "E"]
+    assert edited.answer == "C"
+
+
+@pytest.mark.parametrize(("front", "back", "field"), [(" ", "x", "front"), ("x", "", "back")])
+def test_invalid_question_edits_name_the_field(
+    workspace_sessions: sessionmaker[Session],
+    review: ReviewService,
+    front: str,
+    back: str,
+    field: str,
+) -> None:
+    item_id = add_question(workspace_sessions, make_run(workspace_sessions))
+    with pytest.raises(ValidationFailed) as error:
+        review.edit(item_id, front, back, None)
+    assert error.value.errors[0].field == field
+
+
+def test_questions_are_approved_with_the_same_counters_as_cards(
+    workspace_sessions: sessionmaker[Session], review: ReviewService
+) -> None:
+    run_id = make_run(workspace_sessions)
+    first, second = (
+        add_question(workspace_sessions, run_id, "Primeira afirmação?"),
+        add_question(workspace_sessions, run_id, "Segunda afirmação?"),
+    )
+    review.edit(second, "Segunda editada?", "Comentário.", None)
+    assert review.review(approve=[first, second]).approved == 2
+    assert run_counters(workspace_sessions, run_id) == (2, 1, 0)

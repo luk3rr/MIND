@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from sqlalchemy import Select, func, select
@@ -20,11 +20,14 @@ from mind.errors import FieldError, ItemNotFound, ValidationFailed
 from mind.generation.cards import clean_topic, payload_problem
 from mind.workspaces.registry import WorkspaceRegistry
 
+FRONT_PROBLEMS = {"empty_front", "empty_statement", "cloze_without_gap"}
 PROBLEM_MESSAGES = {
     "empty_front": "A frente do card não pode ficar vazia.",
     "empty_back": "O verso do card não pode ficar vazio.",
     "cloze_without_gap": "Um card de lacuna precisa de {{c1::termo}} na frente.",
     "true_false_without_verdict": "O verso deve começar por Verdadeiro ou Falso.",
+    "empty_statement": "O enunciado da questão não pode ficar vazio.",
+    "empty_explanation": "O comentário da questão não pode ficar vazio.",
 }
 
 
@@ -46,6 +49,8 @@ class ItemInfo:
     origin: str
     created_at: datetime
     approved_at: datetime | None
+    options: list[dict[str, str]] = field(default_factory=list)
+    answer: str | None = None
 
 
 @dataclass(frozen=True)
@@ -62,13 +67,14 @@ class ReviewService:
     @staticmethod
     def _info(item: Item, topic: str | None) -> ItemInfo:
         payload = json.loads(item.payload_json)
+        is_question = item.kind == "question"
         return ItemInfo(
             id=item.id,
             run_id=item.run_id,
             kind=item.kind,
             subtype=item.subtype,
-            front=str(payload.get("front", "")),
-            back=str(payload.get("back", "")),
+            front=str(payload.get("statement" if is_question else "front", "")),
+            back=str(payload.get("explanation" if is_question else "back", "")),
             status=item.status,
             topic=topic,
             source_title=item.source_title,
@@ -79,6 +85,8 @@ class ReviewService:
             origin=item.origin,
             created_at=item.created_at,
             approved_at=item.approved_at,
+            options=[dict(o) for o in payload.get("options", [])] if is_question else [],
+            answer=payload.get("answer") if is_question else None,
         )
 
     def _query(self, run_id: int | None, status: str | None, kind: str | None) -> Select[Item, str]:
@@ -144,14 +152,26 @@ class ReviewService:
                 raise ItemNotFound(f"Não existe item com id {item_id}.")
             if item.status == "discarded":
                 raise ValidationFailed("Itens descartados não podem ser editados.")
-            problem = payload_problem(item.subtype, front, back)
+            if item.kind == "question":
+                problem = (
+                    "empty_statement"
+                    if not front.strip()
+                    else "empty_explanation"
+                    if not back.strip()
+                    else None
+                )
+                keys = ("statement", "explanation")
+            else:
+                problem = payload_problem(item.subtype, front, back)
+                keys = ("front", "back")
             if problem is not None:
-                field = "front" if "front" in problem or problem == "cloze_without_gap" else "back"
+                field = "front" if problem in FRONT_PROBLEMS else "back"
                 raise ValidationFailed(
-                    PROBLEM_MESSAGES[problem], errors=[FieldError(field, PROBLEM_MESSAGES[problem])]
+                    PROBLEM_MESSAGES[problem],
+                    errors=[FieldError(field, PROBLEM_MESSAGES[problem])],
                 )
             old = json.loads(item.payload_json)
-            new = {**old, "front": front.strip(), "back": back.strip()}
+            new = {**old, keys[0]: front.strip(), keys[1]: back.strip()}
             if new != old:
                 item.payload_json = json.dumps(new, ensure_ascii=False)
                 item.edited = True
