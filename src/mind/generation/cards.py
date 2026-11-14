@@ -18,6 +18,7 @@ from mind.db.workspace_models import Item, Topic
 from mind.generation.planning import SourceChunk
 from mind.generation.prompts import PromptChunk, build_card_messages
 from mind.generation.schemas import CardBatch, CardOut, CardPayload
+from mind.generation.topics import upsert_topic
 from mind.llm.guarded import GuardedProvider
 from mind.verification.source_checker import SourceChecker, normalize
 
@@ -34,11 +35,15 @@ class BatchOutcome:
     invalid: int = 0
     duplicate: int = 0
     cost_usd: float = 0.0
+    unsupported: int = 0
     log: list[dict[str, str]] = field(default_factory=list)
 
     def discard(self, reason: str, card: CardOut) -> None:
+        self.note(reason, card.front)
+
+    def note(self, reason: str, text: str) -> None:
         if len(self.log) < LOG_LIMIT:
-            self.log.append({"reason": reason, "front": card.front[:80]})
+            self.log.append({"reason": reason, "front": text[:80]})
 
 
 def clean_topic(raw: str | None) -> str | None:
@@ -138,7 +143,7 @@ class CardGenerator:
                     outcome.discard("duplicate", card)
                     continue
                 seen.add(key)
-                topic = self._topic(session, topics, clean_topic(card.topic))
+                topic = upsert_topic(session, topics, clean_topic(card.topic))
                 session.add(
                     Item(
                         run_id=run_id,
@@ -172,15 +177,3 @@ class CardGenerator:
         for payload in rows:
             fronts.add(normalize(str(json.loads(payload).get("front", "")))[0])
         return fronts
-
-    @staticmethod
-    def _topic(session: Session, known: dict[str, Topic], name: str | None) -> Topic | None:
-        if name is None:
-            return None
-        topic = known.get(name.casefold())
-        if topic is None:
-            topic = Topic(name=name)
-            session.add(topic)
-            session.flush()
-            known[name.casefold()] = topic
-        return topic
