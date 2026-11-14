@@ -173,7 +173,9 @@ class WorkspaceRegistry:
         try:
             shutil.rmtree(self._folder_path(folder))
         except OSError:
-            logger.warning("Could not delete folder %s; it will be removed on the next start.", folder)
+            logger.warning(
+                "Could not delete folder %s; it will be removed on the next start.", folder
+            )
 
     def open(self, workspace_id: int) -> OpenWorkspace:
         cached = self._open.get(workspace_id)
