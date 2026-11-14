@@ -22,6 +22,7 @@ from mind.error_notebook.service import NotebookFactory
 from mind.errors import AppError, ValidationFailed, WorkspaceNotFound
 from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
+from mind.ingestion.web import PageFetcher
 from mind.jobs.queue import JobQueue
 from mind.llm.provider import Provider
 from mind.practice.service import PracticeFactory
@@ -57,6 +58,7 @@ def create_app(
     *,
     http_client: httpx.AsyncClient | None = None,
     inner_provider: Provider | None = None,
+    page_fetcher: PageFetcher | None = None,
 ) -> FastAPI:
     """Build the application. The optional arguments let tests replace the network layer."""
     resolved = settings or load_settings(env_file=Path(".env"))
@@ -75,7 +77,7 @@ def create_app(
             target.state.registry = registry
             target.state.queue = queue
             target.state.services = services
-            target.state.materials = MaterialsFactory(registry, queue, resolved)
+            target.state.materials = MaterialsFactory(registry, queue, resolved, page_fetcher)
             target.state.generation = GenerationFactory(registry, queue, services)
             target.state.review = ReviewFactory(registry)
             target.state.study = StudyFactory(registry)

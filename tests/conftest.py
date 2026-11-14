@@ -20,6 +20,7 @@ from tests.generation.fakes import (
     judge_supports_everything,
     questions_from_prompt,
 )
+from tests.helpers import ARTICLE, SavedPageFetcher
 
 
 @pytest.fixture
@@ -43,6 +44,8 @@ def ready(tmp_path: Path) -> Iterator[TestClient]:
     fake.script(CardBatch, cards_from_prompt)
     fake.script(QuestionBatch, questions_from_prompt)
     fake.script(JudgeBatch, judge_supports_everything)
-    app = create_app(Settings(data_dir=tmp_path), inner_provider=fake)
+    app = create_app(
+        Settings(data_dir=tmp_path), inner_provider=fake, page_fetcher=SavedPageFetcher(ARTICLE)
+    )
     with TestClient(app, base_url="http://127.0.0.1:8000", follow_redirects=False) as test_client:
         yield test_client
