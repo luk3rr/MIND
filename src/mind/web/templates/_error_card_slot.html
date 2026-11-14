@@ -1,0 +1,14 @@
+{#
+  Filename: _error_card_slot.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+<span id="error-card-slot" class="error-card-slot">
+  {% if exists %}
+  <span class="muted" role="status">{% if created %}{{ t.errors_card_created }}{% else %}{{ t.errors_card_exists }}{% endif %}</span>
+  <a href="/w/{{ workspace_id }}/errors">{{ t.errors_title }}</a>
+  {% else %}
+  <button class="btn btn-ghost" type="button" hx-post="/w/{{ workspace_id }}/practice/error-card" hx-vals='{"item_id": "{{ item_id }}"}'
+          hx-target="#error-card-slot" hx-swap="outerHTML">{{ t.errors_make_card }}</button>
+  {% endif %}
+</span>

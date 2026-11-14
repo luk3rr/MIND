@@ -448,6 +448,29 @@ html:not(.js) .study-back[hidden] {
   max-width: 48rem;
 }
 
+.chart {
+  width: 100%;
+  height: 6rem;
+  display: block;
+}
+.chart .bar {
+  fill: var(--accent);
+}
+.chart .line {
+  stroke: var(--ok);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.topic-row {
+  border-top: 1px solid var(--muted);
+  padding-top: 0.5rem;
+}
+.error-card-slot {
+  display: inline-flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
 .muted {
   color: var(--muted);
 }

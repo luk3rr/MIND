@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from mind.practice.service import PracticeQuestion, PracticeService
 from mind.study.service import StudyFilter
-from mind.web.rendering import PracticeDep, Registry, StudyDep, render
+from mind.web.rendering import NotebookDep, PracticeDep, Registry, StudyDep, render
 from mind.web.study_pages import FormFilter, QueryFilter
 
 router = APIRouter(prefix="/w/{workspace_id}/practice")
@@ -134,6 +134,7 @@ async def answer(
     workspace_id: int,
     registry: Registry,
     practice: PracticeDep,
+    notebook: NotebookDep,
     selection: FormFilter,
     item_id: Annotated[int, Form()],
     choice: Annotated[str, Form()] = "",
@@ -153,5 +154,6 @@ async def answer(
         item=question.item,
         result=result,
         seconds=seconds,
+        has_error_card=notebook.for_workspace(workspace_id).card_for(item_id) is not None,
         filter_params=_params(selection, _redo(redo)),
     )

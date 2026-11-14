@@ -23,6 +23,12 @@
   <p><span class="math-text" data-math>{{ result.explanation }}</span></p>
   <p class="muted">{{ t.study_source }}: {{ item.source_title }}{% if item.source_page %} · {{ t.preview_page }} {{ item.source_page }}{% endif %}</p>
   <p class="chunk-text muted">{{ item.quote }}</p>
+  {% if not result.correct %}
+  <p>
+    {% set exists = has_error_card %}{% set created = False %}{% set item_id = item.id %}
+    {% include "_error_card_slot.html" %}
+  </p>
+  {% endif %}
   <p>
     <button id="next-question" class="btn" type="button"
             hx-get="/w/{{ workspace_id }}/practice/next?after={{ item.id }}{% for key, value in filter_params.items() %}&{{ key }}={{ value }}{% endfor %}"

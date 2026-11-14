@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from mind.api.app import create_api_app
 from mind.config import Settings, load_settings
+from mind.error_notebook.service import NotebookFactory
 from mind.errors import AppError, ValidationFailed, WorkspaceNotFound
 from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
@@ -27,7 +28,9 @@ from mind.practice.service import PracticeFactory
 from mind.redaction import install_log_redaction, uninstall_log_redaction
 from mind.review.service import ReviewFactory
 from mind.services import Services
+from mind.stats.service import StatsFactory
 from mind.study.service import StudyFactory
+from mind.web.errors_pages import router as errors_router
 from mind.web.generate_pages import router as generate_router
 from mind.web.library_pages import router as library_router
 from mind.web.practice_pages import router as practice_router
@@ -43,6 +46,7 @@ from mind.web.rendering import (
 )
 from mind.web.review_pages import router as review_router
 from mind.web.security import install_security
+from mind.web.stats_pages import router as stats_router
 from mind.web.strings import SECTIONS
 from mind.web.study_pages import router as study_router
 from mind.workspaces.registry import WorkspaceInfo, WorkspaceRegistry
@@ -76,6 +80,8 @@ def create_app(
             target.state.review = ReviewFactory(registry)
             target.state.study = StudyFactory(registry)
             target.state.practice = PracticeFactory(registry)
+            target.state.stats = StatsFactory(registry)
+            target.state.notebook = NotebookFactory(registry)
         try:
             yield
         finally:
@@ -101,6 +107,8 @@ def create_app(
     app.include_router(review_router)
     app.include_router(study_router)
     app.include_router(practice_router)
+    app.include_router(stats_router)
+    app.include_router(errors_router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> HTMLResponse:
