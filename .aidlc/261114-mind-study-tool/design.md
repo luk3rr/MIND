@@ -677,7 +677,7 @@ Banco: `db/app/` (modelos e migrações do `app.db`) e `db/workspace/` (modelos 
 - Renomear: valida a unicidade; não mexe na pasta.
 - Excluir: exige confirmação (rota HTML pede o nome; API aceita `DELETE`); remove a linha e depois a pasta; falha ao apagar a pasta deixa um aviso no log e a pasta órfã é removida na próxima abertura do app.
 - Isolamento: nenhuma sessão de `workspace.db` é aberta sem passar por `registry.open(workspace_id)`; os caminhos são sempre derivados de `folder` e verificados para ficarem dentro de `<data_dir>/workspaces/`.
-- URL de HTML: `/` redireciona para `/w/{id}/hoje` do primeiro workspace (ou para `/boas-vindas` sem workspaces); `/w/{id}/hoje` é a tela Hoje vazia do esqueleto; o seletor da barra lateral lista os workspaces e leva a `/w/{id}/hoje`.
+- URL de HTML: `/` redireciona para `/w/{id}/today` do primeiro workspace (ou para `/welcome` sem workspaces); `/w/{id}/today` é a tela Hoje vazia do esqueleto; o seletor da barra lateral lista os workspaces e leva a `/w/{id}/today`. Os caminhos de URL e os nomes de arquivo de template ficam em inglês (regra global de código); só os textos exibidos são pt-BR.
 - Job: estados `queued → running → done | failed | cancelled`; concorrência máxima configurável (padrão 2); cancelamento cooperativo (o trabalho consulta `ctx.cancelled`); no arranque, `running` vira `failed` com `INTERRUPTED`; progresso é gravado com limite de frequência para não saturar o SQLite.
 - Erros: `AppError(code, status, title, detail)` e subclasses (`WorkspaceNotFound`, `ValidationFailed`…). A API devolve `application/problem+json`; as rotas HTML devolvem um fragmento de alerta (HTMX) ou a página de erro.
 

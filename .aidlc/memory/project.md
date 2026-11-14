@@ -7,3 +7,4 @@
 - M-5: Testes com pytest; o LLM é sempre mockado nos testes. Commits convencionais direto na `main`; CI no GitHub Actions. [gate 2.2]
 - M-6: O MIND é licenciado em AGPL-3.0 e usa PyMuPDF para PDF; novas dependências devem ter licença compatível com AGPL. [gate 2.9]
 - M-7: Commits atômicos e contidos sempre que possível; nenhum `git push` até o fim da Construction, salvo pedido explícito. [pedido do autor, início da Construction]
+- M-8: Regras globais do usuário valem em todo código do MIND: código, comentários, docstrings, logs, nomes de arquivo e mensagens de commit em inglês; textos exibidos ao usuário em pt-BR; cabeçalho `Filename/Created on/Author` em todo arquivo de código novo; Conventional Commits. [pedido do autor, ~/.claude/CLAUDE.md]

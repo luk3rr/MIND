@@ -54,7 +54,7 @@ flowchart LR
 
 Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes que envolvem LLM usam o `FakeProvider`.
 
-### UNIT-1 Fundação e workspaces — Status: pending
+### UNIT-1 Fundação e workspaces — Status: verified (2026-11-14)
 - [x] T-1.1 Criar o projeto com uv: `pyproject.toml`, pacote `src/mind`, `tests/`, ruff, mypy strict e pytest-cov (≥80%). · NFR-10 · teste: `tests/test_smoke.py` e o comando de verificação passando · files: pyproject.toml, uv.lock, .python-version, src/mind/__init__.py, tests/test_smoke.py, README.md
 - [x] T-1.2 Workflow de CI no GitHub Actions com o comando de verificação. · NFR-10 · teste: execução do workflow verde após o push · files: .github/workflows/ci.yml (execução remota só após o push final; ver nota)
 - [x] T-1.3 Configuração por ambiente (`MIND_DATA_DIR`, `MIND_HOST`, `MIND_PORT`, `MIND_LOG_LEVEL`) com `platformdirs` e padrão `127.0.0.1`. · NFR-7 · teste: `tests/test_config.py` (padrões e sobreposição) · files: src/mind/config.py, tests/test_config.py
@@ -67,6 +67,14 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-1.10 `/api/v1`: roteador, OpenAPI em `/api/docs`, manipulador `problem+json`, recursos `workspaces` e `jobs`. · FR-24, US-18 · teste: `tests/api/test_workspaces_contract.py` (snapshot do OpenAPI; `WORKSPACE_NOT_FOUND` em `problem+json`) · files: src/mind/api/, src/mind/errors.py, src/mind/web/app.py, src/mind/web/static/swagger-init.js, tests/api/
 - [x] T-1.11 Textos da interface em pt-BR, rótulos e foco por teclado (link de salto, foco visível). · NFR-11, NFR-13 · teste: `tests/web/test_a11y_basics.py` · files: tests/web/test_a11y_basics.py
 - [x] T-1.12 Teste ponta a ponta do esqueleto: sobe o app, cria workspace, abre Hoje. · FR-1, US-1 · teste: `tests/e2e/test_walking_skeleton.py` · files: tests/e2e/
+
+**Resumo da UNIT-1 (2026-11-14)**
+
+- Verificação: `uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov --cov-fail-under=80` → exit 0; 92 testes passando, cobertura 98%, `mypy --strict` sem erros em 52 arquivos.
+- Execução real: `uv run mind --port 8765 --data-dir <tmp>` respondeu 200 em `/welcome`, criou o workspace e redirecionou para `/w/1/today`; a API devolveu a lista de workspaces e `problem+json` com `WORKSPACE_NOT_FOUND`; o servidor escuta em `127.0.0.1`; `/api/docs` respondeu 200.
+- Como rodar: `uv sync && uv run mind` e abrir `http://127.0.0.1:8000`.
+- Desvios e adições (registrados em `design.md § 3.1`): (1) rotas e arquivos de template em inglês (`/w/{id}/today`, `/welcome`, `settings.html`…) por regra global de código em inglês; (2) comando `mind` (`__main__.py`) adicionado, não previsto nas tarefas; (3) `/api` é um sub-app FastAPI montado, com Swagger UI empacotado (`swagger-ui-dist`, Apache-2.0) e CSP relaxada só em `/api/docs`; (4) `UtcDateTime` criado após a execução real mostrar timestamps sem fuso; (5) tokens `--surface` e `--danger` do tema escuro ajustados (A20) para passar 4,5:1: `#343746` e `#ff8585`; (6) `render_math` só escapa o texto e marca o elemento, sem proteger delimitadores (o escape HTML não os altera).
+- Pendências conhecidas: o workflow de CI (T-1.2) só roda no GitHub após o push final; a renderização visual de fórmulas no navegador (T-1.9) e as ligaduras (US-17 AC3) precisam de conferência manual — a lógica de divisão do texto é testada com Node.
 
 ### UNIT-2 Provedor LLM, configurações e custo — Status: pending
 - [ ] T-2.1 `Provider` (Protocol), `Message`, `Usage` e `FakeProvider` com cenários. · FR-19 · teste: `tests/llm/test_fake_provider.py`
