@@ -15,7 +15,7 @@ import { FakeEmbedder } from "../core/retrieval/fake-embedder.js";
 import { extractWithWorker } from "./extract-worker.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { createRouter } from "./ipc/router.js";
-import { CSP, isAppUrl, secureWebPreferences } from "./security.js";
+import { DEV_CSP, isAppUrl, secureWebPreferences } from "./security.js";
 import { MIN_SIZE, resolveBounds } from "./window-bounds.js";
 import { WindowState } from "./window-state.js";
 import { ipcMain } from "electron";
@@ -71,7 +71,7 @@ function hardenSession(): void {
   // Files are covered by the CSP meta tag; this header covers any http response in development.
   defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
-      responseHeaders: { ...details.responseHeaders, "Content-Security-Policy": [CSP] },
+      responseHeaders: { ...details.responseHeaders, "Content-Security-Policy": [DEV_CSP] },
     });
   });
 }

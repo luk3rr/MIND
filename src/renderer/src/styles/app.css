@@ -466,7 +466,7 @@ mark {
   border-color: var(--info);
 }
 .option.right {
-  border-color: var(--accent);
+  border-color: var(--success);
   background: rgba(80, 250, 123, 0.12);
 }
 .option.wrong {
@@ -474,5 +474,5 @@ mark {
   background: rgba(255, 110, 110, 0.12);
 }
 .ok {
-  color: var(--accent);
+  color: var(--success);
 }

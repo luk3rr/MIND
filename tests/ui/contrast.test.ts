@@ -45,6 +45,8 @@ const PAIRS: [string, string][] = [
   ["--accent", "--bg"],
   ["--accent", "--panel"],
   ["--on-accent", "--accent"],
+  ["--success", "--bg"],
+  ["--success", "--panel"],
   ["--side-ink", "--side"],
   ["--danger", "--bg"],
   ["--danger", "--panel"],
@@ -59,10 +61,11 @@ const THEMES: [string, Record<string, string>][] = [
 ];
 
 describe("theme tokens meet WCAG AA", () => {
-  it("uses the Dracula background and accent in the dark theme", () => {
+  it("uses the Dracula background, the purple accent and green only as success", () => {
     const dark = tokens(":root");
     expect(dark["--panel"]).toBe("#282a36");
-    expect(dark["--accent"]).toBe("#50fa7b");
+    expect(dark["--accent"]).toBe("#bd93f9");
+    expect(dark["--success"]).toBe("#50fa7b");
   });
 
   for (const [name, values] of THEMES) {

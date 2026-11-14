@@ -26,6 +26,15 @@ export const CSP =
   "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; " +
   "form-action 'none';";
 
+/**
+ * The development server needs an inline preamble for React refresh and a WebSocket for hot
+ * reload, so the dev policy is looser. It is never used by a packaged app.
+ */
+export const DEV_CSP =
+  "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+  "img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws: http://localhost:*; " +
+  "object-src 'none'; base-uri 'self'; form-action 'none';";
+
 /** True only for URLs that belong to the app itself (its packaged files or the dev server). */
 export function isAppUrl(url: string, devServerUrl: string | undefined): boolean {
   try {

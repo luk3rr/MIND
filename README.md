@@ -1,83 +1,94 @@
-# MIND
+<p align="center">
+  <img src="docs/icon.png" alt="Ícone do MIND: um cérebro roxo com circuitos" width="128" height="128">
+</p>
 
-A desktop study tool that lives on your computer. Import your own materials (PDF, Word, Markdown,
-text and web pages) and MIND generates flashcards and exam-style questions that **quote the source
-passage**, then helps you study them with spaced repetition (FSRS).
+<h1 align="center">MIND</h1>
 
-- **Your material, your machine.** Everything is stored locally. Only short excerpts go to the AI
-  provider you configure, and only after you accept the notice that says which provider receives
-  them. Nothing runs as a server: the app opens no network port.
-- **Every item cites its source.** A card or question is kept only if its quote is found in the
-  passage it came from; questions also pass a second check by another model.
-- **Study offline.** Reviewing, practicing, statistics and the library work without a network. Only
-  generation, verification and chat need one.
-- **Interface in Brazilian Portuguese** (the materials may be in any language).
+<p align="center">
+  Aplicativo desktop de estudo que gera flashcards e questões a partir dos seus próprios materiais,
+  sempre citando o trecho de origem.
+</p>
 
-## Install
+Importe seus materiais (PDF, Word, Markdown, texto e páginas web) e o MIND gera flashcards e
+questões no estilo de prova que **citam a passagem de origem**. Depois você estuda tudo com
+repetição espaçada (FSRS).
 
-Download `mind-study_<version>_amd64.deb` and install it on Debian, Ubuntu or a derivative:
+- **Seu material, sua máquina.** Tudo fica guardado localmente. Só trechos curtos vão ao provedor de
+  IA que você configurar, e somente depois de você aceitar o aviso que diz qual provedor os recebe.
+  Nada roda como servidor: o app não abre nenhuma porta de rede.
+- **Todo item cita a fonte.** Um card ou questão só é mantido se a citação for encontrada no trecho
+  de onde veio; as questões ainda passam por uma segunda verificação feita por outro modelo.
+- **Estude offline.** Revisão, prática, estatísticas e biblioteca funcionam sem rede. Só geração,
+  verificação e chat precisam dela.
+- **Interface em português do Brasil** (os materiais podem estar em qualquer idioma).
+
+## Instalação
+
+Baixe o `mind-study_<versão>_amd64.deb` e instale no Debian, Ubuntu ou derivados:
 
 ```bash
 sudo apt install ./mind-study_0.1.0_amd64.deb
 ```
 
-MIND then appears in the application menu. Removing the package (`sudo apt remove mind-study`)
-never deletes your data. To build the package yourself, see [Development](#development).
+O MIND aparece no menu de aplicativos. Remover o pacote (`sudo apt remove mind-study`) nunca apaga
+os seus dados. Para gerar o pacote você mesmo, veja [Desenvolvimento](#desenvolvimento).
 
-## First steps
+## Primeiros passos
 
-1. Open MIND and create a workspace (one per subject or exam).
-2. In **Settings** (or the first-run assistant) paste your [OpenRouter](https://openrouter.ai) API
-   key and read the notice about what is sent. The key can also come from the
-   `OPENROUTER_API_KEY` environment variable.
-3. In **Library** import a file or a web page. `samples/fotossintese.md` is a short text to try.
-4. In **Generate** choose the material, the kind (cards or questions) and how many; the estimated
-   cost is shown before you start. Review the drafts and approve the ones you want.
-5. **Study** the day's queue (Space reveals, 1 to 4 rate, Ctrl+Z undoes) and **Practice** questions.
-6. Follow your progress in **Statistics**, revisit mistakes in **Errors**, train weak topics from
-   **Today**, and ask the **Chat** about your own material.
+1. Abra o MIND e crie um workspace (um por assunto ou prova).
+2. Em **Configurações** (ou no assistente da primeira execução) cole sua chave da
+   [OpenRouter](https://openrouter.ai) e leia o aviso sobre o que é enviado. A chave também pode vir
+   da variável de ambiente `OPENROUTER_API_KEY`.
+3. Em **Biblioteca**, importe um arquivo ou uma página web. `samples/fotossintese.md` é um texto
+   curto para experimentar.
+4. Em **Gerar**, escolha o material, o tipo (cards ou questões) e a quantidade; o custo estimado
+   aparece antes de começar. Revise os rascunhos e aprove os que quiser.
+5. **Estude** a fila do dia (Espaço revela, 1 a 4 avaliam, Ctrl+Z desfaz) e **Pratique** questões.
+6. Acompanhe o progresso em **Estatísticas**, revise os erros em **Erros**, treine os pontos fracos
+   a partir de **Hoje** e pergunte ao **Chat** sobre o seu próprio material.
 
-Optional semantic search (Chat panel) downloads a small multilingual model (about 130 MB, once) and
-runs it on your computer.
+A busca semântica opcional (painel do Chat) baixa uma vez um modelo multilíngue pequeno (cerca de
+130 MB) e o executa no seu computador.
 
-## Where the data lives
+## Onde ficam os dados
 
-Per user, under the application data folder (`~/.config/mind` on Linux): `app.db` (settings, costs,
-consent), one folder per workspace with its `workspace.db` and the original files, and caches for the
-OCR language data and the search model. The API key is stored encrypted with a mode `0600` file.
-Export a workspace to a `.zip` (and import it elsewhere) from the workspace menu.
+Por usuário, na pasta de dados do aplicativo (`~/.config/mind` no Linux): `app.db` (configurações,
+custos e consentimento), uma pasta por workspace com o `workspace.db` e os arquivos originais, e
+caches dos dados de OCR e do modelo de busca. A chave de API fica cifrada em um arquivo com
+permissão `0600`. Exporte um workspace para `.zip` (e importe em outra máquina) pelo menu do
+workspace.
 
-## Development
+## Desenvolvimento
 
-Requirements: Node.js 22+ and [pnpm](https://pnpm.io) 10 (`corepack enable` provides it).
+Requisitos: Node.js 22+ e [pnpm](https://pnpm.io) 10 (`corepack enable` instala).
 
 ```bash
 pnpm install
-pnpm dev                 # run the app with hot reload
+pnpm dev                 # roda o app com recarga automática
 pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage
-pnpm e2e                 # end-to-end tests with Playwright driving Electron (needs a display or xvfb)
-pnpm package             # builds the .deb in dist/ (needs lintian and desktop-file-utils to verify it)
-scripts/verify-deb.sh    # checks metadata, contents, size limits and lintian
+pnpm e2e                 # testes de ponta a ponta (Playwright com Electron; precisa de tela ou xvfb)
+pnpm package             # gera o .deb em dist/ (verificação precisa de lintian e desktop-file-utils)
+scripts/verify-deb.sh    # confere metadados, conteúdo, limites de tamanho e lintian
 ```
 
-The code is a single package:
+O código é um pacote único:
 
-| Folder         | What it holds                                                                                                                               |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/core`     | The application logic with no Electron dependency: SQLite and Drizzle, ingestion, generation, verification, study, statistics, chat, backup |
-| `src/main`     | The Electron main process: window, native dialogs, typed IPC router and handlers, worker threads                                            |
-| `src/preload`  | The minimal, validated bridge exposed to the window                                                                                         |
-| `src/renderer` | The React interface (Vite): pages, components, design tokens                                                                                |
-| `tests/e2e`    | Playwright tests of the whole app, also run against the installed `.deb`                                                                    |
-| `fixtures`     | Frozen reference values from the original Python version (see its README)                                                                   |
+| Pasta          | O que contém                                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/core`     | A lógica do aplicativo, sem depender do Electron: SQLite e Drizzle, importação, geração, verificação, estudo, estatísticas, chat e backup |
+| `src/main`     | O processo principal do Electron: janela, diálogos nativos, roteador IPC tipado e workers                                                 |
+| `src/preload`  | A ponte mínima e validada exposta à janela                                                                                                |
+| `src/renderer` | A interface em React (Vite): páginas, componentes e tokens de design                                                                      |
+| `tests/e2e`    | Testes do app inteiro, também executados contra o `.deb` instalado                                                                        |
+| `fixtures`     | Valores de referência congelados da versão original em Python (veja o README da pasta)                                                    |
 
-The window talks to the core through a single IPC channel with schemas shared by both sides (zod);
-there is no HTTP server. Security settings: context isolation, sandbox, strict CSP, blocked
-navigation and no Node access in the renderer.
+A janela conversa com o núcleo por um único canal IPC, com esquemas compartilhados (zod); não há
+servidor HTTP. Segurança: isolamento de contexto, sandbox, CSP estrita, navegação bloqueada e nenhum
+acesso ao Node no renderer.
 
-MIND was first written in Python; that implementation is kept in the git history under the tag
+O MIND foi escrito primeiro em Python; essa implementação continua no histórico do git, na tag
 `legacy-python`.
 
-## License
+## Licença
 
-AGPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+AGPL-3.0-or-later. Veja [LICENSE](LICENSE) e [NOTICE](NOTICE).
