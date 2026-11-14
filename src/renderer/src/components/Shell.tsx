@@ -43,7 +43,7 @@ export function Shell({
   };
 
   useHotkeys({
-    "mod+k": () => setQuick(true),
+    "mod+s": () => setQuick(true),
     "mod+,": () => navigate(sectionPath(workspaceId, "settings")),
   });
 

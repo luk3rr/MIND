@@ -25,7 +25,7 @@ export const T = {
   providerNone: "Provedor: não configurado",
   quickGo: "Ir para",
   quickPlaceholder: "Digite para filtrar as seções",
-  quickHint: "Ctrl+K ir para",
+  quickHint: "Ctrl+S ir para",
   welcomeTitle: "Bem-vindo ao MIND",
   welcomeBody: "Crie seu primeiro workspace para organizar um assunto de estudo.",
   today: "Hoje",

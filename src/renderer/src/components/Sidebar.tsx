@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import icon from "../assets/icon.png";
 import { sectionPath, useRouter } from "../router.js";
 import { SECTIONS } from "../sections.js";
 import type { SectionSlug } from "../sections.js";
@@ -31,7 +32,10 @@ export function Sidebar({ workspaceId, active }: { workspaceId: number; active: 
 
   return (
     <aside className="sidebar">
-      <div className="brand">MIND</div>
+      <div className="brand">
+        <img src={icon} alt="" width="56" height="56" />
+        <span>MIND</span>
+      </div>
       <WorkspaceSwitcher activeId={workspaceId} />
       <nav aria-label={T.mainNav}>
         <ul className="nav" style={{ listStyle: "none", margin: 0, padding: 0 }}>

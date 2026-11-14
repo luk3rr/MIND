@@ -35,9 +35,9 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
             )}
           </p>
           <div className="field">
-            <label htmlFor="errors-topic">{T.errorsFilter}</label>
             <select
               id="errors-topic"
+              aria-label={T.errorsFilter}
               value={topicId ?? ""}
               onChange={(event) =>
                 setTopicId(event.target.value === "" ? undefined : Number(event.target.value))

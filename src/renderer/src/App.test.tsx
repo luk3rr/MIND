@@ -99,12 +99,12 @@ describe("App", () => {
     expect(readTheme()).toBe("dark");
   });
 
-  it("opens the quick switcher with Ctrl+K and goes to a section", async () => {
+  it("opens the quick switcher with Ctrl+S and goes to a section", async () => {
     installFakeMind({ workspaces: [ws(1, "Estudos")] });
     await ready();
     const user = userEvent.setup();
     await screen.findByRole("heading", { name: "Hoje" });
-    await user.keyboard("{Control>}k{/Control}");
+    await user.keyboard("{Control>}s{/Control}");
     const dialog = await screen.findByRole("dialog", { name: "Ir para" });
     await user.type(within(dialog).getByRole("textbox"), "esta");
     expect(
@@ -122,7 +122,7 @@ describe("App", () => {
     await ready();
     const user = userEvent.setup();
     await screen.findByRole("heading", { name: "Hoje" });
-    await user.keyboard("{Control>}k{/Control}");
+    await user.keyboard("{Control>}s{/Control}");
     await screen.findByRole("dialog");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();

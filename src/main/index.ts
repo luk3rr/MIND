@@ -8,6 +8,7 @@ import { app, BrowserWindow, dialog, screen, session } from "electron";
 import { join } from "node:path";
 import { createCore } from "../core/index.js";
 import { scriptedCardProvider } from "../core/llm/scripted.js";
+import { installFileLog } from "./log-file.js";
 import { installLogRedaction } from "../core/redaction.js";
 import type { Core } from "../core/index.js";
 import { createEmbedWorker } from "./embed-worker.js";
@@ -89,6 +90,10 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     hardenSession();
+    const log = installFileLog(join(app.getPath("userData"), "logs", "mind.log"));
+    log(`MIND ${app.getVersion()} started (electron ${process.versions.electron})`);
+    process.on("uncaughtException", (error) => console.error("uncaught exception", error));
+    process.on("unhandledRejection", (reason) => console.error("unhandled rejection", reason));
     const state = new WindowState();
     core = createCore({
       dataDir: process.env["MIND_DATA_DIR"] ?? app.getPath("userData"),

@@ -51,8 +51,12 @@ function FilterSelect({
 }) {
   return (
     <div className="field">
-      <label htmlFor="study-filter">{T.studyFilter}</label>
-      <select id="study-filter" value={value} onChange={(event) => onChange(event.target.value)}>
+      <select
+        id="study-filter"
+        aria-label={T.studyFilter}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
         <option value="">{T.studyAll}</option>
         {facets.topics.length > 0 && (
           <optgroup label={T.studyTopic}>

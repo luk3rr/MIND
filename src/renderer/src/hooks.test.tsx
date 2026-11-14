@@ -14,7 +14,7 @@ import { useHotkeys, useInvoke } from "./hooks.js";
 
 function Probe({ onKey }: { onKey: (key: string) => void }) {
   useHotkeys({
-    "mod+k": () => onKey("mod+k"),
+    "mod+s": () => onKey("mod+s"),
     "mod+,": () => onKey("mod+,"),
     space: () => onKey("space"),
     "3": () => onKey("3"),
@@ -27,11 +27,11 @@ describe("useHotkeys", () => {
     const onKey = vi.fn();
     render(<Probe onKey={onKey} />);
     const user = userEvent.setup();
-    await user.keyboard("{Control>}k{/Control}");
+    await user.keyboard("{Control>}s{/Control}");
     await user.keyboard("{Control>},{/Control}");
     await user.keyboard(" ");
     await user.keyboard("3");
-    expect(onKey.mock.calls.map((call) => call[0])).toEqual(["mod+k", "mod+,", "space", "3"]);
+    expect(onKey.mock.calls.map((call) => call[0])).toEqual(["mod+s", "mod+,", "space", "3"]);
   });
 
   it("ignores plain keys while typing in a field but keeps modifier shortcuts", async () => {
@@ -41,8 +41,8 @@ describe("useHotkeys", () => {
     await user.click(screen.getByLabelText("campo"));
     await user.keyboard("3 ");
     expect(onKey).not.toHaveBeenCalled();
-    await user.keyboard("{Control>}k{/Control}");
-    expect(onKey).toHaveBeenCalledWith("mod+k");
+    await user.keyboard("{Control>}s{/Control}");
+    expect(onKey).toHaveBeenCalledWith("mod+s");
   });
 
   it("does nothing when disabled", async () => {

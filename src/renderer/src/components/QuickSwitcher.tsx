@@ -10,7 +10,7 @@ import { SECTIONS } from "../sections.js";
 import { T } from "../strings.js";
 import { Dialog } from "./Dialog.js";
 
-/** Ctrl+K: type to filter the sections and press Enter to go there. */
+/** Ctrl+S: type to filter the sections and press Enter to go there. */
 export function QuickSwitcher({
   workspaceId,
   onClose,

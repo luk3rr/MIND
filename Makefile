@@ -5,7 +5,9 @@
 .DEFAULT_GOAL := help
 PNPM := corepack pnpm
 
-.PHONY: help install dev check test e2e package verify-deb install-deb clean
+LOG := $(HOME)/.config/mind/logs/mind.log
+
+.PHONY: help install dev logs check test e2e package verify-deb install-deb clean
 
 help: ## Show the available commands
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[35m%-12s\033[0m %s\n", $$1, $$2}'
@@ -15,6 +17,9 @@ install: ## Install the dependencies
 
 dev: ## Run the app with hot reload
 	$(PNPM) dev
+
+logs: ## Follow the app log (~/.config/mind/logs/mind.log), also written when opened from the menu
+	@mkdir -p $(dir $(LOG)) && touch $(LOG) && tail -n 100 -f $(LOG)
 
 check: ## Lint, formatting, types and unit tests with coverage
 	$(PNPM) lint && $(PNPM) format:check && $(PNPM) typecheck && $(PNPM) test --coverage
