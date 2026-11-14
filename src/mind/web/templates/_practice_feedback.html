@@ -1,0 +1,31 @@
+{#
+  Filename: _practice_feedback.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+<section id="practice-card" class="card study-question" data-item-id="{{ item.id }}" data-feedback aria-live="polite">
+  <p class="alert {{ 'alert-ok' if result.correct else 'alert-danger' }}" role="status">
+    {{ t.practice_right if result.correct else t.practice_wrong }}
+    {{ t.practice_correct_is }}: <strong>{{ result.correct_key }}</strong>
+    {% if seconds is not none %}· {{ "%.0f"|format(seconds) }} {{ t.unit_seconds }}{% endif %}
+  </p>
+  <p class="card-front"><span class="math-text" data-math>{{ item.front }}</span></p>
+  <ul class="options feedback">
+    {% for option in result.options %}
+    <li class="option {{ 'is-correct' if option.key == result.correct_key else '' }} {{ 'is-chosen' if option.key == result.answer else '' }}">
+      <span class="option-key">{{ option.key }}</span>
+      <span class="math-text" data-math>{{ option.text }}</span>
+      {% if option.why %}<p class="muted"><span class="math-text" data-math>{{ option.why }}</span></p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <h3>{{ t.practice_explanation }}</h3>
+  <p><span class="math-text" data-math>{{ result.explanation }}</span></p>
+  <p class="muted">{{ t.study_source }}: {{ item.source_title }}{% if item.source_page %} · {{ t.preview_page }} {{ item.source_page }}{% endif %}</p>
+  <p class="chunk-text muted">{{ item.quote }}</p>
+  <p>
+    <button id="next-question" class="btn" type="button"
+            hx-get="/w/{{ workspace_id }}/practice/next?after={{ item.id }}{% for key, value in filter_params.items() %}&{{ key }}={{ value }}{% endfor %}"
+            hx-target="#practice-card" hx-swap="outerHTML">{{ t.practice_next }}</button>
+  </p>
+</section>

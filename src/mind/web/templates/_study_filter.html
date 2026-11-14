@@ -9,8 +9,7 @@
     <div class="stack">
       <label for="f-kind">{{ t.study_filter_kind }}</label>
       <select id="f-kind" name="kind">
-        <option value=""{% if not selection.kind %} selected{% endif %}>{{ t.study_filter_all_kinds }}</option>
-        <option value="card"{% if selection.kind == "card" %} selected{% endif %}>{{ t.study_filter_cards }} ({{ facets.cards }})</option>
+        <option value="card"{% if selection.kind != "question" %} selected{% endif %}>{{ t.study_filter_cards }} ({{ facets.cards }})</option>
         <option value="question"{% if selection.kind == "question" %} selected{% endif %}{% if not facets.questions %} disabled{% endif %}>{{ t.study_filter_questions }} ({{ facets.questions }})</option>
       </select>
     </div>

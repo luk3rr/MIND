@@ -9,7 +9,7 @@
 <h1>{{ t.review_title }}</h1>
 {% if run %}
 <p class="muted">{{ t.review_choose_run }} #{{ run.id }} · {{ t['type_' ~ run.subtype] }} · {{ pending }} {{ t.review_pending }}</p>
-{% set auto = run.discarded_no_source + run.discarded_invalid + run.discarded_duplicate %}
+{% set auto = run.discarded_no_source + run.discarded_invalid + run.discarded_duplicate + run.discarded_unsupported %}
 {% if auto %}
 <details class="card">
   <summary>{{ t.review_auto_discards }}: {{ auto }}</summary>
@@ -17,6 +17,7 @@
     {% if run.discarded_no_source %}<li>{{ run.discarded_no_source }} {{ t.review_reason_no_source }}</li>{% endif %}
     {% if run.discarded_invalid %}<li>{{ run.discarded_invalid }} {{ t.review_reason_invalid }}</li>{% endif %}
     {% if run.discarded_duplicate %}<li>{{ run.discarded_duplicate }} {{ t.review_reason_duplicate }}</li>{% endif %}
+    {% if run.discarded_unsupported %}<li>{{ run.discarded_unsupported }} {{ t.review_reason_unsupported }}</li>{% endif %}
   </ul>
 </details>
 {% endif %}

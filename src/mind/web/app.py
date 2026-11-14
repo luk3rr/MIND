@@ -23,14 +23,24 @@ from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
 from mind.jobs.queue import JobQueue
 from mind.llm.provider import Provider
+from mind.practice.service import PracticeFactory
 from mind.redaction import install_log_redaction, uninstall_log_redaction
 from mind.review.service import ReviewFactory
 from mind.services import Services
 from mind.study.service import StudyFactory
 from mind.web.generate_pages import router as generate_router
 from mind.web.library_pages import router as library_router
+from mind.web.practice_pages import router as practice_router
 from mind.web.provider_pages import router as provider_router
-from mind.web.rendering import BASE_DIR, MaterialsDep, Registry, ReviewDep, StudyDep, render
+from mind.web.rendering import (
+    BASE_DIR,
+    MaterialsDep,
+    PracticeDep,
+    Registry,
+    ReviewDep,
+    StudyDep,
+    render,
+)
 from mind.web.review_pages import router as review_router
 from mind.web.security import install_security
 from mind.web.strings import SECTIONS
@@ -65,6 +75,7 @@ def create_app(
             target.state.generation = GenerationFactory(registry, queue, services)
             target.state.review = ReviewFactory(registry)
             target.state.study = StudyFactory(registry)
+            target.state.practice = PracticeFactory(registry)
         try:
             yield
         finally:
@@ -89,6 +100,7 @@ def create_app(
     app.include_router(generate_router)
     app.include_router(review_router)
     app.include_router(study_router)
+    app.include_router(practice_router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> HTMLResponse:
@@ -132,6 +144,7 @@ def create_app(
         study: StudyDep,
         materials: MaterialsDep,
         review: ReviewDep,
+        practice: PracticeDep,
     ) -> HTMLResponse:
         workspace = current(registry, workspace_id)
         study_service = study.for_workspace(workspace_id)
@@ -145,6 +158,7 @@ def create_app(
             counts=counts,
             goal=goal,
             goal_met=counts.reviewed_today >= goal,
+            questions=practice.for_workspace(workspace_id).counts(),
             has_materials=bool(materials.for_workspace(workspace_id).list_materials()),
             approved_cards=review.for_workspace(workspace_id).count(status="approved", kind="card"),
         )

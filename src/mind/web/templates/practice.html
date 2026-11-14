@@ -1,0 +1,24 @@
+{#
+  Filename: practice.html
+  Created on: November 14, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#}
+{% extends "base.html" %}
+{% block title %}{{ t.practice_title }} · {{ workspace.name }} · {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t.practice_title }}</h1>
+{% include "_study_filter.html" %}
+<p class="muted">{{ t.practice_answered_today }}: {{ counts.answered_today }} · {{ t.practice_correct_today }}: {{ counts.correct_today }}</p>
+<form method="get" action="/w/{{ workspace.id }}/practice" class="toolbar">
+  {% for key, value in selection.params().items() %}{% if key != "kind" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
+  <label><input type="checkbox" name="redo" value="1"{% if redo %} checked{% endif %}> {{ t.practice_redo }}</label>
+  <button class="btn btn-ghost" type="submit">{{ t.practice_apply }}</button>
+</form>
+{% if done %}
+{% include "_practice_done.html" %}
+{% else %}
+{% include "_practice_question.html" %}
+{% endif %}
+<p class="muted">{{ t.practice_shortcuts }}</p>
+<script src="/static/practice.js" defer></script>
+{% endblock %}

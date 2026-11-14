@@ -20,6 +20,7 @@ from mind.web.rendering import Registry, StudyDep, render
 router = APIRouter(prefix="/w/{workspace_id}/study")
 
 KINDS = ("card", "question")
+VALID_SUBTYPES = (*CARD_SUBTYPES, "certo_errado", "multiple_choice")
 
 
 def _int_or_none(value: str) -> int | None:
@@ -32,7 +33,7 @@ def build_filter(kind: str, topic: str, material: str, subtype: str) -> StudyFil
         kind=kind if kind in KINDS else None,
         topic_id=_int_or_none(topic),
         material_id=_int_or_none(material),
-        subtype=subtype if subtype in CARD_SUBTYPES else None,
+        subtype=subtype if subtype in VALID_SUBTYPES else None,
     )
 
 
@@ -118,8 +119,14 @@ async def study_page(
     registry: Registry,
     study: StudyDep,
     selection: QueryFilter,
-) -> HTMLResponse:
+) -> Response:
     info = registry.get(workspace_id)
+    if selection.kind == "question":
+        params = {k: v for k, v in selection.params().items() if k != "kind"}
+        query = "&".join(f"{key}={value}" for key, value in params.items())
+        return RedirectResponse(
+            f"/w/{workspace_id}/practice{'?' + query if query else ''}", status_code=303
+        )
     service = study.for_workspace(workspace_id)
     card = service.next_card(selection=selection)
     if card is None:
@@ -140,7 +147,6 @@ async def study_page(
         workspace_id=workspace_id,
         selection=selection,
         facets=service.facets(),
-        subtypes=CARD_SUBTYPES,
         **context,
     )
 

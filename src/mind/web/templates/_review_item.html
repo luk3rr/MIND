@@ -13,7 +13,19 @@
         <span class="muted">#{{ item.id }}{% if item.topic %} · {{ item.topic }}{% endif %}{% if item.edited %} · {{ t.review_edited }}{% endif %}</span>
       </label>
       <p class="card-front">{{ item.front|cloze|math }}</p>
-      {% if item.back %}<p class="card-back">{{ item.back|math }}</p>{% endif %}
+      {% if item.kind == "question" %}
+      <ul class="options feedback">
+        {% for option in item.options %}
+        <li class="option {{ 'is-correct' if option.key == item.answer else '' }}">
+          <span class="option-key">{{ option.key }}</span>
+          <span>{{ option.text|math }}</span>
+          {% if option.key == item.answer %}<span class="muted">({{ t.review_correct_option }})</span>{% endif %}
+          {% if option.why %}<p class="muted">{{ option.why|math }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% if item.back %}<p class="muted">{{ t.review_comment }}: {{ item.back|math }}</p>{% endif %}
+      {% elif item.back %}<p class="card-back">{{ item.back|math }}</p>{% endif %}
       <div class="toolbar">
         <button class="btn btn-ghost" type="button"
                 hx-get="/w/{{ workspace_id }}/review/items/{{ item.id }}/edit" hx-target="#item-{{ item.id }}" hx-swap="outerHTML">{{ t.review_edit }}</button>

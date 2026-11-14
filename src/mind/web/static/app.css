@@ -397,6 +397,57 @@ html:not(.js) .study-back[hidden] {
   max-width: 60rem;
 }
 
+.options {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+.option {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--muted);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.option:hover,
+.option:focus-within {
+  border-color: var(--accent);
+}
+.option-key {
+  font-weight: 700;
+  min-width: 1.5rem;
+  color: var(--accent);
+}
+.options.feedback .option {
+  cursor: default;
+}
+.option.is-correct {
+  border-color: var(--ok);
+  border-width: 2px;
+}
+.option.is-chosen:not(.is-correct) {
+  border-color: var(--danger);
+  border-width: 2px;
+}
+.option > p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.alert-ok {
+  color: var(--ok);
+}
+.study-question {
+  max-width: 48rem;
+}
+
 .muted {
   color: var(--muted);
 }

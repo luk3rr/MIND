@@ -18,7 +18,7 @@
   </ol>
   <p><a class="btn" href="/w/{{ workspace.id }}/library">{{ t.today_go_library }}</a></p>
 </section>
-{% elif approved_cards == 0 %}
+{% elif approved_cards == 0 and not questions.to_practice and not questions.answered_today %}
 <section class="card">
   <p>{{ t.today_no_cards }}</p>
   <p><a class="btn" href="/w/{{ workspace.id }}/generate">{{ t.today_go_generate }}</a></p>
@@ -35,6 +35,12 @@
   <progress class="goal-bar" max="{{ goal }}" value="{{ [counts.reviewed_today, goal]|min }}" aria-label="{{ t.today_goal }}"></progress>
   <p class="muted">{{ counts.reviewed_today }} / {{ goal }}{% if goal_met %} · {{ t.today_goal_met }}{% endif %}</p>
 </section>
+{% if questions.to_practice %}
+<section class="card">
+  <h2>{{ t.today_questions }}: {{ questions.to_practice }}</h2>
+  <p><a class="btn" href="/w/{{ workspace.id }}/practice">{{ t.today_practice }}</a></p>
+</section>
+{% endif %}
 {% if counts.to_study %}
 <p><a class="btn" href="/w/{{ workspace.id }}/study">{{ t.today_study_now }} ({{ counts.to_study }})</a> <a class="btn btn-ghost" href="/w/{{ workspace.id }}/study#f-kind">{{ t.study_choose }}</a></p>
 {% else %}

@@ -117,12 +117,18 @@ def test_rating_without_htmx_redirects_keeping_the_selection(ready: TestClient) 
     assert response.headers["location"] == f"/w/{workspace_id}/study?subtype=cloze"
 
 
-def test_questions_and_unknown_selections_are_empty_not_errors(ready: TestClient) -> None:
+def test_the_questions_choice_leads_to_the_practice_keeping_the_rest_of_the_selection(
+    ready: TestClient,
+) -> None:
     workspace_id = two_decks(ready)
-    questions = ready.get(f"/w/{workspace_id}/study?kind=question")
-    assert questions.status_code == 200
-    assert "nesta seleção" in questions.text
-    assert "Sessão concluída" in questions.text
+    response = ready.get(f"/w/{workspace_id}/study?kind=question&topic=1")
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/w/{workspace_id}/practice?topic=1"
+    bare = ready.get(f"/w/{workspace_id}/study?kind=question")
+    assert bare.headers["location"] == f"/w/{workspace_id}/practice"
+    practice = ready.get(f"/w/{workspace_id}/practice")
+    assert practice.status_code == 200
+    assert "Prática concluída" in practice.text  # no approved questions yet
     assert "Sessão concluída" in ready.get(f"/w/{workspace_id}/study?topic=999").text
 
 

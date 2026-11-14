@@ -41,7 +41,9 @@ def selection(
     kind: Annotated[str | None, Query(pattern="^(card|question)$")] = None,
     topic_id: int | None = None,
     material_id: int | None = None,
-    subtype: Annotated[str | None, Query(pattern="^(qa|cloze|compare|true_false)$")] = None,
+    subtype: Annotated[
+        str | None, Query(pattern="^(qa|cloze|compare|true_false|certo_errado|multiple_choice)$")
+    ] = None,
 ) -> StudyFilter:
     """The optional selector shared by the queue and the summary."""
     return StudyFilter(kind=kind, topic_id=topic_id, material_id=material_id, subtype=subtype)

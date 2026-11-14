@@ -12,10 +12,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from mind.config import Settings
 from mind.db import migrate
 from mind.db.base import make_session_factory
-from mind.generation.schemas import CardBatch
+from mind.generation.schemas import CardBatch, JudgeBatch, QuestionBatch
 from mind.llm.fake import FakeProvider
 from mind.web.app import create_app
-from tests.generation.fakes import cards_from_prompt
+from tests.generation.fakes import (
+    cards_from_prompt,
+    judge_supports_everything,
+    questions_from_prompt,
+)
 
 
 @pytest.fixture
@@ -37,6 +41,8 @@ def ready(tmp_path: Path) -> Iterator[TestClient]:
     """An app whose model is a scripted fake that needs no key or consent."""
     fake = FakeProvider(name="openrouter", requires_consent=False)
     fake.script(CardBatch, cards_from_prompt)
+    fake.script(QuestionBatch, questions_from_prompt)
+    fake.script(JudgeBatch, judge_supports_everything)
     app = create_app(Settings(data_dir=tmp_path), inner_provider=fake)
     with TestClient(app, base_url="http://127.0.0.1:8000", follow_redirects=False) as test_client:
         yield test_client

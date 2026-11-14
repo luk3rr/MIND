@@ -12,7 +12,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from mind.errors import AppError
-from mind.generation.schemas import CARD_SUBTYPES
+from mind.generation.schemas import CARD_SUBTYPES, PROFILES
 from mind.generation.service import GenerationRequest, GenerationService
 from mind.review.service import ReviewService
 from mind.web.rendering import (
@@ -39,6 +39,7 @@ def _build_request(
 ) -> GenerationRequest:
     return GenerationRequest(
         material_id=material_id,
+        kind="question" if subtype in PROFILES else "card",
         subtype=subtype,
         quantity=quantity,
         page_from=_optional_int(page_from),
@@ -78,7 +79,8 @@ def _page_context(
         ready_error = exc
     return {
         "indexed": [m for m in all_materials if m.status == "indexed"],
-        "subtypes": CARD_SUBTYPES,
+        "card_types": CARD_SUBTYPES,
+        "question_profiles": tuple(PROFILES),
         "ready_error": ready_error,
         "defaults": {"quantity": 20, "subtype": "qa"},
         **_runs_context(workspace_id, generation, review, titles),

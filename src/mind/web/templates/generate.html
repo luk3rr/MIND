@@ -27,10 +27,16 @@
   <input id="page_to" name="page_to" type="text" inputmode="numeric">
   <label for="subtype">{{ t.gen_type }}</label>
   <select id="subtype" name="subtype">
-    {% for s in subtypes %}<option value="{{ s }}"{% if s == defaults.subtype %} selected{% endif %}>{{ t['type_' ~ s] }}</option>{% endfor %}
+    <optgroup label="{{ t.gen_group_cards }}">
+      {% for s in card_types %}<option value="{{ s }}"{% if s == defaults.subtype %} selected{% endif %}>{{ t['type_' ~ s] }}</option>{% endfor %}
+    </optgroup>
+    <optgroup label="{{ t.gen_group_questions }}">
+      {% for s in question_profiles %}<option value="{{ s }}">{{ t['type_' ~ s] }}</option>{% endfor %}
+    </optgroup>
   </select>
   <label for="quantity">{{ t.gen_quantity }}</label>
   <input id="quantity" name="quantity" type="number" min="1" max="60" value="{{ defaults.quantity }}">
+  <p class="muted">{{ t.gen_quantity_hint }}</p>
   <div id="estimate" class="muted" aria-live="polite"></div>
   <button class="btn" type="submit"{% if ready_error %} disabled{% endif %}>{{ t.gen_submit }}</button>
 </form>

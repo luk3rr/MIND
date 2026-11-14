@@ -3370,7 +3370,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "pattern": "^(qa|cloze|compare|true_false)$",
+                  "pattern": "^(qa|cloze|compare|true_false|certo_errado|multiple_choice)$",
                   "type": "string"
                 },
                 {
@@ -3708,7 +3708,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "pattern": "^(qa|cloze|compare|true_false)$",
+                  "pattern": "^(qa|cloze|compare|true_false|certo_errado|multiple_choice)$",
                   "type": "string"
                 },
                 {

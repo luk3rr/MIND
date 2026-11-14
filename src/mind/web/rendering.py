@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
+from mind.practice.service import PracticeFactory
 from mind.review.service import ReviewFactory
 from mind.services import Services
 from mind.study.service import StudyFactory
@@ -54,6 +55,11 @@ def get_review(request: Request) -> ReviewFactory:
     return factory
 
 
+def get_practice(request: Request) -> PracticeFactory:
+    factory: PracticeFactory = request.app.state.practice
+    return factory
+
+
 def get_study(request: Request) -> StudyFactory:
     factory: StudyFactory = request.app.state.study
     return factory
@@ -65,6 +71,7 @@ MaterialsDep = Annotated[MaterialsFactory, Depends(get_materials)]
 GenerationDep = Annotated[GenerationFactory, Depends(get_generation)]
 ReviewDep = Annotated[ReviewFactory, Depends(get_review)]
 StudyDep = Annotated[StudyFactory, Depends(get_study)]
+PracticeDep = Annotated[PracticeFactory, Depends(get_practice)]
 
 
 def render(

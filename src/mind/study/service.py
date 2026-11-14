@@ -289,9 +289,9 @@ class StudyService:
         upcoming = self.queue(1, now, selection)
         return upcoming[0] if upcoming else None
 
-    def facets(self) -> StudyFacets:
-        """Selector options with the number of approved items behind each one."""
-        approved = (Item.status == "approved", Item.kind == "card")
+    def facets(self, kind: str = "card") -> StudyFacets:
+        """Selector options of `kind` (cards or questions) with the approved items behind each."""
+        approved = (Item.status == "approved", Item.kind == kind)
         with self._sessions() as session:
             topics = session.execute(
                 select(Topic.id, Topic.name, func.count(Item.id))
