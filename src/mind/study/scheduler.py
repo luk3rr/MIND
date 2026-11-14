@@ -46,6 +46,17 @@ def study_day(
     return date(shifted.year, shifted.month, shifted.day).isoformat()
 
 
+def day_end(
+    moment: datetime, tz: tzinfo | None = None, rollover_hour: int = DAY_ROLLOVER_HOUR
+) -> datetime:
+    """The next study-day turnover after `moment`, as an aware UTC datetime."""
+    local = moment.astimezone(tz)
+    boundary = local.replace(hour=rollover_hour, minute=0, second=0, microsecond=0)
+    if local >= boundary:
+        boundary += timedelta(days=1)
+    return boundary.astimezone(UTC)
+
+
 class Scheduler:
     def __init__(self, desired_retention: float = 0.9, *, enable_fuzzing: bool = True) -> None:
         self._fsrs = FsrsScheduler(

@@ -157,3 +157,12 @@ class ReviewLog(WorkspaceBase):
     previous_state_json: Mapped[str | None] = mapped_column(String, default=None)
     duration_ms: Mapped[int | None] = mapped_column(Integer, default=None)
     day: Mapped[str] = mapped_column(String(10), index=True)
+
+
+class Meta(WorkspaceBase):
+    """Per-workspace key/value settings (study limits, retention...)."""
+
+    __tablename__ = "meta"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(String)

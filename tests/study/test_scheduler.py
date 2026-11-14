@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta, timezone
 import pytest
 
 from mind.study.formatting import format_interval
-from mind.study.scheduler import Rating, Scheduler, study_day
+from mind.study.scheduler import Rating, Scheduler, day_end, study_day
 
 NOW = datetime(2026, 11, 14, 12, 0, tzinfo=UTC)
 BRT = timezone(timedelta(hours=-3))
@@ -118,3 +118,15 @@ def test_the_study_day_turns_over_at_four_in_the_morning(moment: datetime, expec
 )
 def test_interval_labels(seconds: int, label: str) -> None:
     assert format_interval(timedelta(seconds=seconds)) == label
+
+
+@pytest.mark.parametrize(
+    ("moment", "expected"),
+    [
+        (datetime(2026, 11, 14, 12, 0, tzinfo=BRT), datetime(2026, 11, 15, 7, 0, tzinfo=UTC)),
+        (datetime(2026, 11, 14, 3, 59, tzinfo=BRT), datetime(2026, 11, 14, 7, 0, tzinfo=UTC)),
+        (datetime(2026, 11, 14, 4, 0, tzinfo=BRT), datetime(2026, 11, 15, 7, 0, tzinfo=UTC)),
+    ],
+)
+def test_the_day_ends_at_the_next_four_in_the_morning(moment: datetime, expected: datetime) -> None:
+    assert day_end(moment, BRT) == expected
