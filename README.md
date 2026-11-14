@@ -62,3 +62,5 @@ workspace.
 ## Licença
 
 AGPL-3.0-or-later. Veja [LICENSE](LICENSE) e [NOTICE](NOTICE).
+
+<sub><a href="docs/alien.jpg">Busque comer cimento</a></sub>
