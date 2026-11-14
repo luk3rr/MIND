@@ -116,7 +116,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 **BOLT-1 (Esqueleto: UNIT-1, 2 e 3) concluído.** Itens da meta: app abre no navegador com workspaces e tema ✓; `FakeProvider` e OpenRouter atrás da interface ✓; PDF e Markdown importados e pesquisáveis ✓; verificação passa ✓; CI verde: workflow criado, **só roda após o push final**.
 
 ### UNIT-4 Flashcards com fonte e revisão — Status: pending
-- [ ] T-4.1 Modelos `item`, `topic`, `generation_run` e migração. · FR-6 · teste: `tests/db/test_items_migration.py`
+- [x] T-4.1 Modelos `item`, `topic`, `generation_run` e migração. · FR-6 · teste: `tests/db/test_items_migration.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0004_*.py, tests/generation/test_generation_migration.py
 - [ ] T-4.2 Prompts e esquema `CardBatch` para P/R, cloze, comparativo e V/F, com orientação de LaTeX. ≈2 h · FR-6, FR-23 · teste: `tests/generation/test_card_prompts.py`
 - [ ] T-4.3 `SourceChecker`: citação como substring normalizada (espaços, quebras, hifenização). · FR-7 · teste: `tests/verification/test_source_checker.py`
 - [ ] T-4.4 `CardGenerator`: seleciona trechos por material e intervalo, gera em lotes, descarta sem fonte e produz o relatório. ≈2 h · FR-6, FR-7 · teste: `tests/generation/test_card_generator.py` (item inventado é descartado e contado)

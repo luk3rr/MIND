@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from mind.clock import utcnow
@@ -63,3 +63,71 @@ class Chunk(WorkspaceBase):
     text: Mapped[str] = mapped_column(String)
 
     material: Mapped[Material] = relationship(back_populates="chunks")
+
+
+class Topic(WorkspaceBase):
+    __tablename__ = "topic"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), unique=True)
+
+
+class GenerationRun(WorkspaceBase):
+    __tablename__ = "generation_run"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    subtype: Mapped[str] = mapped_column(String(24))
+    material_id: Mapped[int | None] = mapped_column(
+        ForeignKey("material.id", ondelete="SET NULL"), default=None
+    )
+    page_from: Mapped[int | None] = mapped_column(Integer, default=None)
+    page_to: Mapped[int | None] = mapped_column(Integer, default=None)
+    model: Mapped[str] = mapped_column(String(128))
+    requested: Mapped[int] = mapped_column(Integer)
+    generated: Mapped[int] = mapped_column(Integer, default=0)
+    discarded_no_source: Mapped[int] = mapped_column(Integer, default=0)
+    discarded_invalid: Mapped[int] = mapped_column(Integer, default=0)
+    discarded_duplicate: Mapped[int] = mapped_column(Integer, default=0)
+    approved: Mapped[int] = mapped_column(Integer, default=0)
+    approved_unedited: Mapped[int] = mapped_column(Integer, default=0)
+    discarded_review: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    discard_log: Mapped[str] = mapped_column(String, default="[]")
+    error_code: Mapped[str | None] = mapped_column(String(64), default=None)
+    error_detail: Mapped[str | None] = mapped_column(String, default=None)
+    job_id: Mapped[int | None] = mapped_column(Integer, default=None)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
+
+    items: Mapped[list[Item]] = relationship(
+        back_populates="run", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class Item(WorkspaceBase):
+    __tablename__ = "item"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("generation_run.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(16))
+    subtype: Mapped[str] = mapped_column(String(24))
+    payload_json: Mapped[str] = mapped_column(String)
+    payload_version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(16), default="draft")
+    topic_id: Mapped[int | None] = mapped_column(
+        ForeignKey("topic.id", ondelete="SET NULL"), default=None
+    )
+    chunk_id: Mapped[int | None] = mapped_column(
+        ForeignKey("chunk.id", ondelete="SET NULL"), default=None
+    )
+    source_title: Mapped[str] = mapped_column(String(255), default="")
+    source_page: Mapped[int | None] = mapped_column(Integer, default=None)
+    quote: Mapped[str] = mapped_column(String, default="")
+    edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    origin: Mapped[str] = mapped_column(String(16), default="generated")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+    approved_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
+
+    run: Mapped[GenerationRun] = relationship(back_populates="items")
