@@ -1,0 +1,90 @@
+{
+  "cases": [
+    {
+      "end": 46,
+      "quote": "A fotossíntese converte luz em energia química",
+      "reason": null,
+      "start": 0,
+      "valid": true
+    },
+    {
+      "end": 93,
+      "quote": "\"Os cloroplastos\" são organelas com clorofila",
+      "reason": null,
+      "start": 48,
+      "valid": true
+    },
+    {
+      "end": 112,
+      "quote": "organelas  com\nclorofila - o pigmento verde",
+      "reason": null,
+      "start": 70,
+      "valid": true
+    },
+    {
+      "end": 184,
+      "quote": "A FIXAÇÃO DO CARBONO ACONTECE NO CICLO DE CALVIN",
+      "reason": null,
+      "start": 137,
+      "valid": true
+    },
+    {
+      "end": 156,
+      "quote": "fixação do carbono",
+      "reason": null,
+      "start": 139,
+      "valid": true
+    },
+    {
+      "end": null,
+      "quote": "curto demais",
+      "reason": "quote_too_short",
+      "start": null,
+      "valid": false
+    },
+    {
+      "end": null,
+      "quote": "texto que não existe no trecho de forma alguma",
+      "reason": "quote_not_in_chunk",
+      "start": null,
+      "valid": false
+    }
+  ],
+  "chunk": "A fotossíntese converte luz em energia química. “Os cloroplastos” são organelas com clorofila — o pigmento verde — e ocorre nas folhas.\n\nA ﬁxação do carbono acontece no ciclo de Calvin.",
+  "min_quote_chars": 15,
+  "normalize": {
+    "  A\tB\n C  ": {
+      "positions": [
+        2,
+        4,
+        4,
+        7,
+        7
+      ],
+      "text": "a b c"
+    },
+    "Olá,  “mundo” — ﬁm­": {
+      "positions": [
+        0,
+        1,
+        2,
+        3,
+        6,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        14,
+        16,
+        16,
+        16,
+        17
+      ],
+      "text": "olá, \"mundo\" - fim"
+    }
+  }
+}

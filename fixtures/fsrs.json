@@ -1,0 +1,303 @@
+{
+  "desired_retention": 0.9,
+  "fuzzing": false,
+  "new_card_preview_seconds": {
+    "1": 60.0,
+    "2": 330.0,
+    "3": 600.0,
+    "4": 691200.0
+  },
+  "scenarios": [
+    {
+      "name": "all_good",
+      "steps": [
+        {
+          "difficulty": 2.118103970459016,
+          "due": "2026-01-01T12:10:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 1,
+          "reviewed_at": "2026-01-01T12:00:00+00:00",
+          "stability": 2.3065,
+          "state": 1
+        },
+        {
+          "difficulty": 2.111214235785395,
+          "due": "2026-01-03T12:10:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 2,
+          "reviewed_at": "2026-01-01T12:10:00+00:00",
+          "stability": 2.3065,
+          "state": 2
+        },
+        {
+          "difficulty": 2.1043313908464483,
+          "due": "2026-01-14T12:10:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 3,
+          "reviewed_at": "2026-01-03T12:10:00+00:00",
+          "stability": 10.971048263078135,
+          "state": 2
+        },
+        {
+          "difficulty": 2.0974554287524403,
+          "due": "2026-03-01T12:10:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 4,
+          "reviewed_at": "2026-01-14T12:10:00+00:00",
+          "stability": 46.316858440073425,
+          "state": 2
+        },
+        {
+          "difficulty": 2.0905863426205262,
+          "due": "2026-08-11T12:10:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 5,
+          "reviewed_at": "2026-03-01T12:10:00+00:00",
+          "stability": 162.99981577472244,
+          "state": 2
+        }
+      ]
+    },
+    {
+      "name": "lapse_then_recover",
+      "steps": [
+        {
+          "difficulty": 2.118103970459016,
+          "due": "2026-01-01T12:10:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 1,
+          "reviewed_at": "2026-01-01T12:00:00+00:00",
+          "stability": 2.3065,
+          "state": 1
+        },
+        {
+          "difficulty": 2.111214235785395,
+          "due": "2026-01-03T12:10:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 2,
+          "reviewed_at": "2026-01-01T12:10:00+00:00",
+          "stability": 2.3065,
+          "state": 2
+        },
+        {
+          "difficulty": 7.392238132342694,
+          "due": "2026-01-03T12:20:00+00:00",
+          "lapses": 1,
+          "rating": 1,
+          "reps": 3,
+          "reviewed_at": "2026-01-03T12:10:00+00:00",
+          "stability": 0.6077016626638644,
+          "state": 3
+        },
+        {
+          "difficulty": 7.38007426350719,
+          "due": "2026-01-04T12:20:00+00:00",
+          "lapses": 1,
+          "rating": 3,
+          "reps": 4,
+          "reviewed_at": "2026-01-03T12:20:00+00:00",
+          "stability": 0.6597976257475758,
+          "state": 2
+        },
+        {
+          "difficulty": 7.3679225585405215,
+          "due": "2026-01-06T12:20:00+00:00",
+          "lapses": 1,
+          "rating": 3,
+          "reps": 5,
+          "reviewed_at": "2026-01-04T12:20:00+00:00",
+          "stability": 2.4892333541386376,
+          "state": 2
+        }
+      ]
+    },
+    {
+      "name": "hard_start",
+      "steps": [
+        {
+          "difficulty": 5.112170705601056,
+          "due": "2026-01-01T12:05:30+00:00",
+          "lapses": 0,
+          "rating": 2,
+          "reps": 1,
+          "reviewed_at": "2026-01-01T12:00:00+00:00",
+          "stability": 1.2931,
+          "state": 1
+        },
+        {
+          "difficulty": 6.7404595108297,
+          "due": "2026-01-01T12:11:00+00:00",
+          "lapses": 0,
+          "rating": 2,
+          "reps": 2,
+          "reviewed_at": "2026-01-01T12:05:30+00:00",
+          "stability": 1.2931,
+          "state": 1
+        },
+        {
+          "difficulty": 6.728947420615708,
+          "due": "2026-01-01T12:21:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 3,
+          "reviewed_at": "2026-01-01T12:11:00+00:00",
+          "stability": 1.3358997622047517,
+          "state": 1
+        },
+        {
+          "difficulty": 6.717446842491931,
+          "due": "2026-01-02T12:21:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 4,
+          "reviewed_at": "2026-01-01T12:21:00+00:00",
+          "stability": 1.3771622371865915,
+          "state": 2
+        }
+      ]
+    },
+    {
+      "name": "easy_chain",
+      "steps": [
+        {
+          "difficulty": 1.0,
+          "due": "2026-01-09T12:00:00+00:00",
+          "lapses": 0,
+          "rating": 4,
+          "reps": 1,
+          "reviewed_at": "2026-01-01T12:00:00+00:00",
+          "stability": 8.2956,
+          "state": 2
+        },
+        {
+          "difficulty": 1.0,
+          "due": "2026-03-16T12:00:00+00:00",
+          "lapses": 0,
+          "rating": 4,
+          "reps": 2,
+          "reviewed_at": "2026-01-09T12:00:00+00:00",
+          "stability": 65.62422616189994,
+          "state": 2
+        },
+        {
+          "difficulty": 1.0,
+          "due": "2027-04-17T12:00:00+00:00",
+          "lapses": 0,
+          "rating": 4,
+          "reps": 3,
+          "reviewed_at": "2026-03-16T12:00:00+00:00",
+          "stability": 396.7750233497581,
+          "state": 2
+        }
+      ]
+    },
+    {
+      "name": "mixed",
+      "steps": [
+        {
+          "difficulty": 2.118103970459016,
+          "due": "2026-01-01T12:10:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 1,
+          "reviewed_at": "2026-01-01T12:00:00+00:00",
+          "stability": 2.3065,
+          "state": 1
+        },
+        {
+          "difficulty": 7.394502741279718,
+          "due": "2026-01-01T12:11:00+00:00",
+          "lapses": 0,
+          "rating": 1,
+          "reps": 2,
+          "reviewed_at": "2026-01-01T12:10:00+00:00",
+          "stability": 0.7750839828558984,
+          "state": 1
+        },
+        {
+          "difficulty": 7.382336607835277,
+          "due": "2026-01-01T12:21:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 3,
+          "reviewed_at": "2026-01-01T12:11:00+00:00",
+          "stability": 0.8281648000472626,
+          "state": 1
+        },
+        {
+          "difficulty": 6.49286385458474,
+          "due": "2026-01-03T12:21:00+00:00",
+          "lapses": 0,
+          "rating": 4,
+          "reps": 4,
+          "reviewed_at": "2026-01-01T12:21:00+00:00",
+          "stability": 1.5156418705173513,
+          "state": 2
+        },
+        {
+          "difficulty": 7.657027963425812,
+          "due": "2026-01-07T12:21:00+00:00",
+          "lapses": 0,
+          "rating": 2,
+          "reps": 5,
+          "reviewed_at": "2026-01-03T12:21:00+00:00",
+          "stability": 4.017380056255911,
+          "state": 2
+        },
+        {
+          "difficulty": 7.644599304759225,
+          "due": "2026-01-17T12:21:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 6,
+          "reviewed_at": "2026-01-07T12:21:00+00:00",
+          "stability": 9.73889584091848,
+          "state": 2
+        }
+      ]
+    },
+    {
+      "name": "again_on_new",
+      "steps": [
+        {
+          "difficulty": 6.4133,
+          "due": "2026-01-01T12:01:00+00:00",
+          "lapses": 0,
+          "rating": 1,
+          "reps": 1,
+          "reviewed_at": "2026-01-01T12:00:00+00:00",
+          "stability": 0.212,
+          "state": 1
+        },
+        {
+          "difficulty": 8.806304468856837,
+          "due": "2026-01-01T12:02:00+00:00",
+          "lapses": 0,
+          "rating": 1,
+          "reps": 2,
+          "reviewed_at": "2026-01-01T12:01:00+00:00",
+          "stability": 0.08335671711031604,
+          "state": 1
+        },
+        {
+          "difficulty": 8.792726533684817,
+          "due": "2026-01-01T12:12:00+00:00",
+          "lapses": 0,
+          "rating": 3,
+          "reps": 3,
+          "reviewed_at": "2026-01-01T12:02:00+00:00",
+          "stability": 0.10314065007785231,
+          "state": 1
+        }
+      ]
+    }
+  ],
+  "start": "2026-01-01T12:00:00+00:00"
+}
