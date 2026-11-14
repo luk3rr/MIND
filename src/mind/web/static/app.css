@@ -1,0 +1,295 @@
+/*
+ * Filename: app.css
+ * Created on: November 14, 2026
+ * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+ *
+ * Design tokens: Alucard (light) and Dracula (dark). See design.md section 2.5.
+ */
+
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/static/vendor/fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-display: swap;
+  src: url("/static/vendor/fonts/inter-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 700;
+  font-display: swap;
+  src: url("/static/vendor/fonts/inter-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/static/vendor/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-weight: 700;
+  font-display: swap;
+  src: url("/static/vendor/fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2");
+}
+
+:root {
+  --bg: #fffbeb;
+  --surface: #e9e6d6;
+  --fg: #1f1f1f;
+  --muted: #5c5640;
+  --accent: #644ac9;
+  --on-accent: #fffbeb;
+  --ok: #14710a;
+  --warn: #8f4411;
+  --danger: #b8301f;
+  --info: #036a96;
+  --radius: 8px;
+  --sidebar-width: 15rem;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #282a36;
+    --surface: #343746;
+    --fg: #f8f8f2;
+    --muted: #b5bde0;
+    --accent: #bd93f9;
+    --on-accent: #282a36;
+    --ok: #50fa7b;
+    --warn: #ffb86c;
+    --danger: #ff8585;
+    --info: #8be9fd;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #282a36;
+  --surface: #343746;
+  --fg: #f8f8f2;
+  --muted: #b5bde0;
+  --accent: #bd93f9;
+  --on-accent: #282a36;
+  --ok: #50fa7b;
+  --warn: #ffb86c;
+  --danger: #ff8585;
+  --info: #8be9fd;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  font-variant-ligatures: common-ligatures;
+  font-feature-settings: "calt" 1, "liga" 1;
+}
+
+code,
+pre,
+.mono,
+.cloze {
+  font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-variant-ligatures: common-ligatures contextual;
+  font-feature-settings: "calt" 1, "liga" 1;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 3px solid var(--info);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: 0.5rem 1rem;
+  z-index: 10;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--surface);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar nav a,
+.ws-switcher a {
+  display: block;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+  color: var(--fg);
+  text-decoration: none;
+}
+.sidebar nav a:hover,
+.ws-switcher a:hover {
+  background: var(--bg);
+}
+.sidebar [aria-current] {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--accent);
+}
+.brand {
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+}
+.ws-switcher summary {
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.content {
+  padding: 2rem clamp(1rem, 4vw, 3rem);
+  max-width: 60rem;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 28rem;
+}
+
+input[type="text"] {
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--muted);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.btn,
+.btn-ghost {
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+}
+.btn {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.btn-danger {
+  background: var(--danger);
+  color: var(--bg);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--fg);
+  border-color: var(--muted);
+  margin-top: auto;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.alert {
+  border-left: 4px solid currentColor;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.alert-danger {
+  color: var(--danger);
+}
+.alert-warn {
+  color: var(--warn);
+}
+
+.math-error {
+  color: var(--danger);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding-bottom: 4.5rem;
+  }
+  .sidebar {
+    position: fixed;
+    inset: auto 0 0 0;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    z-index: 5;
+    overflow-x: auto;
+  }
+  .sidebar .brand {
+    display: none;
+  }
+  .sidebar nav ul {
+    display: flex;
+    gap: 0.25rem;
+  }
+  .sidebar nav a {
+    white-space: nowrap;
+    font-size: 0.85rem;
+  }
+  .btn-ghost {
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
