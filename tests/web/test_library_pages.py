@@ -2,8 +2,10 @@
 # Created on: November 14, 2026
 # Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
 
+import shutil
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.helpers import wait_for
@@ -169,8 +171,9 @@ def test_a_word_document_is_listed_with_its_type(ready: TestClient) -> None:
 
 
 def test_a_scanned_pdf_without_ocr_shows_the_install_hint(
-    ready: TestClient, tmp_path: Path
+    ready: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _name: None)  # as if Tesseract were not installed
     pdf = make_pdf(tmp_path / "scan.pdf", [""])
     workspace_id = new_workspace(ready)
     upload(ready, workspace_id, "scan.pdf", pdf.read_bytes())
