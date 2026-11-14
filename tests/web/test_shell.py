@@ -79,7 +79,7 @@ def test_responses_carry_security_headers(client: TestClient) -> None:
     response = client.get("/welcome")
     assert "default-src 'self'" in response.headers["content-security-policy"]
     assert response.headers["x-content-type-options"] == "nosniff"
-    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["referrer-policy"] == "same-origin"
 
 
 def test_static_assets_are_served_locally(client: TestClient) -> None:

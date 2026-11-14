@@ -36,6 +36,30 @@ def test_same_origin_post_is_accepted(client: TestClient) -> None:
     assert response.status_code == 303
 
 
+def test_browser_form_posts_with_a_null_origin_are_accepted_when_fetch_metadata_says_same_origin(
+    client: TestClient,
+) -> None:
+    headers = {"origin": "null", "sec-fetch-site": "same-origin"}
+    assert client.post("/workspaces", data={"name": "Biology"}, headers=headers).status_code == 303
+
+
+def test_a_null_origin_without_fetch_metadata_is_rejected(client: TestClient) -> None:
+    response = client.post("/workspaces", data={"name": "X"}, headers={"origin": "null"})
+    assert response.status_code == 403
+
+
+def test_cross_site_fetch_metadata_is_rejected_even_with_a_matching_origin(
+    client: TestClient,
+) -> None:
+    for site in ("cross-site", "same-site"):
+        headers = {"origin": "http://127.0.0.1:8000", "sec-fetch-site": site}
+        assert client.post("/workspaces", data={"name": "X"}, headers=headers).status_code == 403
+
+
+def test_pages_send_a_same_origin_referrer_policy(client: TestClient) -> None:
+    assert client.get("/welcome").headers["referrer-policy"] == "same-origin"
+
+
 def test_cross_origin_get_is_not_blocked(client: TestClient) -> None:
     response = client.get("/welcome", headers={"origin": "https://evil.example"})
     assert response.status_code == 200
