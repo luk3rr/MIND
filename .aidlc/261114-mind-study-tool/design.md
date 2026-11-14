@@ -1174,3 +1174,37 @@ flowchart LR
 ### Assumptions & open questions
 - A52: "Acerto" de cards usa a nota ≥ 2 (Difícil conta como acerto), como no cálculo de retenção do Anki; avaliar se vale separar "Difícil" se o resultado parecer otimista. (confirmed: no)
 - A53: Tópicos gerados pelo modelo podem ficar fragmentados (sinônimos); a mesclagem é a ferramenta para corrigir, e uma sugestão automática de mesclagem fica no backlog. (confirmed: no)
+
+### BOLT-4 — Notas de design das UNIT-8, UNIT-9 e UNIT-10
+
+Escritas sem gate por pedido do autor ("implemente até finalizar todo o bolt e eu reviso ao final"); as decisões abaixo são minhas e estão listadas como suposições (A54 a A62) para a revisão final. Migrações: `0008` (`material.source_url`, `generation_run.topic_id`) e `0009` (`chat_message`, `chunk_embedding`).
+
+#### UNIT-8 — OCR, URL e DOCX
+
+- **OCR (FR-3):** `OcrEngine` (Protocol) com `TesseractEngine`, que chama o executável `tesseract` por subprocesso (sem dependência Python): a página do PDF é renderizada em PNG a 200 dpi, e a saída TSV dá o texto e a confiança por palavra. Idiomas por `MIND_OCR_LANGS` (padrão `por+eng`), reduzidos aos idiomas realmente instalados (`tesseract --list-langs`). Uma página só passa por OCR se o texto nativo tiver menos de 20 caracteres, então PDFs mistos funcionam. A confiança do material é a média das confianças das páginas lidas por OCR; abaixo de 80% a Biblioteca mostra um alerta e a prévia do texto permite conferir. Sem Tesseract: PDF sem nenhum texto falha com `OCR_UNAVAILABLE` (HTTP 424) e instrução de instalação; PDF misto importa as páginas com texto e avisa quantas foram ignoradas.
+- **DOCX (FR-4):** `python-docx`; títulos (`Heading N`/`Título N`) viram seções com o caminho de títulos; parágrafos e linhas de tabela (células unidas por ` | `) viram texto. Arquivos protegidos ou corrompidos falham com `EXTRACTION_FAILED`.
+- **URL (FR-4):** por pedido explícito do usuário, o job baixa a página com `httpx` (apenas `http`/`https`, sem credenciais na URL, no máximo 5 redirecionamentos, 20 s, 5 MB, tipos `text/html`/`xhtml`/`text/plain`), guarda o HTML em `files/` (permite reindexar) e extrai o texto principal com `trafilatura` em Markdown, que reaproveita a divisão por títulos do Markdown. O título do material vem da página. `material.source_url` guarda o endereço. Falhas de rede, HTTP de erro, tipo inesperado ou página sem texto viram `EXTRACTION_FAILED` com a causa em português.
+- **Interface/API:** a Biblioteca ganha o campo de URL, aceita `.docx` e mostra o tipo (PDF, texto, Word, página web), a confiança do OCR e avisos; `POST /materials/url` (`{"url": ...}`, 202 com o job) complementa `POST /materials`.
+
+#### UNIT-9 — Treino dos pontos fracos
+
+- **Seleção (FR-17):** `StatsService.weakest_topics` (acerto combinado, mínimo de 5 respostas) já ordena os tópicos. O treino recebe um tópico e monta o material de geração com (1) os trechos-fonte dos itens do tópico que você errou (cards com "Errei" e questões respondidas de forma errada), depois (2) os melhores resultados BM25 pelo nome do tópico, sem repetição e limitados a 30 trechos.
+- **Geração:** o pedido ganha `topic_id` (sem `material_id`); o job usa esses trechos, força o tópico dos itens novos ao tópico treinado e informa ao modelo os enunciados que já existem no tópico (até 25) para não repetir. Continua passando por fonte exata, juiz (questões), duplicatas, revisão e limites. `generation_run.topic_id` registra o treino.
+- **Interface:** Hoje e Estatísticas listam os 3 tópicos mais fracos com o botão "Treinar", que **abre a tela Gerar já preenchida** (tópico, tipo e quantidade 10); nada é gerado até você clicar em Gerar. API: `GET /stats/weak-topics` e `topic_id` em `POST /generations` e na estimativa.
+
+#### UNIT-10 — Chat com a base e embeddings opcionais
+
+- **Chat (FR-18):** `ChatService` recupera trechos do workspace (BM25; com embeddings habilitados, fusão por RRF), pede ao modelo uma resposta estruturada `{answer, supported, citations[{chunk_id, quote}]}` em pt-BR usando só os trechos, e valida cada citação com o `SourceChecker`. Se não há trechos, o modelo diz que não há suporte ou nenhuma citação é válida, a resposta é "não encontrei suporte no material" (sem inventar). Só roda quando você envia uma pergunta, passa pelo `GuardedProvider` (consentimento, limite e custo) e é guardado em `chat_message` (pergunta, resposta, citações, custo). Cada pergunta é independente (sem memória de turnos anteriores no MVP).
+- **Embeddings (opcionais):** extra `mind[embeddings]` (`sentence-transformers`, `numpy`), **não instalado por padrão**. `Embedder` (Protocol) com `SentenceTransformerEmbedder` (carregamento tardio); vetores em `chunk_embedding(chunk_id, model, dim, vector)`; busca por similaridade de cosseno em memória (numpy) fundida ao BM25 por RRF. Habilitar é por workspace (`meta.embeddings = on`) e dispara um job que vetoriza os trechos existentes; novas importações vetorizam ao final. Sem o extra, a opção não aparece e o chat usa só BM25.
+- **Interface/API:** tela Chat (perguntas e respostas, citações como etiquetas que expandem a citação e levam à prévia do material); `POST /chat`, `GET /chat/messages`; `POST /embeddings/enable` e `GET /embeddings/status`.
+
+### Assumptions & open questions (BOLT-4)
+- A54: O Tesseract não está instalado nesta máquina; o OCR real só pode ser exercitado depois que você instalar (`sudo apt install tesseract-ocr tesseract-ocr-por`). Os testes usam um motor falso e há um teste real que é pulado sem o executável. (confirmed: no)
+- A55: 200 dpi e o limiar de 20 caracteres por página são valores iniciais; podem precisar de ajuste com seus PDFs escaneados. (confirmed: no)
+- A56: A importação por URL não bloqueia endereços privados ou locais, pois o app é local e a ação é sua; só aceita `http`/`https`. (confirmed: no)
+- A57: `trafilatura` extrai bem artigos e documentação, mas pode falhar em páginas que dependem de JavaScript. (confirmed: no)
+- A58: O treino usa os trechos dos itens que você errou como fonte principal, mais BM25 pelo nome do tópico; sem erros e sem nenhum trecho encontrado, o treino é recusado com uma mensagem. (confirmed: no)
+- A59: Enviar ao modelo os enunciados já existentes do tópico (até 25) aumenta um pouco o custo do prompt e reduz repetições. (confirmed: no)
+- A60: O chat não mantém memória entre perguntas no MVP. (confirmed: no)
+- A61: Os embeddings usam similaridade de cosseno em memória; para dezenas de milhares de trechos isso é suficiente, e o `sqlite-vec` do desenho original fica no backlog. (confirmed: no)
+- A62: O extra de embeddings não será instalado nem testado com um modelo real nesta execução (o `torch` é muito pesado); os testes usam um `Embedder` falso. (confirmed: no)

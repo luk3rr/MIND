@@ -16,3 +16,5 @@ Itens fora do MVP, registrados durante o discovery (1.4). Cada um pode virar um 
 | B-10 | Editar as alternativas de uma questão na revisão | 3.1 UNIT-6 | Hoje só enunciado, comentário e tópico |
 | B-11 | Sugerir a mesclagem de tópicos parecidos | 3.1 UNIT-7 | Comparar nomes normalizados ou usar embeddings (UNIT-10) |
 | B-12 | Estudar só os cards do caderno de erros com um filtro dedicado | 3.1 UNIT-7 | Hoje o seletor filtra por tópico, material e tipo |
+| B-13 | Busca vetorial com sqlite-vec no lugar da similaridade em memória | BOLT-4 A61 | Só vale com dezenas de milhares de trechos |
+| B-14 | Memória de conversa no chat | BOLT-4 A60 | Reescrever a pergunta com os turnos anteriores |
