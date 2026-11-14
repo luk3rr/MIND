@@ -15,6 +15,7 @@ from mind.ingestion.service import MaterialsFactory
 from mind.jobs.queue import JobQueue
 from mind.review.service import ReviewFactory
 from mind.services import Services
+from mind.study.service import StudyFactory
 from mind.workspaces.registry import WorkspaceRegistry
 
 
@@ -48,7 +49,13 @@ def get_review(request: Request) -> ReviewFactory:
     return factory
 
 
+def get_study(request: Request) -> StudyFactory:
+    factory: StudyFactory = request.app.state.study
+    return factory
+
+
 ServicesDep = Annotated[Services, Depends(get_services)]
+StudyDep = Annotated[StudyFactory, Depends(get_study)]
 GenerationDep = Annotated[GenerationFactory, Depends(get_generation)]
 ReviewDep = Annotated[ReviewFactory, Depends(get_review)]
 MaterialsDep = Annotated[MaterialsFactory, Depends(get_materials)]

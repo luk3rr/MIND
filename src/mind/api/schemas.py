@@ -217,3 +217,56 @@ class ReviewOut(BaseModel):
     approved: int
     discarded: int
     skipped: int
+
+
+class StudyCardOut(BaseModel):
+    item: ItemOut
+    is_new: bool
+    state: int | None = Field(
+        default=None, description="FSRS state: 1 learning, 2 review, 3 relearning."
+    )
+    due: datetime | None = None
+    front_display: str = Field(description="What the front shows (cloze gaps appear as [...]).")
+    back_display: str
+    intervals: dict[int, str] = Field(description="Label of the next interval per rating (1-4).")
+
+
+class RatingIn(BaseModel):
+    item_id: int
+    rating: int = Field(ge=1, le=4, description="1 again, 2 hard, 3 good, 4 easy.")
+    duration_ms: int | None = Field(default=None, ge=0)
+
+
+class RatingOut(BaseModel):
+    item_id: int
+    state: int
+    due: datetime
+    reps: int
+    lapses: int
+
+
+class UndoOut(BaseModel):
+    item_id: int | None = Field(description="The card whose rating was undone, or null.")
+
+
+class StudySummaryOut(BaseModel):
+    learning: int
+    review: int
+    new_available: int
+    reviewed_today: int
+    new_studied_today: int
+    to_study: int
+    daily_goal: int
+    new_per_day: int
+
+
+class StudySettingsOut(BaseModel):
+    new_per_day: int
+    daily_goal: int
+    desired_retention: float
+
+
+class StudySettingsPatch(BaseModel):
+    new_per_day: int | None = None
+    daily_goal: int | None = None
+    desired_retention: float | None = None
