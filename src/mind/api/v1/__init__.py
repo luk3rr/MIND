@@ -6,8 +6,10 @@
 
 from fastapi import APIRouter
 
-from mind.api.v1 import jobs, workspaces
+from mind.api.v1 import costs, jobs, settings, workspaces
 
 router = APIRouter(prefix="/v1")
 router.include_router(workspaces.router)
 router.include_router(jobs.router)
+router.include_router(settings.router)
+router.include_router(costs.router)

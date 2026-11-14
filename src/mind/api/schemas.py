@@ -49,3 +49,55 @@ class Problem(BaseModel):
     detail: str = ""
     instance: str = ""
     errors: list[FieldErrorOut] = []
+
+
+class SettingsOut(BaseModel):
+    """Provider settings. The API key is never part of any response."""
+
+    provider: str
+    generation_model: str
+    judge_model: str
+    monthly_limit_usd: float
+    key_configured: bool
+    key_source: str | None = Field(default=None, description="environment, file or null.")
+    consent_given: bool
+
+
+class SettingsPatch(BaseModel):
+    provider: str | None = None
+    generation_model: str | None = None
+    judge_model: str | None = None
+    monthly_limit_usd: float | None = None
+
+
+class ConsentIn(BaseModel):
+    accepted: bool
+
+
+class CostLineOut(BaseModel):
+    at: datetime
+    provider: str
+    model: str
+    purpose: str
+    prompt_tokens: int
+    completion_tokens: int
+    cost_usd: float
+
+
+class CostsOut(BaseModel):
+    month: str = Field(description="YYYY-MM")
+    total_usd: float
+    limit_usd: float
+    entries: list[CostLineOut]
+
+
+class EstimateIn(BaseModel):
+    model: str
+    prompt_chars: int = Field(ge=0)
+    max_completion_tokens: int = Field(ge=0)
+
+
+class EstimateOut(BaseModel):
+    estimated_usd: float | None = Field(
+        description="Null when the model price is unknown (refresh the catalog)."
+    )
