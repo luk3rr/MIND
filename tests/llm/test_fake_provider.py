@@ -59,3 +59,13 @@ async def test_unscripted_schema_is_a_provider_error() -> None:
 
 def test_fake_provider_does_not_require_consent() -> None:
     assert FakeProvider().requires_consent is False
+
+
+async def test_latency_delays_the_answer() -> None:
+    import time
+
+    provider = FakeProvider(latency=0.05)
+    provider.script(Answer, Answer(text="slow"))
+    started = time.perf_counter()
+    await provider.complete(MESSAGES, Answer, model="m")
+    assert time.perf_counter() - started >= 0.05

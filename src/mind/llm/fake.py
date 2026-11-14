@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
@@ -32,6 +33,7 @@ class FakeProvider:
     name: str = "fake"
     requires_consent: bool = False
     usage: Usage = field(default_factory=lambda: Usage(prompt_tokens=10, completion_tokens=5))
+    latency: float = 0.0
     calls: list[Call] = field(default_factory=list)
     _handlers: dict[type[BaseModel], Handler] = field(default_factory=dict)
 
@@ -52,6 +54,8 @@ class FakeProvider:
         max_retries: int = 2,
     ) -> tuple[T, Usage]:
         self.calls.append(Call(list(messages), schema, model))
+        if self.latency:
+            await asyncio.sleep(self.latency)
         handler = self._handlers.get(schema)
         if handler is None:
             raise ProviderError(f"No scripted response for {schema.__name__}.")

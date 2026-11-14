@@ -63,5 +63,5 @@ class GuardedProvider:
         parsed, usage = await self._inner.complete(
             messages, schema, model=model, max_retries=max_retries
         )
-        self._ledger.record(self._inner.name, model, purpose, usage)
-        return parsed, usage
+        cost = self._ledger.record(self._inner.name, model, purpose, usage)
+        return parsed, usage.model_copy(update={"cost_usd": cost})

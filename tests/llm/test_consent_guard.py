@@ -99,3 +99,16 @@ def test_consent_can_be_given_checked_and_revoked(
     consent.revoke("openrouter")
     consent.revoke("openrouter")
     assert consent.is_given("openrouter") is False
+
+
+async def test_the_returned_usage_carries_the_recorded_cost(
+    app_sessions: sessionmaker[Session], secrets: SecretStore
+) -> None:
+    guarded, inner, consent, _, _ = build(app_sessions, secrets)
+    consent.give("openrouter")
+    inner.usage = Usage(prompt_tokens=5, completion_tokens=5)  # cost not reported by the provider
+    _, usage = await guarded.complete(MESSAGES, Answer, model="unpriced/model")
+    assert usage.cost_usd == 0.0
+    inner.usage = Usage(prompt_tokens=5, completion_tokens=5, cost_usd=0.4)
+    _, usage = await guarded.complete(MESSAGES, Answer, model="m")
+    assert usage.cost_usd == 0.4
