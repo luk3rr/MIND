@@ -11,3 +11,5 @@ Itens fora do MVP, registrados durante o discovery (1.4). Cada um pode virar um 
 | B-5 | Detector de duplicatas entre materiais | Ideias iniciais | Embeddings ou hash de texto |
 | B-6 | Perfis de prova configuráveis (estilos de questão: Certo/Errado, múltipla escolha, discursiva) | 1.1 (produto genérico) | Pode ser parte de S-2 como configuração de prompt |
 | B-7 | Operações: empacotamento Docker, release e documentação para open source | 1.1 (SM-3) | Fora do perfil mvp (sem fase Operations); tratar em intent próprio |
+| B-8 | Editar o card durante o estudo (tecla `E`) | 3.1 UNIT-5 | Reaproveitar o formulário de edição da Revisão |
+| B-9 | Otimização dos parâmetros do FSRS por usuário | 3.1 UNIT-5 | Pacote opcional `fsrs[optimizer]` (torch) é pesado; avaliar depois |

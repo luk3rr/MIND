@@ -973,3 +973,73 @@ sequenceDiagram
 - A43: Escrever sempre em pt-BR com material em outro idioma exige traduzir a ideia mantendo a citação original; a qualidade dessa tradução entra na medição de SM-1 e pode levar a uma opção "mesmo idioma do material". (confirmed: yes, escolha do autor)
 - A44: 5 cards por lote, 6 000 caracteres por lote e 150 tokens de saída por card são valores iniciais a calibrar na medição do BOLT-2. (confirmed: no)
 - A45: O texto do card em pt-BR com citação em inglês torna a conferência da fonte mais lenta para o revisor; a tela mostra o trecho original ao lado para compensar. (confirmed: no)
+
+### UNIT-5 — Estudo com FSRS e tela Hoje
+
+Decisões confirmadas: [src: Q38–Q39] 20 cards novos por dia por padrão; o "dia de estudo" vira às **04:00** (estudar de madrugada ainda conta para o dia anterior).
+
+**Estrutura:** `src/mind/study/` (`scheduler.py` com o `Scheduler`, `service.py` com `StudyService`, `rendering.py` com os lados do card), `web/study_pages.py`, `static/study.js`, `api/v1/study.py`. Dependência nova: `fsrs` (MIT, py-fsrs 6.x).
+
+```mermaid
+stateDiagram-v2
+    [*] --> Novo: card aprovado
+    Novo --> Aprendendo: 1ª avaliação (passos 1 min e 10 min)
+    Aprendendo --> Revisão: Bom no último passo
+    Aprendendo --> Aprendendo: Errei volta ao 1º passo
+    Revisão --> Reaprendendo: Errei (lapso)
+    Reaprendendo --> Revisão: Bom
+    Revisão --> Revisão: Difícil, Bom ou Fácil (novo intervalo FSRS)
+```
+
+**Entidades em `workspace.db`** (migração `0005`): `card_state(item_id PK→CASCADE, fsrs_json, due, state, reps, lapses, updated_at)` com índice em `due`; `review_log(id, item_id→CASCADE, rating 1–4, reviewed_at, previous_state_json, duration_ms, day)` com índice em `day`, onde `day` é o dia de estudo (data com virada às 04:00). Os parâmetros por workspace ficam na tabela `meta` já existente: `new_per_day` (padrão 20), `daily_goal` (padrão 40, usado na UNIT-7) e `desired_retention` (padrão 0,90).
+
+**Regras e comportamentos**
+- **Agendamento:** `Scheduler` encapsula `fsrs.Scheduler` (parâmetros padrão, passos de aprendizado de 1 e 10 min, `enable_fuzzing` ligado) atrás de uma interface própria (`review(state, rating, now) -> state`, `preview(state, now) -> intervalos por nota`); o estado do cartão é guardado como JSON do `fsrs.Card`.
+- **Fila do dia (`StudyService.next_card`):** ordem fixa: (1) cards **vencidos** (`due ≤ agora + 20 min`, a "janela de aprendizado", para que um "Errei" com retorno em 1 min volte na mesma sessão), do mais atrasado ao mais recente; (2) cards **novos** (itens `approved`, kind `card`, sem `card_state`), por ordem de aprovação, limitados a `new_per_day − novos já estudados hoje`. Sem cards a mostrar: sessão encerrada.
+- **Avaliar:** `Errei=1`, `Difícil=2`, `Bom=3`, `Fácil=4`. Grava o novo estado e um `review_log` com o estado anterior (para desfazer). `Z`/botão desfazer restaura o estado anterior do último `review_log` do dia e o apaga; só a última avaliação pode ser desfeita.
+- **Prévia de intervalos:** cada botão mostra o intervalo previsto ("1 min", "10 min", "3 d", "2 sem", "4 meses"), calculado sem gravar.
+- **Lados do card (`study/rendering.py`):** `qa`: frente = pergunta, verso = resposta; `cloze`: a frente mostra `[…]` no lugar de cada lacuna e o verso mostra a frase com as respostas em destaque mais o comentário opcional; `compare`: frente "X vs Y", verso com a tabela/lista em texto preservando quebras; `true_false`: frente = afirmação, verso = veredito e explicação. Fórmulas em LaTeX passam pelo KaTeX (FR-23). O verso fica no DOM escondido e é revelado no cliente.
+- **Interface** (`/w/{id}/study`): um card por vez; `Espaço` (ou botão) revela; `1`–`4` avaliam (ou botões); `Z` desfaz; a fonte (título e página) aparece após revelar; rodapé com os atalhos; ao fim, resumo da sessão (avaliados, tempo, distribuição das notas). A avaliação e o desfazer são requisições HTMX que devolvem o próximo card (fragmento `#study-card`). O script `study.js` só liga atalhos de teclado e a revelação; sem ele os botões continuam funcionando (a revelação também tem um botão que recarrega o fragmento com o verso visível).
+- **Tela Hoje** (`/w/{id}/today`): cards a revisar, novos disponíveis hoje, avaliados hoje, meta do dia com barra (a edição da meta vem na UNIT-7), botão "Estudar agora", mensagens de estado vazio ("tudo em dia", "meta atingida", "workspace sem cards"); o passo 3 do assistente de primeiro uso (importar material) aparece enquanto não houver material.
+- **API:** `GET /study/queue?limit=` (próximos cards com os lados e as prévias), `POST /study/reviews` (`item_id`, `rating`), `POST /study/reviews/undo`, `GET /study/summary` (vencidos, novos, avaliados hoje).
+- **Sem rede:** nenhuma rota de estudo usa o provedor, o catálogo de preços nem a rede.
+
+**Fluxo: avaliar um card**
+
+```mermaid
+sequenceDiagram
+    participant U as Navegador
+    participant W as web/study_pages
+    participant S as StudyService
+    participant F as Scheduler (fsrs)
+    participant D as workspace.db
+    U->>W: POST /study/rate (item, nota)
+    W->>S: rate(item, nota)
+    S->>D: lê card_state (ou cria um novo)
+    S->>F: review(estado, nota, agora)
+    F-->>S: novo estado e vencimento
+    S->>D: grava card_state e review_log
+    S->>S: next_card()
+    S-->>W: próximo card ou fim da sessão
+    W-->>U: fragmento #study-card
+```
+
+**NFR e mecanismos**
+
+| NFR | Mecanismo | Verificação |
+|---|---|---|
+| NFR-3 | Consultas indexadas (`due`, `day`), um card por requisição, nada de IA | `tests/perf/test_ui_latency.py` (`perf`): p95 < 300 ms com 1 000 cards |
+| NFR-5 | Estudo e Hoje sem rede | `tests/study/test_offline.py`: provedor que falha, rotas de estudo seguem funcionando |
+| NFR-11 | Foco visível, atalhos documentados na tela, botões equivalentes, `aria-live` na troca de card | `tests/web/test_study_pages.py` |
+
+**Decisões de implementação**
+- A virada de 04:00 usa o fuso horário local do sistema; a função `study_day(moment)` é pura e testada nos limites (03:59 e 04:00) e na mudança de horário de verão.
+- O desfazer exige o `previous_state_json`; avaliações antigas sem esse campo não são desfeitas.
+- A edição de card durante o estudo (tecla `E` do mockup 2.5) fica fora desta Unit; registrado no backlog.
+
+**Critérios de aceitação → comportamento:** US-7 AC1 (Espaço e 1–4 revelam e avaliam; próximo aparece) ← `study.js` + `/study/rate`; US-7 AC2 (próxima data segue o FSRS) ← `Scheduler`.
+
+### Assumptions & open questions
+- A46: Os parâmetros padrão do FSRS (21 pesos) bastam sem otimização por usuário; a otimização fica no backlog. (confirmed: no)
+- A47: A janela de aprendizado de 20 minutos e os passos de 1 e 10 minutos seguem os padrões do py-fsrs e do Anki. (confirmed: no)
+- A48: A tecla `E` (editar) do mockup 2.5 e o conflito de atalhos A22 deixam de valer nesta Unit, pois não há edição durante o estudo; o conflito volta a existir na UNIT-6 (questões). (confirmed: no)
