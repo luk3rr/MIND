@@ -13,6 +13,7 @@ from fastapi import Depends, Request
 from mind.generation.service import GenerationFactory
 from mind.ingestion.service import MaterialsFactory
 from mind.jobs.queue import JobQueue
+from mind.practice.service import PracticeFactory
 from mind.review.service import ReviewFactory
 from mind.services import Services
 from mind.study.service import StudyFactory
@@ -54,7 +55,13 @@ def get_study(request: Request) -> StudyFactory:
     return factory
 
 
+def get_practice(request: Request) -> PracticeFactory:
+    factory: PracticeFactory = request.app.state.practice
+    return factory
+
+
 ServicesDep = Annotated[Services, Depends(get_services)]
+PracticeDep = Annotated[PracticeFactory, Depends(get_practice)]
 StudyDep = Annotated[StudyFactory, Depends(get_study)]
 GenerationDep = Annotated[GenerationFactory, Depends(get_generation)]
 ReviewDep = Annotated[ReviewFactory, Depends(get_review)]

@@ -12,6 +12,7 @@ from mind.api.v1 import (
     items,
     jobs,
     materials,
+    practice,
     settings,
     study,
     workspaces,
@@ -24,5 +25,6 @@ router.include_router(materials.router)
 router.include_router(generations.router)
 router.include_router(items.router)
 router.include_router(study.router)
+router.include_router(practice.router)
 router.include_router(settings.router)
 router.include_router(costs.router)

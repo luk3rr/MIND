@@ -139,8 +139,14 @@ class SearchHitOut(BaseModel):
 
 class GenerationIn(BaseModel):
     material_id: int
-    subtype: str = Field(description="qa, cloze, compare or true_false.")
-    quantity: int = Field(default=20, description="1 to 60.")
+    kind: str = Field(default="card", description="card or question.")
+    subtype: str = Field(
+        description=(
+            "Cards: qa, cloze, compare or true_false. "
+            "Questions (exam profile): certo_errado, multiple_choice_4 or multiple_choice_5."
+        )
+    )
+    quantity: int = Field(default=20, description="1 to 60 cards or 1 to 30 questions.")
     page_from: int | None = None
     page_to: int | None = None
 
@@ -170,6 +176,7 @@ class RunOut(BaseModel):
     discarded_no_source: int
     discarded_invalid: int
     discarded_duplicate: int
+    discarded_unsupported: int = Field(description="Questions the judge did not support.")
     approved: int
     approved_unedited: int
     discarded_review: int
@@ -181,6 +188,12 @@ class RunOut(BaseModel):
     job_id: int | None = Field(default=None, description="Follow it under /jobs.")
     created_at: datetime
     finished_at: datetime | None = None
+
+
+class ItemOptionOut(BaseModel):
+    key: str
+    text: str
+    why: str = ""
 
 
 class ItemOut(BaseModel):
@@ -200,6 +213,8 @@ class ItemOut(BaseModel):
     origin: str
     created_at: datetime
     approved_at: datetime | None = None
+    options: list[ItemOptionOut] = Field(default_factory=list, description="Questions only.")
+    answer: str | None = Field(default=None, description="Questions only: the correct key.")
 
 
 class ItemEdit(BaseModel):
@@ -284,3 +299,43 @@ class StudyFacetsOut(BaseModel):
     subtypes: list[FacetOut]
     cards: int
     questions: int
+
+
+class PracticeOptionOut(BaseModel):
+    key: str
+    text: str
+
+
+class PracticeQuestionOut(BaseModel):
+    """A question as shown while practising: no answer and no explanations."""
+
+    id: int
+    subtype: str
+    statement: str
+    options: list[PracticeOptionOut]
+    topic: str | None = None
+    attempts: int
+    last_correct: bool | None = Field(description="Null while never answered.")
+
+
+class AnswerIn(BaseModel):
+    item_id: int
+    answer: str = Field(description="The key of the chosen option (A-E, or C and E).")
+    duration_seconds: float | None = Field(default=None, ge=0)
+
+
+class AnswerOut(BaseModel):
+    correct: bool
+    answer: str
+    correct_key: str
+    explanation: str
+    options: list[ItemOptionOut]
+    attempt_id: int
+
+
+class PracticeSummaryOut(BaseModel):
+    unseen: int
+    retry: int
+    to_practice: int
+    answered_today: int
+    correct_today: int

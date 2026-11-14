@@ -31,6 +31,7 @@ def to_out(info: RunInfo) -> RunOut:
 def to_request(body: GenerationIn) -> GenerationRequest:
     return GenerationRequest(
         material_id=body.material_id,
+        kind=body.kind,
         subtype=body.subtype,
         quantity=body.quantity,
         page_from=body.page_from,
