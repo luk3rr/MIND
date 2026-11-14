@@ -1,0 +1,31 @@
+# Filename: release.yml
+# Created on: November 14, 2026
+# Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: sudo apt-get update && sudo apt-get install -y lintian desktop-file-utils
+      - run: pnpm package
+      - run: scripts/verify-deb.sh
+      - name: Publish the .deb as the latest release
+        run: gh release create "$GITHUB_REF_NAME" dist/mind_amd64.deb --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

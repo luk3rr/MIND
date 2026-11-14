@@ -24,14 +24,15 @@ repetição espaçada (FSRS).
 
 ## Instalação
 
-Baixe o `mind-study_<versão>_amd64.deb` e instale no Debian, Ubuntu ou derivados:
+Instale ou atualize com um comando, direto da última release:
 
 ```bash
-sudo apt install ./mind-study_0.1.0_amd64.deb
+curl -fL -o /tmp/mind.deb https://github.com/luk3rr/MIND/releases/latest/download/mind_amd64.deb && sudo apt install -y /tmp/mind.deb
 ```
 
-O MIND aparece no menu de aplicativos. Remover o pacote (`sudo apt remove mind-study`) nunca apaga
-os seus dados. Para gerar o pacote você mesmo, veja [Desenvolvimento](#desenvolvimento).
+O mesmo comando serve para instalar e para atualizar (Debian, Ubuntu e derivados). Seus dados em
+`~/.config/mind/` não são alterados. Depois, abra o **MIND** pelo menu de aplicativos. Remover o
+pacote (`sudo apt remove mind`) também não apaga os seus dados.
 
 ## Primeiros passos
 
@@ -57,37 +58,6 @@ custos e consentimento), uma pasta por workspace com o `workspace.db` e os arqui
 caches dos dados de OCR e do modelo de busca. A chave de API fica cifrada em um arquivo com
 permissão `0600`. Exporte um workspace para `.zip` (e importe em outra máquina) pelo menu do
 workspace.
-
-## Desenvolvimento
-
-Requisitos: Node.js 22+ e [pnpm](https://pnpm.io) 10 (`corepack enable` instala).
-
-```bash
-pnpm install
-pnpm dev                 # roda o app com recarga automática
-pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage
-pnpm e2e                 # testes de ponta a ponta (Playwright com Electron; precisa de tela ou xvfb)
-pnpm package             # gera o .deb em dist/ (verificação precisa de lintian e desktop-file-utils)
-scripts/verify-deb.sh    # confere metadados, conteúdo, limites de tamanho e lintian
-```
-
-O código é um pacote único:
-
-| Pasta          | O que contém                                                                                                                              |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/core`     | A lógica do aplicativo, sem depender do Electron: SQLite e Drizzle, importação, geração, verificação, estudo, estatísticas, chat e backup |
-| `src/main`     | O processo principal do Electron: janela, diálogos nativos, roteador IPC tipado e workers                                                 |
-| `src/preload`  | A ponte mínima e validada exposta à janela                                                                                                |
-| `src/renderer` | A interface em React (Vite): páginas, componentes e tokens de design                                                                      |
-| `tests/e2e`    | Testes do app inteiro, também executados contra o `.deb` instalado                                                                        |
-| `fixtures`     | Valores de referência congelados da versão original em Python (veja o README da pasta)                                                    |
-
-A janela conversa com o núcleo por um único canal IPC, com esquemas compartilhados (zod); não há
-servidor HTTP. Segurança: isolamento de contexto, sandbox, CSP estrita, navegação bloqueada e nenhum
-acesso ao Node no renderer.
-
-O MIND foi escrito primeiro em Python; essa implementação continua no histórico do git, na tag
-`legacy-python`.
 
 ## Licença
 

@@ -2,7 +2,7 @@
 # Created on: November 14, 2026
 # Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
 
-appId: io.github.mind-study
+appId: io.github.mind
 productName: MIND
 executableName: mind
 copyright: AGPL-3.0-or-later
@@ -59,9 +59,10 @@ linux:
       StartupWMClass: mind
 
 deb:
-  packageName: mind-study
+  packageName: mind
+  artifactName: mind_${arch}.${ext}
   compression: xz
   priority: optional
   packageCategory: education
   fpm:
-    - build/copyright=/usr/share/doc/mind-study/copyright
+    - build/copyright=/usr/share/doc/mind/copyright

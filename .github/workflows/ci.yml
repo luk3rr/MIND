@@ -56,7 +56,7 @@ jobs:
         run: scripts/verify-deb.sh
       - name: Install the package
         run: |
-          sudo apt-get install -y ./dist/mind-study_*_amd64.deb
+          sudo apt-get install -y ./dist/mind_amd64.deb
           test -x /usr/bin/mind
           test -f /usr/share/applications/mind.desktop
       - name: End-to-end tests against the installed app
@@ -65,13 +65,13 @@ jobs:
         run: |
           mkdir -p "$HOME/.config/mind"
           echo keep > "$HOME/.config/mind/keep.txt"
-          sudo apt-get install -y --reinstall ./dist/mind-study_*_amd64.deb
+          sudo apt-get install -y --reinstall ./dist/mind_amd64.deb
           test -f "$HOME/.config/mind/keep.txt"
-          sudo apt-get remove -y mind-study
+          sudo apt-get remove -y mind
           test ! -e /usr/bin/mind
           test ! -e /opt/MIND
           test -f "$HOME/.config/mind/keep.txt"
       - uses: actions/upload-artifact@v4
         with:
-          name: mind-study-deb
+          name: mind-deb
           path: dist/*.deb

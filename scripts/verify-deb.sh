@@ -8,7 +8,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEB="${1:-$(ls "$ROOT"/dist/mind-study_*_amd64.deb | head -n 1)}"
+DEB="${1:-$(ls "$ROOT"/dist/mind_amd64.deb | head -n 1)}"
 MAX_DEB_MB=500
 MAX_INSTALLED_MB=1024
 failures=0
@@ -27,7 +27,7 @@ contents="$(dpkg-deb -c "$DEB")"
 version="$(node -p "require('$ROOT/package.json').version")"
 
 # --- Metadata -----------------------------------------------------------------------------
-[[ "$(field Package)" == "mind-study" ]] && ok "package name" || fail "package name is $(field Package)"
+[[ "$(field Package)" == "mind" ]] && ok "package name" || fail "package name is $(field Package)"
 [[ "$(field Architecture)" == "amd64" ]] && ok "architecture amd64" || fail "architecture is $(field Architecture)"
 [[ "$(field Version)" == "$version" ]] && ok "version $version" || fail "version $(field Version) != $version"
 [[ -n "$(field Maintainer)" ]] && ok "maintainer set" || fail "missing maintainer"
@@ -44,7 +44,7 @@ require "./opt/MIND/chrome-sandbox$"
 require "./opt/MIND/resources/app.asar$"
 require "./opt/MIND/resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/linux-x64.node$"
 require "./usr/share/applications/mind.desktop$"
-require "./usr/share/doc/mind-study/copyright$"
+require "./usr/share/doc/mind/copyright$"
 for size in 16 32 48 64 128 256 512; do
   require "./usr/share/icons/hicolor/${size}x${size}/apps/mind.png$"
 done
