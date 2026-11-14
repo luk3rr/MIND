@@ -7,5 +7,6 @@
 {% block title %}{{ t.study_title }} · {{ workspace.name }} · {{ app_name }}{% endblock %}
 {% block content %}
 <h1>{{ t.study_title }}</h1>
+{% include "_study_filter.html" %}
 {% include "_study_done.html" %}
 {% endblock %}

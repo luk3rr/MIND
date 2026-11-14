@@ -7,6 +7,7 @@
 {% block title %}{{ t.study_title }} · {{ workspace.name }} · {{ app_name }}{% endblock %}
 {% block content %}
 <h1>{{ t.study_title }}</h1>
+{% include "_study_filter.html" %}
 {% include "_study_card.html" %}
 <p class="muted">{{ t.study_shortcuts }}</p>
 <script src="/static/study.js" defer></script>

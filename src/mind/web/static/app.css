@@ -388,6 +388,15 @@ html:not(.js) .study-back[hidden] {
   font-weight: 700;
 }
 
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+.study-filter {
+  max-width: 60rem;
+}
+
 .muted {
   color: var(--muted);
 }

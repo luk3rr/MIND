@@ -5,7 +5,7 @@
 #}
 <section id="study-card" class="card study" aria-live="polite">
   <h2>{{ t.study_done_title }}</h2>
-  <p>{{ t.study_done_text }}</p>
+  <p>{% if selection and not selection.is_empty %}{{ t.study_done_filtered }}{% else %}{{ t.study_done_text }}{% endif %}</p>
   <p class="muted">{{ t.study_done_summary }}: {{ counts.reviewed_today }}</p>
   {% if distribution %}
   <p class="muted">{{ t.study_distribution }}:

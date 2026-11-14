@@ -24,6 +24,7 @@
         hx-post="/w/{{ workspace_id }}/study/rate" hx-target="#study-card" hx-swap="outerHTML">
     <input type="hidden" name="item_id" value="{{ card.item.id }}">
     <input type="hidden" name="elapsed_ms" value="">
+    {% for key, value in filter_params.items() %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
     {% for number, name in ratings %}
     <button class="btn rating rating-{{ name }}" type="submit" name="rating" value="{{ number }}">
       <span class="rating-label">{{ number }} · {{ t['study_' ~ name] }}</span>
@@ -32,6 +33,7 @@
     {% endfor %}
   </form>
   <form method="post" action="/w/{{ workspace_id }}/study/undo" hx-post="/w/{{ workspace_id }}/study/undo" hx-target="#study-card" hx-swap="outerHTML">
+    {% for key, value in filter_params.items() %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
     <button id="undo" class="btn btn-ghost" type="submit">{{ t.study_undo }}</button>
   </form>
 </section>

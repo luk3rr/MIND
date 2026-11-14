@@ -260,7 +260,6 @@ Como estudante, quero questões Certo/Errado ou de múltipla escolha com gabarit
 Como estudante, quero estudar os cards vencidos um por vez com atalhos ou botões, para revisar no momento certo.
 - AC1: Dado a fila, quando pressiono Espaço e depois 1–4, então o card é revelado e avaliado e o próximo aparece.
 - AC2: Dado um card avaliado, quando consulto o agendamento, então a próxima data segue o FSRS.
-
 - AC3 (adição de 2026-11-14, a pedido do autor): Dado que quero estudar só um assunto, quando escolho o conteúdo (flashcards, questões ou tudo), o tópico, o material ou o tipo de card, então a sessão mostra apenas os itens desse recorte, sem alterar o limite diário de novos.
 
 #### US-8 Responder questões (FR-14) · Estudante

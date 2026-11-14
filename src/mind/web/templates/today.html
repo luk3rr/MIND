@@ -36,7 +36,7 @@
   <p class="muted">{{ counts.reviewed_today }} / {{ goal }}{% if goal_met %} · {{ t.today_goal_met }}{% endif %}</p>
 </section>
 {% if counts.to_study %}
-<p><a class="btn" href="/w/{{ workspace.id }}/study">{{ t.today_study_now }} ({{ counts.to_study }})</a></p>
+<p><a class="btn" href="/w/{{ workspace.id }}/study">{{ t.today_study_now }} ({{ counts.to_study }})</a> <a class="btn btn-ghost" href="/w/{{ workspace.id }}/study#f-kind">{{ t.study_choose }}</a></p>
 {% else %}
 <p class="muted">{{ t.today_all_done }}</p>
 {% endif %}
