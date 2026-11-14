@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
@@ -81,9 +82,9 @@ class CardGenerator:
         count: int,
         chunks: list[SourceChunk],
         model: str,
-        remaining: int,
+        remaining: Callable[[], int],
     ) -> BatchOutcome:
-        """Ask for `count` cards, then store at most `remaining` valid ones as drafts."""
+        """Ask for `count` cards, then store as many valid drafts as `remaining()` still allows."""
         prompt_chunks = [PromptChunk(c.id, c.label, c.text) for c in chunks]
         messages = build_card_messages(subtype, count, prompt_chunks)
         batch, usage = await self._provider.complete(
@@ -91,7 +92,7 @@ class CardGenerator:
         )
         outcome = BatchOutcome(cost_usd=usage.cost_usd or 0.0)
         # No `await` below: validation and storage run atomically with respect to other batches.
-        self._store(run_id, subtype, batch.cards, {c.id: c for c in chunks}, remaining, outcome)
+        self._store(run_id, subtype, batch.cards, {c.id: c for c in chunks}, remaining(), outcome)
         return outcome
 
     def _store(

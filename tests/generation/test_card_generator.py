@@ -48,7 +48,7 @@ async def run_batch(
         count=len(cards),
         chunks=[rig.chunk],
         model="vendor/m",
-        remaining=remaining,
+        remaining=lambda: remaining,
     )
 
 
