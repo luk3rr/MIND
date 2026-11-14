@@ -103,10 +103,14 @@ class EstimateOut(BaseModel):
     )
 
 
+class UrlIn(BaseModel):
+    url: str = Field(description="An http or https address.")
+
+
 class MaterialOut(BaseModel):
     id: int
     title: str
-    kind: str = Field(description="pdf or text.")
+    kind: str = Field(description="pdf, text, docx or url.")
     filename: str
     status: str = Field(description="queued, importing, indexed or failed.")
     page_count: int | None = None
@@ -114,8 +118,11 @@ class MaterialOut(BaseModel):
     ocr_confidence: float | None = None
     job_id: int | None = Field(default=None, description="Import job; follow it under /jobs.")
     error_code: str | None = None
-    error_detail: str | None = None
+    error_detail: str | None = Field(
+        default=None, description="The failure reason, or a note on an indexed material."
+    )
     created_at: datetime
+    source_url: str | None = None
 
 
 class ChunkOut(BaseModel):

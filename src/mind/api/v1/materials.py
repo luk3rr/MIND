@@ -11,7 +11,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Query, Response, UploadFile
 
 from mind.api.deps import MaterialsDep, Registry
-from mind.api.schemas import ChunkOut, MaterialOut, Problem, SearchHitOut
+from mind.api.schemas import ChunkOut, MaterialOut, Problem, SearchHitOut, UrlIn
 from mind.ingestion.service import MaterialInfo
 from mind.retrieval.retriever import Bm25Retriever
 
@@ -34,7 +34,7 @@ def to_out(info: MaterialInfo) -> MaterialOut:
         **NOT_FOUND,
         415: {"model": Problem, "description": "Unsupported format or file too large."},
     },
-    summary="Import a material (PDF, Markdown or text)",
+    summary="Import a material (PDF, Word, Markdown or text)",
 )
 async def import_material(
     workspace_id: int,
@@ -45,6 +45,20 @@ async def import_material(
     registry.get(workspace_id)
     service = materials.for_workspace(workspace_id)
     return to_out(service.import_file(file.filename or "", file.file))
+
+
+@router.post(
+    "/materials/url",
+    response_model=MaterialOut,
+    status_code=202,
+    responses={**NOT_FOUND, 422: {"model": Problem, "description": "Invalid address."}},
+    summary="Import a web page (downloaded when you call this endpoint)",
+)
+async def import_url(
+    workspace_id: int, body: UrlIn, materials: MaterialsDep, registry: Registry
+) -> MaterialOut:
+    registry.get(workspace_id)
+    return to_out(materials.for_workspace(workspace_id).import_url(body.url))
 
 
 @router.get(

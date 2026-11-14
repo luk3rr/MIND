@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from mind.errors import AppError
@@ -82,6 +82,32 @@ async def import_material(
             workspace=info,
             active="library",
             form_error=exc.detail,
+            **_context(service, workspace_id, registry),
+        )
+    return RedirectResponse(f"/w/{workspace_id}/library", status_code=303)
+
+
+@router.post("/import-url", response_model=None)
+async def import_url(
+    request: Request,
+    workspace_id: int,
+    registry: Registry,
+    materials: MaterialsDep,
+    url: Annotated[str, Form()] = "",
+) -> Response:
+    info = registry.get(workspace_id)
+    service = materials.for_workspace(workspace_id)
+    try:
+        service.import_url(url)
+    except AppError as exc:
+        return render(
+            request,
+            "library.html",
+            status_code=exc.status,
+            workspace=info,
+            active="library",
+            form_error=exc.detail,
+            form_url=url,
             **_context(service, workspace_id, registry),
         )
     return RedirectResponse(f"/w/{workspace_id}/library", status_code=303)

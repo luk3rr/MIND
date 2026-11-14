@@ -11,13 +11,20 @@
 <form method="post" action="/w/{{ workspace.id }}/library/import" enctype="multipart/form-data" class="card stack">
   <h2>{{ t.library_import }}</h2>
   <label for="file">{{ t.library_choose_file }}</label>
-  <input id="file" name="file" type="file" accept=".pdf,.md,.markdown,.txt" required>
+  <input id="file" name="file" type="file" accept=".pdf,.docx,.md,.markdown,.txt" required>
   <p class="muted">{{ t.library_formats }}</p>
   <button class="btn" type="submit">{{ t.library_import }}</button>
 </form>
 {% if not materials %}
 <p class="muted">{{ t.library_empty }}</p>
 {% endif %}
+<form method="post" action="/w/{{ workspace.id }}/library/import-url" class="card stack">
+  <h2>{{ t.library_url_title }}</h2>
+  <label for="url">{{ t.library_url_label }}</label>
+  <input id="url" name="url" type="text" inputmode="url" maxlength="2048" value="{{ form_url or '' }}" required>
+  <p class="muted">{{ t.library_url_note }}</p>
+  <button class="btn" type="submit">{{ t.library_url_button }}</button>
+</form>
 <table class="table"{% if not materials %} hidden{% endif %}>
   <thead>
     <tr>

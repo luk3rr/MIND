@@ -6,7 +6,7 @@
 <tbody id="library-rows"{% if any_active %} hx-get="/w/{{ workspace_id }}/library/rows" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
   {% for m in materials %}
   <tr>
-    <td><a href="/w/{{ workspace_id }}/library/{{ m.id }}">{{ m.title }}</a></td>
+    <td><a href="/w/{{ workspace_id }}/library/{{ m.id }}">{{ m.title }}</a>{% if m.source_url %}<br><a class="muted" href="{{ m.source_url }}" rel="noopener noreferrer" target="_blank">{{ t.source_link }}</a>{% endif %}</td>
     <td>{{ t['kind_' ~ m.kind] }}</td>
     <td>{{ m.page_count if m.page_count is not none else "–" }}</td>
     <td>
@@ -14,7 +14,8 @@
       {% if m.status in ("queued", "importing") %}
       <progress max="1" value="{{ progress.get(m.id, 0) }}" aria-label="{{ t.import_progress }}"></progress>
       {% endif %}
-      {% if m.status == "failed" and m.error_detail %}<span class="alert alert-danger">{{ m.error_detail }}</span>{% endif %}
+      {% if m.ocr_confidence is not none %}<br><span class="muted">{{ t.ocr_label }} {{ m.ocr_confidence|pct }}</span>{% if m.ocr_confidence < 0.8 %} <span class="alert alert-warn">{{ t.ocr_low }}</span>{% endif %}{% endif %}
+      {% if m.status == "failed" and m.error_detail %}<span class="alert alert-danger">{{ m.error_detail }}</span>{% elif m.error_detail %}<br><span class="muted">{{ m.error_detail }}</span>{% endif %}
     </td>
     <td>
       <a href="/w/{{ workspace_id }}/library/{{ m.id }}">{{ t.preview }}</a>
