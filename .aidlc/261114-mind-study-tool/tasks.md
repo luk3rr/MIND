@@ -137,7 +137,7 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - **Resultado parcial do gate (2026-11-14):** 20 de 20 cards aprovados sem edição (100%), rendimento do filtro 100%, custo US$ 0,0034. Faltam 10 cards revisados para o veredito formal (amostra mínima de 30); cloze e verdadeiro/falso ainda não foram testados com o modelo real.
 - **Pendente para fechar o BOLT-2 (gate de SM-1):** o modelo real ainda não foi exercitado. É preciso gerar cards de um PDF real com a chave do OpenRouter, revisar pelo menos 30 cards e rodar `uv run mind sm1`. Meta: ≥ 90% aprovados sem edição. Também confirmar os slugs de modelo (A39), o formato de `usage.cost` (A40), o chunking (A41, A44) e a qualidade da tradução para pt-BR (A43, A45).
 
-### UNIT-5 Estudo com FSRS e Hoje — Status: pending
+### UNIT-5 Estudo com FSRS e Hoje — Status: verified (2026-11-14)
 - [x] T-5.1 Modelos `card_state` e `review_log` e migração. · FR-12 · teste: `tests/db/test_study_migration.py` · files: src/mind/db/workspace_models.py, src/mind/db/migrations/workspace/versions/0005_*.py, tests/study/test_study_migration.py
 - [x] T-5.2 `Scheduler` com py-fsrs atrás de interface. · FR-12 · teste: `tests/study/test_scheduler.py` ("Bom" avança o vencimento; "Errei" o reduz) · files: src/mind/study/{scheduler,formatting}.py, tests/study/test_scheduler.py
 - [x] T-5.3 `StudyService`: fila do dia, avaliação, desfazer. · FR-12, FR-13 · teste: `tests/study/test_study_service.py` · files: src/mind/study/{service,rendering}.py, src/mind/study/scheduler.py (day_end), src/mind/db/workspace_models.py (Meta), tests/study/{test_study_service,test_card_rendering,test_scheduler}.py
@@ -146,6 +146,15 @@ Convenção: `T-<unit>.<n>` · IDs servidos · teste nomeado. Todos os testes qu
 - [x] T-5.6 Estudo sem rede: nenhuma rota de estudo depende do provedor. · NFR-5 · teste: `tests/study/test_offline.py` (provedor que falha) · files: tests/study/test_offline.py
 - [x] T-5.7 API `study/queue` e `study/reviews`. · FR-24 · teste: `tests/api/test_study_contract.py` · files: src/mind/api/{deps,schemas}.py, src/mind/api/v1/{study,__init__}.py, src/mind/study/service.py (queue), tests/api/{test_study_contract.py,openapi_v1.json}
 - [x] T-5.8 Latência p95 < 300 ms nas telas de estudo e navegação. · NFR-3 · teste: `tests/perf/test_ui_latency.py` (marcador `perf`) · files: tests/perf/test_ui_latency.py (measured p95 with 1000 cards: today 5 ms, study 9 ms, queue 28 ms, queue+rate 13 ms)
+
+**Resumo da UNIT-5 (2026-11-14)**
+
+- Verificação: comando aprovado → exit 0; 409 testes, cobertura 98%, `mypy --strict` sem erros em 156 arquivos. Desempenho (`pytest -m perf`) com 1 000 cards: p95 de **5 ms** (Hoje), **9 ms** (Estudar), **28 ms** (fila pela API) e **13 ms** (fila mais avaliação), contra o limite de 300 ms.
+- Execução real (somente leituras, no seu diretório de dados): `/`, `/w/1/today`, `/w/1/study` e `/static/study.js` responderam 200 e `GET /study/summary` mostrou 20 cards novos disponíveis. A migração `0005` foi aplicada sozinha ao abrir o workspace.
+- Como usar: `/w/{id}/today` mostra os números do dia; `/w/{id}/study` abre a sessão (Espaço revela, 1 a 4 avaliam, Z desfaz); `GET /api/v1/workspaces/{id}/study/queue|summary|settings`.
+- Comportamento verificado por testes: ordem da fila (aprendizado vencido, revisões do dia, novos), limite de 20 novos por dia de estudo com virada às 04:00 (inclusive sessão após a meia-noite), cartão errado volta na mesma sessão, desfazer restaura o estado anterior ou esquece um card novo, cloze esconde a lacuna na frente e revela no verso, e estudar não usa provedor nem rede.
+- Desvios e adições: (1) a classe `html.js` e a regra `[hidden]` foram adicionadas ao CSS: sem JavaScript o verso e os botões de nota ficam visíveis; (2) a configuração do estudo (`new_per_day`, `daily_goal`, `desired_retention`) já tem API (`GET/PATCH /study/settings`) e fica na tabela `meta` do workspace, mas a tela para editar a meta chega na UNIT-7; (3) `StudyService.queue` foi introduzida para a API e `next_card` passou a ser o primeiro elemento dela; (4) editar durante o estudo foi para o backlog (B-8) e a otimização do FSRS por usuário também (B-9).
+- Pendências conhecidas: a conferência visual e de teclado da sessão de estudo no navegador (Espaço, 1 a 4, Z, ligaduras e fórmulas) só você consegue fazer.
 
 ### UNIT-6 Questões verificadas — Status: pending
 - [ ] T-6.1 Prompts e esquema `QuestionBatch`: Certo/Errado e múltipla escolha de 4 ou 5 alternativas; perfil de prova como enum. · FR-9, FR-11 · teste: `tests/generation/test_question_schema.py` (uma correta, 4–5 opções, resposta existente)
