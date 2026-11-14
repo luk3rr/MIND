@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mind.clock import utcnow
-from mind.db.base import AppBase
+from mind.db.base import AppBase, UtcDateTime
 
 
 class Workspace(AppBase):
@@ -22,4 +22,4 @@ class Workspace(AppBase):
     name: Mapped[str] = mapped_column(String(80))
     name_key: Mapped[str] = mapped_column(String(80), unique=True)
     folder: Mapped[str] = mapped_column(String(64), unique=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)

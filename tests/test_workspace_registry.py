@@ -3,6 +3,7 @@
 # Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
 
 from collections.abc import Iterator
+from datetime import UTC, timedelta
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,12 @@ def test_create_builds_folder_and_migrated_database(registry: WorkspaceRegistry)
     opened = registry.open(info.id)
     assert opened.files_dir.is_dir()
     assert migrate.current_revision(opened.engine) == migrate.head_revision("workspace")
+
+
+def test_timestamps_are_timezone_aware_utc(registry: WorkspaceRegistry) -> None:
+    info = registry.create("Clock")
+    assert info.created_at.tzinfo is UTC
+    assert registry.get(info.id).created_at.utcoffset() == timedelta(0)
 
 
 def test_names_are_unique_ignoring_case(registry: WorkspaceRegistry) -> None:

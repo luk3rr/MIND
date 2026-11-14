@@ -36,6 +36,8 @@ async def test_job_runs_to_done_with_progress(workspace: OpenWorkspace) -> None:
     assert done.progress == 1.0
     assert done.started_at is not None
     assert done.finished_at is not None
+    assert done.started_at.tzinfo is not None
+    assert done.finished_at >= done.started_at
 
 
 async def test_app_error_marks_failed_with_stable_code(workspace: OpenWorkspace) -> None:

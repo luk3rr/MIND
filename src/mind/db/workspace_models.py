@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, String
+from sqlalchemy import Float, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mind.clock import utcnow
-from mind.db.base import WorkspaceBase
+from mind.db.base import UtcDateTime, WorkspaceBase
 
 
 class Job(WorkspaceBase):
@@ -25,6 +25,6 @@ class Job(WorkspaceBase):
     message: Mapped[str] = mapped_column(String, default="")
     error_code: Mapped[str | None] = mapped_column(String(64), default=None)
     error_detail: Mapped[str | None] = mapped_column(String, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
+    finished_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
