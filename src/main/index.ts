@@ -5,7 +5,7 @@
  */
 
 import { logLevel, parseLogLevel, setLogLevel } from "../core/logging.js";
-import { app, BrowserWindow, dialog, screen, session } from "electron";
+import { app, BrowserWindow, dialog, screen, session, shell } from "electron";
 import { join } from "node:path";
 import { createCore } from "../core/index.js";
 import { scriptedCardProvider } from "../core/llm/scripted.js";
@@ -15,6 +15,7 @@ import type { Core } from "../core/index.js";
 import { createEmbedWorker } from "./embed-worker.js";
 import { FakeEmbedder } from "../core/retrieval/fake-embedder.js";
 import { createReaderWorker } from "./reader-worker.js";
+import { ReaderWindows } from "./reader-windows.js";
 import { extractWithWorker } from "./extract-worker.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { createRouter } from "./ipc/router.js";
@@ -32,6 +33,54 @@ const devServerUrl = process.env["ELECTRON_RENDERER_URL"];
 let mainWindow: BrowserWindow | null = null;
 let core: Core | null = null;
 let uninstallRedaction: (() => void) | null = null;
+
+/** The window may only show the app itself: no new windows and no navigation away from it. */
+function hardenWindow(window: BrowserWindow): void {
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.webContents.on("will-navigate", (event, url) => {
+    if (!isAppUrl(url, devServerUrl)) event.preventDefault();
+  });
+}
+
+/** Loads the app; a route in the query makes the window open straight on that screen. */
+function loadApp(window: BrowserWindow, route?: string): void {
+  if (devServerUrl) {
+    const url = new URL(devServerUrl);
+    if (route) url.searchParams.set("route", route);
+    void window.loadURL(url.toString());
+  } else {
+    void window.loadFile(
+      join(import.meta.dirname, "../renderer/index.html"),
+      route ? { query: { route } } : {},
+    );
+  }
+}
+
+const readerWindows = new ReaderWindows((route) => {
+  const window = new BrowserWindow({
+    width: 900,
+    height: 1000,
+    minWidth: 480,
+    minHeight: 400,
+    show: false,
+    title: "MIND",
+    autoHideMenuBar: true,
+    webPreferences: secureWebPreferences(join(import.meta.dirname, "../preload/index.cjs")),
+  });
+  hardenWindow(window);
+  window.once("ready-to-show", () => window.show());
+  loadApp(window, route);
+  return {
+    isDestroyed: () => window.isDestroyed(),
+    focus: () => {
+      if (window.isMinimized()) window.restore();
+      window.focus();
+    },
+    loadRoute: (next) => loadApp(window, next),
+    onClosed: (listener) => window.once("closed", listener),
+    close: () => window.close(),
+  };
+});
 
 function createWindow(state: WindowState): BrowserWindow {
   const saved = state.saved;
@@ -54,15 +103,9 @@ function createWindow(state: WindowState): BrowserWindow {
   window.on("close", () => {
     state.saveGeometry(window.getNormalBounds(), window.isMaximized());
   });
-  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-  window.webContents.on("will-navigate", (event, url) => {
-    if (!isAppUrl(url, devServerUrl)) event.preventDefault();
-  });
-  if (devServerUrl) {
-    void window.loadURL(devServerUrl);
-  } else {
-    void window.loadFile(join(import.meta.dirname, "../renderer/index.html"));
-  }
+  hardenWindow(window);
+  window.on("closed", () => readerWindows.closeAll());
+  loadApp(window);
   return window;
 }
 
@@ -127,6 +170,8 @@ if (!app.requestSingleInstanceLock()) {
     const dispatch = createRouter(
       createHandlers(core, state, {
         appVersion: app.getVersion(),
+        openReaderWindow: (target) => readerWindows.open(target),
+        openPath: (path) => shell.openPath(path),
         pickSavePath: async (defaultName) => {
           const options = {
             defaultPath: join(app.getPath("documents"), defaultName),

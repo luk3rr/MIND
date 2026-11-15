@@ -76,6 +76,8 @@ export const CHANNEL_NAMES = [
   "reader:page",
   "reader:text",
   "reader:search",
+  "reader:openWindow",
+  "material:openOriginal",
 ] as const;
 
 /** Names of the events pushed from the main process to the window. */

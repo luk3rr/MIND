@@ -61,9 +61,12 @@ export function useTime(): TimeApi | null {
 /** Keeps the timer state in sync with the core and ticks the live seconds once per second. */
 export function TimeProvider({
   workspaceId,
+  pauseOnLeave = true,
   children,
 }: {
   workspaceId: number;
+  /** A separate reader window must not pause the session when it closes. */
+  pauseOnLeave?: boolean;
   children: ReactNode;
 }) {
   const [snapshot, setSnapshot] = useState<{ state: TimeState; at: number } | null>(null);
@@ -89,9 +92,9 @@ export function TimeProvider({
       active = false;
       off();
       // Leaving a workspace closes its open interval (FR-6); the session can be resumed.
-      void window.mind.invoke("time:pause", { workspaceId });
+      if (pauseOnLeave) void window.mind.invoke("time:pause", { workspaceId });
     };
-  }, [workspaceId, apply]);
+  }, [workspaceId, apply, pauseOnLeave]);
 
   const running = snapshot?.state.status === "running";
   useEffect(() => {

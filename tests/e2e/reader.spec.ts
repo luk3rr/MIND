@@ -59,4 +59,18 @@ test("reads the original PDF in the app: pages, text layer and search (US-8, US-
   await expect(page.getByText(/1 de 1 ocorrências/)).toBeVisible();
   await expect(page.getByRole("img", { name: "Página 3" })).toBeVisible();
   await expect(page.locator(".reader-hit.current")).toHaveCount(1);
+
+  // A separate window shows only the reader, and opening it again reuses the same window (FR-19).
+  const opened = app.waitForEvent("window");
+  await page.getByRole("button", { name: "Nova janela" }).click();
+  const second = await opened;
+  await second.waitForLoadState("domcontentloaded");
+  await expect(second.getByRole("img", { name: "Página 3" })).toBeVisible({ timeout: 10_000 });
+  await expect(second.getByRole("navigation", { name: "Principal" })).toHaveCount(0);
+  await expect(second.getByRole("button", { name: "Nova janela" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Nova janela" }).click();
+  await page.waitForTimeout(500);
+  expect(app.windows()).toHaveLength(2);
+  await second.close();
+  await expect(page.getByRole("img", { name: "Página 3" })).toBeVisible();
 });

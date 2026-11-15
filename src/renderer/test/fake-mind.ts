@@ -73,6 +73,10 @@ export interface FakeState {
     /** When set, every reader call fails with this error. */
     failure: ErrorInfo | null;
   };
+  /** Windows and system viewers the user asked for, newest last. */
+  opened: { kind: "window" | "system"; materialId: number; page?: number }[];
+  /** When set, opening a window or a file fails with this message. */
+  openFailure: string | null;
   time: FakeTime;
   timeSettings: OutputOf<"time:getSettings">;
   timeStats: OutputOf<"time:stats">;
@@ -197,6 +201,8 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       hits: [],
       failure: null,
     },
+    opened: [],
+    openFailure: null,
     time: idleTime(),
     timeSettings: { dailyGoalMin: 60, idleSeconds: 120, autoEnabled: true },
     timeStats: {
@@ -726,6 +732,18 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         const { query } = payload as InputOf<"reader:search">;
         const found = state.reader.hits.filter((hit) => hit.rects.length > 0 && query.length > 0);
         return ok({ hits: found, truncated: false });
+      }
+      case "reader:openWindow": {
+        const { materialId, page } = payload as InputOf<"reader:openWindow">;
+        if (state.openFailure) return failure("OPEN_FAILED", state.openFailure);
+        state.opened.push({ kind: "window", materialId, ...(page !== undefined ? { page } : {}) });
+        return ok({});
+      }
+      case "material:openOriginal": {
+        const { materialId } = payload as InputOf<"material:openOriginal">;
+        if (state.openFailure) return failure("OPEN_FAILED", state.openFailure);
+        state.opened.push({ kind: "system", materialId });
+        return ok({});
       }
       case "time:getSettings":
         return ok(state.timeSettings);

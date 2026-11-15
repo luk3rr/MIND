@@ -107,9 +107,22 @@ export function readerPath(workspaceId: number, materialId: number, page?: numbe
   return page === undefined ? base : `${base}?page=${page}`;
 }
 
+/**
+ * The route a separate reader window was opened on (`?route=/w/1/library/4/read`), or null in
+ * the main window and for anything that is not a reader route.
+ */
+export function standaloneRoute(search: string): string | null {
+  const value = new URLSearchParams(search).get("route");
+  if (!value) return null;
+  const route = parseRoute(value);
+  return route.name === "section" && route.reader ? value : null;
+}
+
 interface RouterValue {
   path: string;
   route: Route;
+  /** True in a separate reader window, which has no sidebar and does not save its route. */
+  standalone: boolean;
   navigate(path: string): void;
 }
 
@@ -118,17 +131,25 @@ const RouterContext = createContext<RouterValue | null>(null);
 /** Keeps the current path in state and records it as the last route (FR-27). */
 export function RouterProvider({
   initialPath,
+  standalone = false,
   children,
 }: {
   initialPath: string;
+  standalone?: boolean;
   children: ReactNode;
 }) {
   const [path, setPath] = useState(initialPath);
-  const navigate = useCallback((next: string) => {
-    setPath(next);
-    void window.mind.invoke("window:setLastRoute", { route: next });
-  }, []);
-  const value = useMemo(() => ({ path, route: parseRoute(path), navigate }), [path, navigate]);
+  const navigate = useCallback(
+    (next: string) => {
+      setPath(next);
+      if (!standalone) void window.mind.invoke("window:setLastRoute", { route: next });
+    },
+    [standalone],
+  );
+  const value = useMemo(
+    () => ({ path, route: parseRoute(path), standalone, navigate }),
+    [path, standalone, navigate],
+  );
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }
 

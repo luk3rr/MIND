@@ -338,4 +338,9 @@ export const T = {
   readerHitsLimit: "Mostrando as primeiras ocorrências",
   readerPageImage: (page: number) => `Página ${page}`,
   readerReading: (clock: string) => `Lendo há ${clock}`,
+  openNewWindow: "Nova janela",
+  openInSystem: "Abrir no sistema",
+  openOriginal: "Abrir original",
+  openFailed: "Não foi possível abrir o arquivo.",
+  openActionLabel: (action: string, title: string) => `${action} ${title}`,
 } as const;

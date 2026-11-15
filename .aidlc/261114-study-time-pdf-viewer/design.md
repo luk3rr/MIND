@@ -566,6 +566,26 @@ stateDiagram-v2
 
 **Busca.** `reader:search` devolve uma entrada por ocorrência; o leitor mostra "i de n ocorrências", salta para a página de cada uma e realça a atual com outra cor; setas (aqui, botões) ciclam. **Acessibilidade.** Barra de ferramentas com rótulos, foco visível, `aria-current` na página do painel, imagem com texto alternativo "Página N". **Tempo.** `useActivity("reading", { materialId })` reporta leitura; o rodapé mostra "Lendo há …" quando a sessão é de leitura.
 
+### UNIT-6 — Functional design
+
+**Janela separada (ADR-4).** `reader:openWindow` valida no núcleo que o material é um PDF legível e pede ao `main` (`UiBridge.openReaderWindow`) uma segunda `BrowserWindow` com as mesmas `secureWebPreferences`, `setWindowOpenHandler` negando janelas e `will-navigate` restrito (função `hardenWindow` compartilhada). O `ReaderWindows` guarda **uma janela por material**: abrir de novo foca (e, se houver página, recarrega nela); fechar a principal fecha todas. A janela carrega o mesmo bundle com `?route=/w/…/read`; o renderer só aceita esse parâmetro se for uma rota de leitor (`standaloneRoute`). Nessa janela não há barra lateral nem "Nova janela", a rota não é gravada como última rota e fechar não pausa a sessão de tempo (os pings das duas janelas vão ao mesmo `TimeService`, que conta uma vez).
+
+**Abrir no sistema (ADR-5).** `material:openOriginal` recebe só `workspaceId` e `materialId`; o núcleo resolve o caminho dentro de `files/` (`materialFile`) e o `main` chama `shell.openPath`; texto de erro do sistema vira `OPEN_FAILED`. Serve a PDF ("Abrir no sistema") e aos demais tipos ("Abrir original"). Materiais web abrem a página salva.
+
+```mermaid
+sequenceDiagram
+  participant UI as Renderer
+  participant H as handlers
+  participant R as ReaderService
+  participant M as main (UiBridge)
+  UI->>H: material:openOriginal {workspaceId, materialId}
+  H->>R: original(materialId)
+  R-->>H: caminho dentro de files/
+  H->>M: openPath(caminho)
+  M-->>H: "" ou texto de erro
+  H-->>UI: {} ou OPEN_FAILED
+```
+
 ## 3.2–3.4 NFR e infraestrutura (todas as Units)
 
 - **3.2 NFR requirements:** os NFR de 2.3 valem como estão; por Unit, cada Definition of Done cita os que a Unit possui (2.7).

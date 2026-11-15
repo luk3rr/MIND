@@ -332,3 +332,24 @@ describe("automatic counting (FR-3, FR-4, FR-5, FR-13)", () => {
     expect(db.select().from(studySession).get()?.seconds).toBe(20);
   });
 });
+
+describe("two reader windows (FR-5)", () => {
+  it("counts reading of the same material once when two windows report activity", () => {
+    const { time, clock, db } = rig();
+    const materialId = db
+      .insert(material)
+      .values({ title: "t", kind: "pdf", filename: "f.pdf", storedPath: "p" })
+      .returning({ id: material.id })
+      .get().id;
+    for (let second = 0; second < 40; second += 4) {
+      time.activity("reading", { materialId });
+      clock.advance(2_000);
+      time.activity("reading", { materialId });
+      clock.advance(2_000);
+    }
+    time.stop();
+    const rows = db.select().from(studySession).all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.seconds).toBe(40);
+  });
+});

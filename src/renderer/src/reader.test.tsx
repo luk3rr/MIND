@@ -209,3 +209,73 @@ describe("Reader page (FR-15, FR-16, FR-18, FR-24)", () => {
     );
   });
 });
+
+describe("opening in a window and in the system (FR-19, FR-20, FR-21)", () => {
+  it("offers the right actions per kind in the Library and reports failures", async () => {
+    const docx: FakeMaterial = { ...pdf, id: 5, title: "resumo", kind: "docx", filename: "r.docx" };
+    const { state } = open("/w/1/library", { materials: [pdf, docx] });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Nova janela apostila" }));
+    await user.click(screen.getByRole("button", { name: "Abrir no sistema apostila" }));
+    await user.click(screen.getByRole("button", { name: "Abrir original resumo" }));
+    expect(state.opened).toEqual([
+      { kind: "window", materialId: 4 },
+      { kind: "system", materialId: 4 },
+      { kind: "system", materialId: 5 },
+    ]);
+    expect(screen.queryByRole("button", { name: "Nova janela resumo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ler resumo" })).not.toBeInTheDocument();
+    state.openFailure = "Não foi possível abrir o arquivo no aplicativo padrão do sistema.";
+    await user.click(screen.getByRole("button", { name: "Abrir original resumo" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("aplicativo padrão do sistema");
+  });
+
+  it("opens the current page in a new window or the file in the system from the reader", async () => {
+    const { state } = open("/w/1/library/4/read?page=2");
+    const user = userEvent.setup();
+    await screen.findByRole("img", { name: "Página 2" });
+    await user.click(screen.getByRole("button", { name: "Nova janela" }));
+    await user.click(screen.getByRole("button", { name: "Abrir no sistema" }));
+    expect(state.opened).toEqual([
+      { kind: "window", materialId: 4, page: 2 },
+      { kind: "system", materialId: 4 },
+    ]);
+    state.openFailure = "falhou";
+    await user.click(screen.getByRole("button", { name: "Abrir no sistema" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("falhou");
+  });
+
+  it("offers the system viewer when the PDF cannot be opened", async () => {
+    const { state } = open("/w/1/library/4/read", {
+      reader: {
+        info: { title: "", pageCount: 0, pages: [], lastPage: null },
+        lines: {},
+        hits: [],
+        failure: { code: "PDF_PROTECTED", message: "O PDF está protegido por senha." },
+      },
+    });
+    const user = userEvent.setup();
+    expect(await screen.findByRole("alert")).toHaveTextContent("protegido por senha");
+    await user.click(screen.getByRole("button", { name: "Abrir no sistema" }));
+    expect(state.opened).toEqual([{ kind: "system", materialId: 4 }]);
+  });
+});
+
+describe("separate reader window (FR-19, FR-5)", () => {
+  it("shows only the reader, keeps the saved route and does not pause the study session on close", async () => {
+    const { invoke } = installFakeMind({ workspaces: [ws], route: "/w/1/study", materials: [pdf] });
+    window.history.pushState({}, "", "/?route=%2Fw%2F1%2Flibrary%2F4%2Fread%3Fpage%3D3");
+    const view = render(<App />);
+    expect(await screen.findByRole("img", { name: "Página 3" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Principal" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Voltar à Biblioteca" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nova janela" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abrir no sistema" })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Página anterior" }));
+    await screen.findByRole("img", { name: "Página 2" });
+    expect(invoke).not.toHaveBeenCalledWith("window:setLastRoute", expect.anything());
+    view.unmount();
+    expect(invoke).not.toHaveBeenCalledWith("time:pause", expect.anything());
+    window.history.pushState({}, "", "/");
+  });
+});

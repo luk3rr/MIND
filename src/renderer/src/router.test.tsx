@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { parseRoute, readerPath, sectionPath } from "./router.js";
+import { parseRoute, readerPath, sectionPath, standaloneRoute } from "./router.js";
 
 describe("parseRoute", () => {
   it("parses the welcome and section paths", () => {
@@ -62,5 +62,16 @@ describe("reader routes (FR-15)", () => {
     ]) {
       expect(parseRoute(path)).toEqual({ name: "unknown" });
     }
+  });
+});
+
+describe("standaloneRoute (FR-19)", () => {
+  it("accepts only a reader route in the query", () => {
+    expect(standaloneRoute("?route=%2Fw%2F1%2Flibrary%2F4%2Fread%3Fpage%3D2")).toBe(
+      "/w/1/library/4/read?page=2",
+    );
+    expect(standaloneRoute("")).toBeNull();
+    expect(standaloneRoute("?route=%2Fw%2F1%2Fstudy")).toBeNull();
+    expect(standaloneRoute("?route=https%3A%2F%2Fevil.example")).toBeNull();
   });
 });

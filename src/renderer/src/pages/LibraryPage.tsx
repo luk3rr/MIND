@@ -54,6 +54,7 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
   const { state, reload } = useInvoke("material:list", { workspaceId });
   const [errors, setErrors] = useState<{ file: string; message: string }[]>([]);
   const [importing, setImporting] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Material | null>(null);
   const [askUrl, setAskUrl] = useState(false);
   const [query, setQuery] = useState("");
@@ -90,6 +91,15 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
       {T.importFile}
     </button>
   );
+
+  const openAction = (
+    channel: "reader:openWindow" | "material:openOriginal",
+    materialId: number,
+  ): void => {
+    void window.mind.invoke(channel, { workspaceId, materialId }).then((result) => {
+      setOpenError(result.ok ? null : result.error.message);
+    });
+  };
 
   return (
     <section aria-labelledby="library-title">
@@ -147,6 +157,11 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
           </ul>
         </section>
       )}
+      {openError && (
+        <div className="alert" role="alert">
+          {openError}
+        </div>
+      )}
       {state.status === "loading" && (
         <div className="row" role="status" aria-label={T.loading}>
           <div className="skeleton" />
@@ -200,15 +215,40 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                   </td>
                   <td>{material.chunkCount}</td>
                   <td>
-                    {material.kind === "pdf" && material.status === "indexed" && (
-                      <button
-                        type="button"
-                        className="btn"
-                        aria-label={`${T.readAction} ${material.title}`}
-                        onClick={() => navigate(readerPath(workspaceId, material.id))}
-                      >
-                        {T.readAction}
-                      </button>
+                    {material.status === "indexed" && (
+                      <span className="row" style={{ display: "inline-flex", gap: 6 }}>
+                        {material.kind === "pdf" && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn"
+                              aria-label={T.openActionLabel(T.readAction, material.title)}
+                              onClick={() => navigate(readerPath(workspaceId, material.id))}
+                            >
+                              {T.readAction}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn ghost"
+                              aria-label={T.openActionLabel(T.openNewWindow, material.title)}
+                              onClick={() => openAction("reader:openWindow", material.id)}
+                            >
+                              {T.openNewWindow}
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          aria-label={T.openActionLabel(
+                            material.kind === "pdf" ? T.openInSystem : T.openOriginal,
+                            material.title,
+                          )}
+                          onClick={() => openAction("material:openOriginal", material.id)}
+                        >
+                          {material.kind === "pdf" ? T.openInSystem : T.openOriginal}
+                        </button>
+                      </span>
                     )}{" "}
                     <button
                       type="button"

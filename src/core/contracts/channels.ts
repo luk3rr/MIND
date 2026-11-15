@@ -832,6 +832,14 @@ export const channels = {
       truncated: z.boolean(),
     }),
   },
+  "reader:openWindow": {
+    input: z.object({ ...readerTarget, page: z.number().int().min(1).optional() }).strict(),
+    output: z.object({}).strict(),
+  },
+  "material:openOriginal": {
+    input: z.object(readerTarget).strict(),
+    output: z.object({}).strict(),
+  },
   "workspace:delete": {
     input: z.object({ id: workspaceId }).strict(),
     output: z.object({}).strict(),

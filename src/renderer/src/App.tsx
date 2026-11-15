@@ -20,7 +20,8 @@ import { StudyPage } from "./pages/StudyPage.js";
 import { SetupPage } from "./pages/SetupPage.js";
 import { TodayPage } from "./pages/TodayPage.js";
 import { WelcomePage } from "./pages/WelcomePage.js";
-import { RouterProvider, parseRoute, sectionPath, useRouter } from "./router.js";
+import { RouterProvider, parseRoute, sectionPath, standaloneRoute, useRouter } from "./router.js";
+import { TimeProvider } from "./time.js";
 import { T } from "./strings.js";
 import { WorkspacesProvider } from "./workspaces.js";
 import type { WorkspaceInfo } from "./workspaces.js";
@@ -42,7 +43,21 @@ export function initialPath(boot: Boot): string {
 }
 
 function Screen() {
-  const { route } = useRouter();
+  const { route, standalone } = useRouter();
+  if (standalone && route.name === "section" && route.detailId !== undefined) {
+    return (
+      <TimeProvider workspaceId={route.workspaceId} pauseOnLeave={false}>
+        <main id="main" className="content" tabIndex={-1}>
+          <ReaderPage
+            standalone
+            workspaceId={route.workspaceId}
+            materialId={route.detailId}
+            {...(route.page !== undefined ? { initialPage: route.page } : {})}
+          />
+        </main>
+      </TimeProvider>
+    );
+  }
   if (route.name === "section") {
     return (
       <Shell workspaceId={route.workspaceId} section={route.section}>
@@ -116,9 +131,10 @@ export function App() {
 
   if (boot === null) return <p role="status">{T.loading}</p>;
   if (boot === "error") return <p role="alert">{T.unknownError}</p>;
+  const separate = standaloneRoute(window.location.search);
   return (
     <WorkspacesProvider initial={boot.workspaces}>
-      <RouterProvider initialPath={initialPath(boot)}>
+      <RouterProvider initialPath={separate ?? initialPath(boot)} standalone={separate !== null}>
         <Screen />
       </RouterProvider>
     </WorkspacesProvider>

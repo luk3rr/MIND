@@ -49,6 +49,10 @@ export interface UiBridge {
   pickSavePath?(defaultName: string): Promise<string | null>;
   /** Opens the native dialog for a backup `.zip`; null when cancelled. */
   pickBackup?(): Promise<string | null>;
+  /** Opens (or focuses) the separate reader window of a PDF. */
+  openReaderWindow?(target: { workspaceId: number; materialId: number; page?: number }): void;
+  /** Opens a file in the system's default application; returns an error text, empty on success. */
+  openPath?(path: string): Promise<string>;
   appVersion?: string;
 }
 
@@ -338,6 +342,25 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       core.reader(workspaceId).text(materialId, page),
     "reader:search": ({ workspaceId, materialId, query }) =>
       core.reader(workspaceId).search(materialId, query),
+    "reader:openWindow": ({ workspaceId, materialId, page }) => {
+      core.reader(workspaceId).assertReadable(materialId);
+      if (!ui.openReaderWindow) {
+        throw new AppError("OPEN_FAILED", "Não foi possível abrir uma nova janela.");
+      }
+      ui.openReaderWindow({ workspaceId, materialId, ...(page !== undefined ? { page } : {}) });
+      return {};
+    },
+    "material:openOriginal": async ({ workspaceId, materialId }) => {
+      const { path } = core.reader(workspaceId).original(materialId);
+      const failure = (await ui.openPath?.(path)) ?? "unavailable";
+      if (failure) {
+        throw new AppError(
+          "OPEN_FAILED",
+          "Não foi possível abrir o arquivo no aplicativo padrão do sistema.",
+        );
+      }
+      return {};
+    },
     "workspace:delete": ({ id }) => {
       core.releaseTime(id);
       core.registry.delete(id);

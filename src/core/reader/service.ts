@@ -64,6 +64,17 @@ export class ReaderService {
     return { path: file.path, title: file.title };
   }
 
+  /** The absolute path of the original file of a material of any kind (for the system viewer). */
+  original(materialId: number): { path: string; title: string; kind: string } {
+    const file = materialFile(this.workspace, materialId);
+    return { path: file.path, title: file.title, kind: file.kind };
+  }
+
+  /** Checks that the material is a readable PDF before a reader window is opened for it. */
+  assertReadable(materialId: number): void {
+    this.pdf(materialId);
+  }
+
   async info(materialId: number): Promise<ReaderInfo> {
     const { path, title } = this.pdf(materialId);
     const { pageCount, pages } = await this.backend.call("info", [path]);

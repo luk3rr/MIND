@@ -4,7 +4,16 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { ChevronLeft, ChevronRight, Maximize2, Search, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Maximize2,
+  Search,
+  SquareArrowOutUpRight,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
@@ -51,10 +60,13 @@ export function ReaderPage({
   workspaceId,
   materialId,
   initialPage,
+  standalone = false,
 }: {
   workspaceId: number;
   materialId: number;
   initialPage?: number;
+  /** True in a separate reader window: no way back to the library and no further windows. */
+  standalone?: boolean;
 }) {
   const { navigate } = useRouter();
   const time = useTime();
@@ -73,6 +85,18 @@ export function ReaderPage({
   const [truncated, setTruncated] = useState(false);
   const [hitIndex, setHitIndex] = useState(0);
   const [pageDraft, setPageDraft] = useState<string | null>(null);
+
+  const report = (result: { ok: boolean; error?: { message: string } }): void => {
+    setError(result.ok ? null : (result.error?.message ?? T.openFailed));
+  };
+  const openWindow = (): void => {
+    void window.mind
+      .invoke("reader:openWindow", { workspaceId, materialId, page: current })
+      .then(report);
+  };
+  const openOriginal = (): void => {
+    void window.mind.invoke("material:openOriginal", { workspaceId, materialId }).then(report);
+  };
 
   const total = info.state.status === "ready" ? info.state.data.pageCount : 0;
   const current = total > 0 ? Math.min(Math.max(page, 1), total) : page;
@@ -178,7 +202,7 @@ export function ReaderPage({
     if (hit) goTo(hit.page);
   };
 
-  const back = (
+  const back = standalone ? null : (
     <button
       type="button"
       className="link"
@@ -205,6 +229,9 @@ export function ReaderPage({
           {info.state.error.message}{" "}
           <button type="button" className="btn ghost" onClick={info.reload}>
             {T.retry}
+          </button>{" "}
+          <button type="button" className="btn ghost" onClick={openOriginal}>
+            {T.openInSystem}
           </button>
         </div>
       </section>
@@ -222,7 +249,17 @@ export function ReaderPage({
   return (
     <section className="reader" aria-labelledby="reader-title">
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        {back}
+        {back ?? <span />}
+        <span className="row">
+          {!standalone && (
+            <button type="button" className="btn ghost" onClick={openWindow}>
+              <SquareArrowOutUpRight size={14} aria-hidden="true" /> {T.openNewWindow}
+            </button>
+          )}
+          <button type="button" className="btn ghost" onClick={openOriginal}>
+            <ExternalLink size={14} aria-hidden="true" /> {T.openInSystem}
+          </button>
+        </span>
       </div>
       <h1 id="reader-title">{data.title}</h1>
       <div className="reader-tools" role="toolbar" aria-label="Controles do leitor">

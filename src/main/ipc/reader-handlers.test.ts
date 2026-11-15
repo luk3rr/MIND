@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { copyFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCore } from "../../core/core.js";
@@ -80,6 +80,109 @@ describe("reader channels", () => {
     expect(await dispatch("reader:info", { workspaceId, materialId: 7 })).toMatchObject({
       ok: false,
       error: { code: "MATERIAL_NOT_FOUND" },
+    });
+  });
+});
+
+describe("open channels (FR-19, FR-20, FR-21, NFR-4)", () => {
+  async function setup(
+    ui: Partial<Parameters<typeof createHandlers>[2]> = {},
+    kind = "pdf",
+    file = "a.pdf",
+  ) {
+    core = createCore({ dataDir: tempDir(), env: {} });
+    const workspaceId = core.registry.create("Abrir").id;
+    const workspace = core.registry.open(workspaceId);
+    mkdirSync(join(workspace.filesDir, "m1"), { recursive: true });
+    copyFileSync(
+      join(import.meta.dirname, "..", "..", "..", "fixtures", "pdfs", "three-pages.pdf"),
+      join(workspace.filesDir, "m1", file),
+    );
+    const materialId = workspace.connection.db
+      .insert(material)
+      .values({ title: "a", kind, filename: file, storedPath: `files/m1/${file}` })
+      .returning({ id: material.id })
+      .get().id;
+    const dispatch = createRouter(
+      createHandlers(core, { lastRoute: null }, { pickFiles: () => Promise.resolve([]), ...ui }),
+      { error: () => undefined },
+    );
+    return { dispatch, workspaceId, materialId, workspace };
+  }
+
+  it("asks the main process for a reader window of a readable PDF", async () => {
+    const opened: unknown[] = [];
+    const { dispatch, workspaceId, materialId } = await setup({
+      openReaderWindow: (target) => opened.push(target),
+    });
+    expect(await dispatch("reader:openWindow", { workspaceId, materialId, page: 2 })).toEqual({
+      ok: true,
+      data: {},
+    });
+    expect(await dispatch("reader:openWindow", { workspaceId, materialId })).toEqual({
+      ok: true,
+      data: {},
+    });
+    expect(opened).toEqual([
+      { workspaceId, materialId, page: 2 },
+      { workspaceId, materialId },
+    ]);
+  });
+
+  it("refuses a window for a non-PDF material, a missing one and when none can be opened", async () => {
+    const { dispatch, workspaceId, materialId } = await setup({}, "md", "n.md");
+    expect(await dispatch("reader:openWindow", { workspaceId, materialId })).toMatchObject({
+      ok: false,
+      error: { code: "UNSUPPORTED_FILE" },
+    });
+    expect(await dispatch("reader:openWindow", { workspaceId, materialId: 99 })).toMatchObject({
+      ok: false,
+      error: { code: "MATERIAL_NOT_FOUND" },
+    });
+    const pdf = await setup({});
+    expect(
+      await pdf.dispatch("reader:openWindow", {
+        workspaceId: pdf.workspaceId,
+        materialId: pdf.materialId,
+      }),
+    ).toMatchObject({ ok: false, error: { code: "OPEN_FAILED" } });
+  });
+
+  it("opens the resolved file in the system viewer, never a path from the window", async () => {
+    const paths: string[] = [];
+    const { dispatch, workspaceId, materialId, workspace } = await setup(
+      {
+        openPath: (path) => {
+          paths.push(path);
+          return Promise.resolve("");
+        },
+      },
+      "docx",
+      "a.docx",
+    );
+    expect(await dispatch("material:openOriginal", { workspaceId, materialId })).toEqual({
+      ok: true,
+      data: {},
+    });
+    expect(paths).toHaveLength(1);
+    expect(paths[0]?.startsWith(realpathSync(workspace.filesDir))).toBe(true);
+    expect(
+      await dispatch("material:openOriginal", { workspaceId, materialId, path: "/etc/passwd" }),
+    ).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+  });
+
+  it("reports a failure of the system viewer and a missing file", async () => {
+    const { dispatch, workspaceId, materialId, workspace } = await setup({
+      openPath: () => Promise.resolve("No application knows how to open it"),
+    });
+    expect(await dispatch("material:openOriginal", { workspaceId, materialId })).toMatchObject({
+      ok: false,
+      error: { code: "OPEN_FAILED" },
+    });
+    rmSync(join(workspace.filesDir, "m1"), { recursive: true });
+    expect(await dispatch("material:openOriginal", { workspaceId, materialId })).toMatchObject({
+      ok: false,
+      error: { code: "FILE_MISSING" },
     });
   });
 });

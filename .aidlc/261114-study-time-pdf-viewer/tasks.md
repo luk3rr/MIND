@@ -130,13 +130,21 @@ Cada tarefa: ≤ ~1 h, estado final observável, FR/US servido e teste. Marque `
 - Desvios: (1) a barra do leitor não tem ainda "Nova janela" e "Sistema" (UNIT-6); (2) o painel lateral é só a lista de números de página (miniaturas ficam para depois, A6); (3) o realce do trecho citado (`?quote=`) e a última página lida vêm na UNIT-7.
 - Observação de processo: o `README.md` está sendo editado em paralelo pelo autor; o commit da UNIT-4 incluiu, sem querer, uma dessas edições (corrigido daqui em diante: só caminhos explícitos no `git add`).
 
-### UNIT-6 — Janela separada e abrir no sistema  `Status: pending`
+### UNIT-6 — Janela separada e abrir no sistema  `Status: verified (2026-11-14)`
 
-- [ ] T6.1 `UiBridge.openReaderWindow` no `main`: segunda `BrowserWindow` com as mesmas `secureWebPreferences`, uma por material (reaproveita e foca), rota do leitor sem barra lateral. [FR-19, ADR-4; test: security.test.ts, handlers.test.ts]
-- [ ] T6.2 `UiBridge.openPath` + `reader:openExternal` e `material:openOriginal` por identificador. [FR-20, FR-21, NFR-4; test: reader-handlers.test.ts]
-- [ ] T6.3 Ações na Biblioteca e no leitor: Nova janela, Sistema, Abrir original (só para materiais com arquivo). [US-10, US-11; test: library.test.tsx, reader.test.tsx]
-- [ ] T6.4 Tempo de leitura em duas janelas não conta em dobro. [FR-5; test: time.test.ts]
-- [ ] T6.5 Verificação e commit `feat(reader): open in a separate window and in the system viewer`.
+- [x] T6.1 `UiBridge.openReaderWindow` no `main`: segunda `BrowserWindow` com as mesmas `secureWebPreferences`, uma por material (reaproveita e foca), rota do leitor sem barra lateral. [FR-19, ADR-4; test: security.test.ts, handlers.test.ts]
+- [x] T6.2 `UiBridge.openPath` + `reader:openExternal` e `material:openOriginal` por identificador. [FR-20, FR-21, NFR-4; test: reader-handlers.test.ts]
+- [x] T6.3 Ações na Biblioteca e no leitor: Nova janela, Sistema, Abrir original (só para materiais com arquivo). [US-10, US-11; test: library.test.tsx, reader.test.tsx]
+- [x] T6.4 Tempo de leitura em duas janelas não conta em dobro. [FR-5; test: time.test.ts]
+- [x] T6.5 Verificação e commit `feat(reader): open in a separate window and in the system viewer`.
+
+
+**Resumo da UNIT-6 (2026-11-14).** Verificação: lint 0 · format 0 (src, tests, .aidlc) · typecheck 0 · `pnpm test --coverage`: 78 arquivos, 711 testes, todos passam; linhas 95,7% · ramos 86,19% · funções 93,58%. e2e do leitor com a segunda janela real: passou.
+
+- Arquivos: `src/main/reader-windows.ts` (+teste), `main/index.ts` (`hardenWindow`, `loadApp`, `ReaderWindows`, `shell.openPath`), `core/reader/service.ts` (`original`, `assertReadable`), contratos (`reader:openWindow`, `material:openOriginal`, `OPEN_FAILED`), `handlers.ts`, `renderer/src/{router,App,time}.tsx`, `pages/{ReaderPage,LibraryPage}.tsx`, `strings.ts`, testes.
+- Como rodar: `pnpm dev`; na Biblioteca usar **Nova janela**, **Abrir no sistema** ou **Abrir original**.
+- Desvios: (1) o canal `reader:openExternal` de 2.8 foi dispensado: `material:openOriginal` cobre PDF e os demais tipos; (2) o "Abrir no sistema" real (`shell.openPath`) não é exercitado no e2e para não lançar um aplicativo externo; ele é coberto por teste do handler com `openPath` simulado.
+- Processo: o `README.md` do autor ficou fora de todos os `git add` e do `prettier --write`.
 
 ### UNIT-7 — Ver no PDF e última página  `Status: pending`
 
