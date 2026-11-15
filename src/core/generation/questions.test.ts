@@ -13,9 +13,12 @@ import { FakeProvider } from "../llm/fake.js";
 import { generationRig, TEXTS } from "../test/generation-fixture.js";
 import type { GenerationRig } from "../test/generation-fixture.js";
 import { Judge } from "./judge.js";
+import { scriptedCardProvider } from "../llm/scripted.js";
+import { studyRig } from "../test/study-fixture.js";
 import { QuestionGenerator, payloadFor, questionProblem } from "./questions.js";
 import { buildJudgeMessages, buildQuestionMessages } from "./question-prompts.js";
 import { selectChunks } from "./planning.js";
+import { buildCardMessages } from "./prompts.js";
 import type { QuestionOut } from "./schemas.js";
 import { questionBatchSchema } from "./schemas.js";
 
@@ -472,5 +475,101 @@ describe("calculation runs (offline provider)", () => {
       items.every((entry) => entry.subtype === "multiple_choice" && entry.options.length === 5),
     ).toBe(true);
     expect(items.every((entry) => entry.back.includes("Conta conferida pelo app"))).toBe(true);
+  });
+});
+
+describe("the person's own request (instructions and variations)", () => {
+  it("adds the instructions and the items to vary to the prompts, after the excerpts", () => {
+    const base = buildQuestionMessages("multiple_choice_4", 2, golden.chunks, []);
+    const asked = buildQuestionMessages("multiple_choice_4", 2, golden.chunks, [], {
+      instructions: "  Foque em questões de aplicação.  ",
+      seeds: ["O que a fotossíntese converte?"],
+    });
+    const prompt = asked[1]?.content ?? "";
+    expect(prompt.startsWith(base[1]?.content ?? "")).toBe(true);
+    expect(prompt).toContain("VARIATIONS of the existing items");
+    expect(prompt).toContain("- O que a fotossíntese converte?");
+    expect(prompt).toContain("Foque em questões de aplicação.");
+    expect(prompt).toContain("never change the source and quote rules");
+    expect(asked[0]).toEqual(base[0]);
+    expect(buildQuestionMessages("multiple_choice_4", 2, golden.chunks, [], {})).toEqual(base);
+    expect(
+      buildQuestionMessages("multiple_choice_4", 2, golden.chunks, [], { instructions: "  " }),
+    ).toEqual(base);
+  });
+
+  it("does the same for cards", () => {
+    const asked = buildCardMessages("qa", 2, golden.chunks, [], { instructions: "Só definições." });
+    expect(asked[1]?.content).toContain("Só definições.");
+    expect(buildCardMessages("qa", 2, golden.chunks)[1]?.content).not.toContain(
+      "Extra instructions",
+    );
+  });
+
+  it("sends the instructions to the model on a run and keeps them out of the stored items", async () => {
+    const provider = new FakeProvider({ promptTokens: 5, completionTokens: 5, costUsd: 0.01 });
+    provider.script("QuestionBatch", { questions: [ce()] });
+    provider.script("JudgeBatch", { verdicts: [{ index: 0, supported: true, reason: "" }] });
+    rig = generationRig({ provider });
+    const generation = rig.core.generation(rig.workspaceId);
+    const started = generation.start({
+      materialId: rig.materialId,
+      subtype: "certo_errado",
+      quantity: 1,
+      kind: "question",
+      instructions: "  Use pegadinhas sobre exceções.  ",
+    });
+    await rig.core.queue.wait(rig.workspaceId, started.jobId as number);
+    const generationCall = provider.calls.find((call) => call.schemaName === "QuestionBatch");
+    expect(generationCall?.messages[1]?.content).toContain("Use pegadinhas sobre exceções.");
+    expect(
+      JSON.stringify(rig.core.review(rig.workspaceId).list({ runId: started.id })),
+    ).not.toContain("pegadinhas");
+  });
+
+  it("refuses long instructions and variations when nothing is approved yet", () => {
+    rig = generationRig();
+    const generation = rig.core.generation(rig.workspaceId);
+    const base = { materialId: rig.materialId, subtype: "qa", quantity: 2, kind: "card" as const };
+    expect(() => generation.estimate({ ...base, instructions: "x".repeat(501) })).toThrowError(
+      expect.objectContaining({
+        code: "VALIDATION_ERROR",
+        fields: [expect.objectContaining({ field: "instructions" })],
+      }),
+    );
+    expect(() => generation.start({ ...base, variations: true })).toThrowError(
+      expect.objectContaining({
+        code: "VALIDATION_ERROR",
+        fields: [expect.objectContaining({ field: "variations" })],
+      }),
+    );
+  });
+
+  it("starts variations from the approved items of the material, newest first, instead of the avoid list", async () => {
+    const provider = scriptedCardProvider();
+    rig = await studyRig(3, {}, provider);
+    const generation = rig.core.generation(rig.workspaceId);
+    const seeds = generation.variationSeeds({
+      materialId: rig.materialId,
+      subtype: "qa",
+      quantity: 2,
+      kind: "card",
+    });
+    expect(seeds).toHaveLength(3);
+    const started = generation.start({
+      materialId: rig.materialId,
+      subtype: "qa",
+      quantity: 2,
+      kind: "card",
+      variations: true,
+      instructions: "Mude os dados.",
+    });
+    await rig.core.queue.wait(rig.workspaceId, started.jobId as number);
+    const call = provider.calls.filter((entry) => entry.schemaName === "CardBatch").at(-1);
+    const prompt = call?.messages[1]?.content ?? "";
+    expect(prompt).toContain("VARIATIONS");
+    for (const seed of seeds) expect(prompt).toContain(`- ${seed}`);
+    expect(prompt).toContain("Mude os dados.");
+    expect(prompt).not.toContain("do not repeat them");
   });
 });

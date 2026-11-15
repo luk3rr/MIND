@@ -93,7 +93,7 @@ test("turns a wrong answer into a card and shows it in the notebook (FR-15)", as
   await prepare(current);
   const { page } = current;
   await page.getByRole("button", { name: "Estudar", exact: true }).click();
-  await page.getByRole("button", { name: "Praticar" }).click();
+  await page.getByRole("tab", { name: /Questões/ }).click();
   await page.getByRole("radio", { name: /^B/ }).click();
   await page.getByRole("button", { name: "Responder" }).click();
   await page.getByRole("button", { name: "Virar card" }).click();

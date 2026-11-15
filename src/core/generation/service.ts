@@ -7,10 +7,10 @@
 import { logger } from "../logging.js";
 
 const log = logger("generation");
-import { desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, or } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import type { FieldError } from "../contracts/errors.js";
-import { generationRun, material } from "../db/workspace-schema.js";
+import { chunk, generationRun, item, material } from "../db/workspace-schema.js";
 import { JobCancelled } from "../jobs/queue.js";
 import { getJob } from "../jobs/store.js";
 import type { JobContext, JobQueue } from "../jobs/queue.js";
@@ -22,7 +22,7 @@ import { CARDS_PER_BATCH, QUESTIONS_PER_BATCH, planBatches, selectChunks } from 
 import { QuestionGenerator } from "./questions.js";
 import { JUDGE_SYSTEM, PROFILE_RULES, QUESTION_SYSTEM } from "./question-prompts.js";
 import type { SourceChunk } from "./planning.js";
-import { SUBTYPE_RULES, SYSTEM } from "./prompts.js";
+import { MAX_INSTRUCTIONS, SUBTYPE_RULES, SYSTEM } from "./prompts.js";
 import { CARD_SUBTYPES, PROFILES } from "./schemas.js";
 import { isoNow } from "../clock.js";
 import { trainingMaterial } from "./training.js";
@@ -36,6 +36,9 @@ export const PROMPT_OVERHEAD_CHARS = 400;
 export const CONCURRENT_BATCHES = 2;
 const LOG_LIMIT = 20;
 
+/** How many approved items a run of variations starts from. */
+export const VARIATION_SEEDS = 15;
+
 export interface GenerationRequest {
   /** The material to generate from; omitted when training on `topicId`. */
   materialId?: number | null;
@@ -45,6 +48,10 @@ export interface GenerationRequest {
   pageFrom?: number;
   pageTo?: number;
   topicId?: number | null;
+  /** What the person wants on top of the type: a focus, a style, a constraint. */
+  instructions?: string;
+  /** Write new variations of the items already approved on this material or topic. */
+  variations?: boolean;
 }
 
 export interface EstimateInfo {
@@ -141,6 +148,12 @@ export function validateRequest(request: GenerationRequest): void {
       errors.push({ field: "quantity", message: `Peça de ${MIN_QUANTITY} a ${top} ${name}.` });
     }
   }
+  if ((request.instructions ?? "").trim().length > MAX_INSTRUCTIONS) {
+    errors.push({
+      field: "instructions",
+      message: `As instruções podem ter no máximo ${MAX_INSTRUCTIONS} caracteres.`,
+    });
+  }
   if (request.pageFrom !== undefined && request.pageFrom < 1) {
     errors.push({ field: "pageFrom", message: "A primeira página é 1." });
   }
@@ -226,10 +239,14 @@ export class GenerationService {
       (request.topicId ?? null) === null,
     );
     const settings = this.llm.settings.get();
-    const chunkChars = plan.reduce(
-      (total, batch) => total + batch.chunks.reduce((sum, c) => sum + c.text.length, 0),
-      0,
-    );
+    const extraChars =
+      (request.instructions ?? "").trim().length + (request.variations ? VARIATION_SEEDS * 200 : 0);
+    const chunkChars =
+      plan.reduce(
+        (total, batch) => total + batch.chunks.reduce((sum, c) => sum + c.text.length, 0),
+        0,
+      ) +
+      plan.length * extraChars;
     if (request.kind === "question") {
       const system = QUESTION_SYSTEM.length + (PROFILE_RULES[request.subtype]?.length ?? 0);
       let promptChars = plan.length * (system + PROMPT_OVERHEAD_CHARS) + chunkChars;
@@ -279,10 +296,61 @@ export class GenerationService {
     };
   }
 
+  /** The approved items of the material or topic that variations start from (newest first). */
+  variationSeeds(request: GenerationRequest): string[] {
+    const { db } = this.workspace.connection;
+    const inScope =
+      (request.topicId ?? null) !== null
+        ? eq(item.topicId, request.topicId as number)
+        : or(
+            inArray(
+              item.chunkId,
+              db
+                .select({ id: chunk.id })
+                .from(chunk)
+                .where(eq(chunk.materialId, request.materialId as number)),
+            ),
+            inArray(
+              item.runId,
+              db
+                .select({ id: generationRun.id })
+                .from(generationRun)
+                .where(eq(generationRun.materialId, request.materialId as number)),
+            ),
+          );
+    return db
+      .select({ payload: item.payloadJson, kind: item.kind })
+      .from(item)
+      .where(and(eq(item.status, "approved"), eq(item.kind, request.kind), inScope))
+      .orderBy(desc(item.id))
+      .limit(VARIATION_SEEDS)
+      .all()
+      .map((row) => {
+        const payload = JSON.parse(row.payload) as { front?: string; statement?: string };
+        return String(row.kind === "question" ? payload.statement : payload.front)
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 200);
+      })
+      .filter((text) => text.length > 0);
+  }
+
+  private assertSeeds(request: GenerationRequest): void {
+    if (request.variations && this.variationSeeds(request).length === 0) {
+      throw new AppError("VALIDATION_ERROR", "Pedido de geração inválido.", [
+        {
+          field: "variations",
+          message: "Ainda não há itens aprovados para fazer variações.",
+        },
+      ]);
+    }
+  }
+
   /** Validates, creates the run and queues the job. */
   start(request: GenerationRequest): RunInfo {
     validateRequest(request);
     this.chunksFor(request);
+    this.assertSeeds(request);
     this.llm.ensureReady();
     const configured = this.llm.settings.get();
     const model = configured.generationModel;
@@ -338,10 +406,16 @@ export class GenerationService {
       perBatch(request.kind),
       (request.topicId ?? null) === null,
     );
+    // Variations start from the approved items, so the "do not repeat" list would contradict them.
+    const seeds = request.variations ? this.variationSeeds(request) : [];
     const avoid =
-      (request.topicId ?? null) === null
+      (request.topicId ?? null) === null || seeds.length > 0
         ? []
         : trainingMaterial(this.workspace.connection, request.topicId as number).avoid;
+    const extra = {
+      ...(request.instructions?.trim() ? { instructions: request.instructions.trim() } : {}),
+      ...(seeds.length > 0 ? { seeds } : {}),
+    };
     let accepted = 0;
     let finished = 0;
     let active = 0;
@@ -376,6 +450,7 @@ export class GenerationService {
                 remaining,
                 topicId: request.topicId ?? null,
                 avoid,
+                extra,
               })
             : await this.generator.generateBatch({
                 runId,
@@ -386,6 +461,7 @@ export class GenerationService {
                 remaining,
                 topicId: request.topicId ?? null,
                 avoid,
+                extra,
               });
         accepted += outcome.accepted;
         finished += 1;

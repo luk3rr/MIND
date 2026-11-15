@@ -20,13 +20,20 @@ export function useInvoke<C extends ChannelName>(
   const key = JSON.stringify(payload);
   const latest = useRef(0);
 
+  // The channel and payload the current data belongs to: reloading the same call in the background
+  // (a poller, a "retry") keeps what is on screen instead of flashing a skeleton and losing the
+  // scroll position.
+  const shown = useRef<string | null>(null);
+
   useEffect(() => {
     const request = ++latest.current;
-    setState({ status: "loading" });
+    const identity = `${channel}:${key}`;
+    if (shown.current !== identity) setState({ status: "loading" });
     window.mind
       .invoke(channel, JSON.parse(key) as InputOf<C>)
       .then((result) => {
         if (request !== latest.current) return;
+        shown.current = result.ok ? identity : null;
         setState(
           result.ok
             ? { status: "ready", data: result.data }
@@ -35,6 +42,7 @@ export function useInvoke<C extends ChannelName>(
       })
       .catch(() => {
         if (request !== latest.current) return;
+        shown.current = null;
         setState({ status: "error", error: { code: "INTERNAL_ERROR", message: "Erro interno." } });
       });
   }, [channel, key, tick]);

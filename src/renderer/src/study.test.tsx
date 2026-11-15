@@ -168,7 +168,7 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
   it("shows the empty state when there is nothing to study and links to practice", async () => {
     open("/w/1/study", { studyQueue: [] });
     expect(await screen.findByText("Nada para estudar agora")).toBeVisible();
-    await userEvent.setup().click(screen.getByRole("button", { name: "Praticar" }));
+    await userEvent.setup().click(screen.getByRole("tab", { name: /Questões/ }));
     expect(await screen.findByRole("heading", { name: "Praticar questões" })).toBeVisible();
   });
 
@@ -242,11 +242,11 @@ describe("Practice page (FR-14)", () => {
     expect(await screen.findByText(/Resposta correta! Gabarito: B/)).toBeVisible();
   });
 
-  it("says when there are no questions and goes back to Study", async () => {
+  it("says when there are no questions and goes back to the cards tab", async () => {
     open("/w/1/study/practice", { questions: [] });
     expect(await screen.findByText("Nenhuma questão para praticar agora.")).toBeVisible();
-    await userEvent.setup().click(screen.getByRole("button", { name: "Voltar a Estudar" }));
-    expect(await screen.findByRole("heading", { name: "Estudar" })).toBeVisible();
+    await userEvent.setup().click(screen.getByRole("tab", { name: /Cards/ }));
+    expect(await screen.findByRole("heading", { name: "Revisão de cards" })).toBeVisible();
   });
 
   it("shows the counters and the redo option", async () => {

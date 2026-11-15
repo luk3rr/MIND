@@ -5,6 +5,7 @@
  */
 
 import { fixedClock } from "./helpers.js";
+import type { Provider } from "../llm/provider.js";
 import { generationRig } from "./generation-fixture.js";
 import type { GenerationRig } from "./generation-fixture.js";
 
@@ -14,9 +15,13 @@ export interface StudyRig extends GenerationRig {
 }
 
 /** A workspace with `count` approved cards (approval times one second apart) and a fixed clock. */
-export async function studyRig(count = 5, options: { newPerDay?: number } = {}): Promise<StudyRig> {
+export async function studyRig(
+  count = 5,
+  options: { newPerDay?: number } = {},
+  provider?: Provider,
+): Promise<StudyRig> {
   const clock = fixedClock("2026-03-10T15:00:00.000Z");
-  const rig = generationRig({ clock, tzOffset: () => 0 });
+  const rig = generationRig({ clock, tzOffset: () => 0, ...(provider ? { provider } : {}) });
   const generation = rig.core.generation(rig.workspaceId);
   const run = generation.start({
     materialId: rig.materialId,

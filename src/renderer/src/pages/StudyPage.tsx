@@ -8,10 +8,10 @@ import { useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { useHotkeys, useInvoke } from "../hooks.js";
 import { MathText } from "../MathText.js";
-import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
+import { StudyTabs } from "../components/StudyTabs.js";
 
 type Next = OutputOf<"study:next">;
 type Today = OutputOf<"study:today">;
@@ -94,7 +94,6 @@ function FilterSelect({
 
 /** Studies the day's queue one card at a time: reveal (Space), rate (1 to 4), undo (Ctrl+Z). */
 export function StudyPage({ workspaceId }: { workspaceId: number }) {
-  const { navigate } = useRouter();
   const today = useInvoke("study:today", { workspaceId });
   const [filterValue, setFilterValue] = useState("");
   const filter = parseFilter(filterValue);
@@ -151,16 +150,9 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
   const counts = next?.counts;
   return (
     <section aria-labelledby="study-title">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <h1 id="study-title">{T.study}</h1>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() => navigate(`${sectionPath(workspaceId, "study")}/practice`)}
-        >
-          {T.practice}
-        </button>
-      </div>
+      <h1 id="study-title">{T.study}</h1>
+      <StudyTabs workspaceId={workspaceId} active="cards" activeCount={counts?.toStudy} />
+      <h2>{T.studySubCards}</h2>
       {today.state.status === "ready" && (
         <FilterSelect
           facets={today.state.data.facets}

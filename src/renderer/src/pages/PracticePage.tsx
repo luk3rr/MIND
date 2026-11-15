@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { useHotkeys } from "../hooks.js";
 import { MathText } from "../MathText.js";
-import { BackLink } from "../components/BackLink.js";
+import { StudyTabs } from "../components/StudyTabs.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
@@ -77,8 +77,13 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
 
   return (
     <section aria-labelledby="practice-title">
-      <BackLink workspaceId={workspaceId} fallback="study" fallbackLabel={T.backToStudy} />
-      <h1 id="practice-title">{T.practiceTitle}</h1>
+      <h1 id="practice-title">{T.study}</h1>
+      <StudyTabs
+        workspaceId={workspaceId}
+        active="questions"
+        activeCount={next ? next.counts.unseen + next.counts.retry : undefined}
+      />
+      <h2>{T.practiceTitle}</h2>
       {next && (
         <p className="muted">
           {T.practiceCounts(next.counts.unseen, next.counts.retry)} ·{" "}

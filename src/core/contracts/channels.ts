@@ -89,6 +89,10 @@ const generationRequest = z
     kind: z.enum(["card", "question"]),
     pageFrom: z.number().int().min(1).optional(),
     pageTo: z.number().int().min(1).optional(),
+    /** What the person wants on top of the type (a focus, a style, a constraint). */
+    instructions: z.string().max(2000).optional(),
+    /** Write variations of the items already approved on this material or topic. */
+    variations: z.boolean().optional(),
   })
   .strict();
 

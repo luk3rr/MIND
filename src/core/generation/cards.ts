@@ -10,7 +10,7 @@ import type { WorkspaceDb } from "../jobs/store.js";
 import type { Provider } from "../llm/provider.js";
 import { normalize, SourceChecker } from "../verification/source-checker.js";
 import { buildCardMessages } from "./prompts.js";
-import type { PromptChunk } from "./prompts.js";
+import type { PromptChunk, PromptExtra } from "./prompts.js";
 import { chunkLabel } from "./planning.js";
 import type { SourceChunk } from "./planning.js";
 import { cardBatchSchema } from "./schemas.js";
@@ -76,6 +76,8 @@ export interface BatchRequest {
   remaining: () => number;
   topicId?: number | null;
   avoid?: string[];
+  /** The person's own instructions and the items to vary. */
+  extra?: PromptExtra;
 }
 
 /** Asks the model for cards, verifies their sources and stores valid ones as drafts. */
@@ -98,6 +100,7 @@ export class CardGenerator {
       request.count,
       promptChunks,
       request.avoid ?? [],
+      request.extra ?? {},
     );
     const { value, usage } = await this.provider.complete(messages, cardBatchSchema, {
       model: request.model,

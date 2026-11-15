@@ -117,6 +117,60 @@ describe("Generate page", () => {
     expect(fake.state.runs[0]).toMatchObject({ subtype: "cloze", requested: 12, materialId: 1 });
   });
 
+  it("sends the person's instructions and the variations option with the request", async () => {
+    const { invoke } = open("/w/1/generate", { items: [item(1, { status: "approved" })] });
+    const user = userEvent.setup();
+    const box = await screen.findByLabelText("Instruções para o modelo (opcional)");
+    expect(screen.getByText(/0\/500/)).toBeVisible();
+    await user.click(box);
+    await user.paste("  Foque em questões de aplicação.  ");
+    expect(screen.getByText(/35\/500/)).toBeVisible();
+    await user.click(
+      screen.getByRole("checkbox", { name: /Criar variações dos itens já aprovados/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Gerar cards" }));
+    await screen.findByText("Na fila");
+    expect(invoke).toHaveBeenCalledWith(
+      "generation:start",
+      expect.objectContaining({
+        instructions: "Foque em questões de aplicação.",
+        variations: true,
+      }),
+    );
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(
+        "generation:estimate",
+        expect.objectContaining({
+          instructions: "Foque em questões de aplicação.",
+          variations: true,
+        }),
+      ),
+    );
+  });
+
+  it("sends neither field when they are empty", async () => {
+    const { invoke } = open("/w/1/generate");
+    const user = userEvent.setup();
+    await screen.findByLabelText("Instruções para o modelo (opcional)");
+    await user.click(screen.getByRole("button", { name: "Gerar cards" }));
+    await screen.findByText("Na fila");
+    const call = invoke.mock.calls.find(([channel]) => channel === "generation:start");
+    expect(call?.[1]).not.toHaveProperty("instructions");
+    expect(call?.[1]).not.toHaveProperty("variations");
+  });
+
+  it("shows the message when there are no approved items to vary", async () => {
+    open("/w/1/generate");
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("checkbox", { name: /Criar variações dos itens já aprovados/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Gerar cards" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Pedido de geração inválido|variações/,
+    );
+  });
+
   it("says when the cost cannot be estimated", async () => {
     open("/w/1/generate", { estimateUsd: null });
     expect(await screen.findByText(/Custo estimado indisponível/)).toBeVisible();

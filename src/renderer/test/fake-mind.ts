@@ -360,6 +360,9 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         if (input.quantity > 60) {
           return failure("VALIDATION_ERROR", "Peça de 1 a 60 cards.", "quantity");
         }
+        if (input.variations && state.items.every((entry) => entry.status !== "approved")) {
+          return failure("VALIDATION_ERROR", "Pedido de geração inválido.", "variations");
+        }
         const run: FakeRun = {
           id: state.runs.length + 1,
           kind: "card",

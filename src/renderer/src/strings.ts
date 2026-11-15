@@ -368,4 +368,17 @@ export const T = {
   welcomePickTitle: "Escolha um workspace",
   welcomePickBody: "Abra um workspace existente, crie um novo ou importe um backup.",
   welcomeOpen: (name: string) => `Abrir ${name}`,
+  generateInstructions: "Instruções para o modelo (opcional)",
+  generateInstructionsHint:
+    'Peça um foco ou um estilo, por exemplo: "só questões de aplicação", "use números inteiros" ou "inclua pegadinhas sobre exceções". A fonte e a citação continuam obrigatórias.',
+  generateVariations: "Criar variações dos itens já aprovados",
+  generateVariationsHint:
+    "Os itens aprovados mais recentes deste material ou tópico servem de modelo: o modelo escreve itens novos sobre a mesma ideia, com outra forma ou outros dados.",
+  studyModes: "Modo de estudo",
+  studyTabCards: "Cards",
+  studyTabQuestions: "Questões",
+  studyCardsHint: "Revisão espaçada: veja a frente, lembre a resposta e avalie o quanto foi fácil.",
+  studyQuestionsHint:
+    "Resolva questões (múltipla escolha e Certo/Errado) e confira o gabarito com o comentário.",
+  studySubCards: "Revisão de cards",
 } as const;

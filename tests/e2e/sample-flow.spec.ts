@@ -92,7 +92,7 @@ test("the sample material takes a first-time user from import to chat (SC-4)", a
   }
 
   // Practice: miss a question and turn it into a card.
-  await page.getByRole("button", { name: "Praticar" }).click();
+  await page.getByRole("tab", { name: /Questões/ }).click();
   await page.getByRole("radio", { name: /^B/ }).click();
   await page.getByRole("button", { name: "Responder" }).click();
   await expect(page.getByText(/Resposta errada/)).toBeVisible();

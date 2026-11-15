@@ -143,7 +143,8 @@ interface RouterValue {
   standalone: boolean;
   /** The screen the person came from, or null when there is none to go back to. */
   previousPath: string | null;
-  navigate(path: string): void;
+  /** Goes to a screen; with `replace` it takes the place of the current one in the history. */
+  navigate(path: string, options?: { replace?: boolean }): void;
   /** Goes back to the screen the person came from; with none, goes to `fallback`. */
   back(fallback: string): void;
 }
@@ -182,10 +183,13 @@ export function RouterProvider({
   );
 
   const navigate = useCallback(
-    (next: string) => {
+    (next: string, options: { replace?: boolean } = {}) => {
       setStack((current) => {
         const last = current[current.length - 1];
         if (last === next) return current;
+        if (options.replace && last !== undefined && workspaceOf(last) === workspaceOf(next)) {
+          return [...current.slice(0, -1), next];
+        }
         // The history belongs to a workspace: changing workspace starts a new one.
         if (last !== undefined && workspaceOf(last) !== workspaceOf(next)) return [next];
         return [...current, next].slice(-MAX_HISTORY);

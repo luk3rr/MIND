@@ -5,8 +5,8 @@
  */
 
 import type { Message } from "../llm/types.js";
-import { renderAvoid, renderChunks } from "./prompts.js";
-import type { PromptChunk } from "./prompts.js";
+import { renderAvoid, renderChunks, renderExtra } from "./prompts.js";
+import type { PromptChunk, PromptExtra } from "./prompts.js";
 
 // The texts below are copied from the Python implementation and checked against fixtures.
 
@@ -48,10 +48,11 @@ export function buildQuestionMessages(
   count: number,
   chunks: readonly PromptChunk[],
   avoid: readonly string[] = [],
+  extra: PromptExtra = {},
 ): Message[] {
   const task =
     `Create exactly ${count} questions from the excerpts below. ${PROFILE_RULES[profile]}\n\n` +
-    `Excerpts:\n\n${renderChunks(chunks)}${renderAvoid(avoid)}`;
+    `Excerpts:\n\n${renderChunks(chunks)}${renderAvoid(avoid)}${renderExtra(extra)}`;
   const system = profile.startsWith("calculation_") ? CALCULATION_SYSTEM : QUESTION_SYSTEM;
   return [
     { role: "system", content: system },

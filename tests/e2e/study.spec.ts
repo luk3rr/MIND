@@ -147,7 +147,7 @@ test("practices generated questions and records the attempts (FR-9, FR-14)", asy
   await prepare(current);
   const { page } = current;
   await page.getByRole("button", { name: "Estudar", exact: true }).click();
-  await page.getByRole("button", { name: "Praticar" }).click();
+  await page.getByRole("tab", { name: /Questões/ }).click();
   await expect(page.getByRole("heading", { name: "Praticar questões" })).toBeVisible();
   await expect(page.getByText(/3 novas/)).toBeVisible();
 

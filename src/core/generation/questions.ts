@@ -15,7 +15,7 @@ import type { BatchOutcome } from "./cards.js";
 import { Judge } from "./judge.js";
 import { chunkLabel } from "./planning.js";
 import type { SourceChunk } from "./planning.js";
-import type { PromptChunk } from "./prompts.js";
+import type { PromptChunk, PromptExtra } from "./prompts.js";
 import { buildQuestionMessages } from "./question-prompts.js";
 import { PROFILES, questionBatchSchema } from "./schemas.js";
 import type { OptionOut, QuestionOut, QuestionPayload } from "./schemas.js";
@@ -93,6 +93,8 @@ export interface QuestionBatchRequest {
   remaining: () => number;
   topicId?: number | null;
   avoid?: string[];
+  /** The person's own instructions and the items to vary. */
+  extra?: PromptExtra;
 }
 
 /** Questions with a verified source and a second-model check that the answer is supported. */
@@ -115,7 +117,13 @@ export class QuestionGenerator {
       text: c.text,
     }));
     const { value, usage } = await this.provider.complete(
-      buildQuestionMessages(request.profile, request.count, promptChunks, request.avoid ?? []),
+      buildQuestionMessages(
+        request.profile,
+        request.count,
+        promptChunks,
+        request.avoid ?? [],
+        request.extra ?? {},
+      ),
       questionBatchSchema,
       { model: request.model, purpose: "generation", schemaName: "QuestionBatch" },
     );

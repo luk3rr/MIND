@@ -680,3 +680,36 @@ mark {
   color: var(--on-accent);
   border-color: transparent;
 }
+
+.study-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+.study-tab {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--muted);
+}
+.study-tab[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.study-tab:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+}
+.study-tab .pill {
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+}

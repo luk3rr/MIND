@@ -146,6 +146,8 @@ export function GeneratePage({
       "qa",
   );
   const [quantity, setQuantity] = useState("20");
+  const [instructions, setInstructions] = useState("");
+  const [variations, setVariations] = useState(false);
   const [estimate, setEstimate] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -168,6 +170,8 @@ export function GeneratePage({
       kind,
       ...(trainTopic === null && pageFrom.trim() ? { pageFrom: Number(pageFrom) } : {}),
       ...(trainTopic === null && pageTo.trim() ? { pageTo: Number(pageTo) } : {}),
+      ...(instructions.trim() ? { instructions: instructions.trim() } : {}),
+      ...(variations ? { variations: true } : {}),
     };
   };
 
@@ -177,8 +181,22 @@ export function GeneratePage({
     setFormError(Object.keys(byField).length === 0 ? error.message : null);
   };
 
-  const key = JSON.stringify([selected, trainTopic, kind, subtype, quantity, pageFrom, pageTo]);
+  const key = JSON.stringify([
+    selected,
+    trainTopic,
+    kind,
+    subtype,
+    quantity,
+    pageFrom,
+    pageTo,
+    instructions,
+    variations,
+  ]);
   useEffect(() => {
+    // Editing the form is what clears the messages of an earlier attempt; a late cost estimate
+    // must not wipe an error the person has not had the chance to read.
+    setErrors({});
+    setFormError(null);
     const payload = request();
     if (!payload) {
       setEstimate(null);
@@ -190,8 +208,6 @@ export function GeneratePage({
           setEstimate(null);
           return;
         }
-        setErrors({});
-        setFormError(null);
         setEstimate(
           result.data.estimatedUsd === null
             ? T.generateEstimateUnknown
@@ -357,6 +373,42 @@ export function GeneratePage({
                 </p>
               )}
             </div>
+          </div>
+          <div className="field">
+            <label htmlFor="gen-instructions">{T.generateInstructions}</label>
+            <textarea
+              id="gen-instructions"
+              rows={3}
+              maxLength={500}
+              value={instructions}
+              onChange={(event) => setInstructions(event.target.value)}
+              aria-describedby="gen-instructions-hint"
+            />
+            <p id="gen-instructions-hint" className="muted">
+              {T.generateInstructionsHint} ({instructions.length}/500)
+            </p>
+            {errors["instructions"] && (
+              <p className="field-error" role="alert">
+                {errors["instructions"]}
+              </p>
+            )}
+          </div>
+          <div className="field">
+            <label className="row" style={{ alignItems: "center", gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={variations}
+                onChange={(event) => setVariations(event.target.checked)}
+                style={{ width: "auto" }}
+              />
+              {T.generateVariations}
+            </label>
+            <p className="muted">{T.generateVariationsHint}</p>
+            {errors["variations"] && (
+              <p className="field-error" role="alert">
+                {errors["variations"]}
+              </p>
+            )}
           </div>
           {errors["materialId"] && (
             <p className="field-error" role="alert">
