@@ -102,7 +102,7 @@ test("studies the day's queue with the keyboard and updates Today (FR-12, FR-13,
   await page.getByRole("button", { name: "Hoje", exact: true }).click();
   await expect(page.getByRole("button", { name: "Estudar agora (6)" })).toBeVisible();
   await page.getByRole("button", { name: "Estudar agora (6)" }).click();
-  await expect(page.getByRole("heading", { name: "Estudar" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Estudar" })).toBeVisible();
   await expect(page.getByLabel("Frente")).toContainText("O que o trecho");
 
   const latencies: number[] = [];
