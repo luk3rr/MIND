@@ -193,7 +193,7 @@ h1 {
 }
 .row {
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 .stat {
@@ -300,7 +300,7 @@ h1 {
 .field-error {
   color: var(--danger);
   font-size: 13px;
-  margin: 6px 0 0;
+  margin: var(--space-1) 0 0;
 }
 .quick-list {
   list-style: none;
@@ -333,12 +333,19 @@ pre {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
+}
+/* The buttons that close a form or a block: they sit together and wrap on a narrow window. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 .content > section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 .content > section > h1,
 .content > section > p {
@@ -903,4 +910,38 @@ tr.needs-review .btn .pill {
 }
 .combo-empty {
   cursor: default;
+}
+
+/* Keeps the bubble open while the pointer crosses the gap between it and its button. */
+.help-tip-bubble::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
+.settings-group h3,
+.settings-group p {
+  margin: 0;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+.field-label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+}
+.field-label-row label {
+  margin: 0;
+}
+.settings-grid .field > label,
+.field-label-row {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
 }

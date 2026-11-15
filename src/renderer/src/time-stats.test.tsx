@@ -86,6 +86,108 @@ describe("daily time goal on Today (FR-9, US-4)", () => {
   });
 });
 
+describe("study settings", () => {
+  const open = () => {
+    const fake = installFakeMind({ workspaces: [ws], route: "/w/1/settings", materials: [pdf] });
+    render(<App />);
+    return fake;
+  };
+
+  it("saves the daily routine and the algorithm settings", async () => {
+    const { state, invoke } = open();
+    const user = userEvent.setup();
+    const perDay = await screen.findByLabelText("Cards novos por dia", {}, { timeout: 5000 });
+    await user.clear(perDay);
+    await user.type(perDay, "35");
+    const retention = screen.getByLabelText("Retenção desejada");
+    await user.clear(retention);
+    await user.type(retention, "0,85");
+    const maxInterval = screen.getByLabelText("Intervalo máximo (dias)");
+    await user.clear(maxInterval);
+    await user.type(maxInterval, "182");
+    const steps = screen.getByLabelText("Passos de aprendizado");
+    await user.clear(steps);
+    await user.type(steps, "2m 20m");
+    await user.click(screen.getByRole("checkbox", { name: "Variação aleatória nos intervalos" }));
+    await user.click(screen.getByRole("button", { name: "Salvar estudo" }));
+    expect(await screen.findByText("Configurações de estudo salvas.")).toBeInTheDocument();
+    expect(invoke).toHaveBeenCalledWith("study:saveSettings", {
+      workspaceId: 1,
+      newPerDay: 35,
+      dailyGoal: 40,
+      desiredRetention: 0.85,
+      maximumInterval: 182,
+      learningSteps: "2m 20m",
+      relearningSteps: "10m",
+      enableFuzz: false,
+    });
+    expect(state.studySettings).toMatchObject({ newPerDay: 35, maximumInterval: 182 });
+  });
+
+  it("restores the algorithm defaults in the form without saving them", async () => {
+    const { invoke } = installFakeMind({
+      workspaces: [ws],
+      route: "/w/1/settings",
+      materials: [pdf],
+      studySettings: {
+        newPerDay: 30,
+        dailyGoal: 40,
+        desiredRetention: 0.85,
+        maximumInterval: 182,
+        learningSteps: "2m",
+        relearningSteps: "",
+        enableFuzz: false,
+      },
+    });
+    render(<App />);
+    const user = userEvent.setup();
+    expect(await screen.findByLabelText("Retenção desejada", {}, { timeout: 5000 })).toHaveValue(
+      "0,85",
+    );
+    await user.click(screen.getByRole("button", { name: "Restaurar padrões" }));
+    expect(screen.getByLabelText("Retenção desejada")).toHaveValue("0,9");
+    expect(screen.getByLabelText("Intervalo máximo (dias)")).toHaveValue("36500");
+    expect(screen.getByLabelText("Passos de aprendizado")).toHaveValue("1m 10m");
+    expect(screen.getByLabelText("Passos de reaprendizado")).toHaveValue("10m");
+    expect(
+      screen.getByRole("checkbox", { name: "Variação aleatória nos intervalos" }),
+    ).toBeChecked();
+    // The daily routine is not part of the algorithm: it stays as it was.
+    expect(screen.getByLabelText("Cards novos por dia")).toHaveValue("30");
+    expect(invoke).not.toHaveBeenCalledWith("study:saveSettings", expect.anything());
+  });
+
+  it("explains the retention in a help bubble", async () => {
+    open();
+    const user = userEvent.setup();
+    await screen.findByLabelText("Retenção desejada", {}, { timeout: 5000 });
+    const section = screen.getByRole("region", { name: "Estudo de cards" });
+    expect(within(section).getByRole("tooltip", { hidden: true })).not.toBeVisible();
+    await user.click(within(section).getByRole("button", { name: /Como funciona/ }));
+    const bubble = within(section).getByRole("tooltip");
+    expect(bubble).toBeVisible();
+    expect(bubble).toHaveTextContent("O que é a retenção desejada");
+    expect(bubble).toHaveTextContent("Quanto maior, mais revisões");
+    expect(within(bubble).queryByRole("button")).toBeNull();
+    expect(within(bubble).queryByRole("link")).toBeNull();
+    await user.keyboard("{Escape}");
+    expect(within(section).getByRole("tooltip", { hidden: true })).not.toBeVisible();
+  });
+
+  it("shows the message of a field the algorithm rejects and keeps what was typed", async () => {
+    const { state } = open();
+    const user = userEvent.setup();
+    const steps = await screen.findByLabelText("Passos de aprendizado", {}, { timeout: 5000 });
+    await user.clear(steps);
+    await user.type(steps, "abc");
+    await user.click(screen.getByRole("button", { name: "Salvar estudo" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent('Use passos como "1m 10m"');
+    expect(steps).toHaveValue("abc");
+    expect(state.studySettings).toBeUndefined();
+    expect(screen.queryByText("Configurações de estudo salvas.")).toBeNull();
+  });
+});
+
 describe("time settings (FR-9, FR-4)", () => {
   it("saves the goal, the idle limit and the automatic switch", async () => {
     const { state, invoke } = installFakeMind({

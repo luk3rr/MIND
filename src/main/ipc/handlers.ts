@@ -13,6 +13,7 @@ import type { Core } from "../../core/core.js";
 import { todaySummary } from "../../core/today/summary.js";
 import { cardSides } from "../../core/study/rendering.js";
 import { Rating } from "../../core/study/scheduler.js";
+import { defaultSettings } from "../../core/study/service.js";
 import { downloadName, exportWorkspace, importWorkspace } from "../../core/workspaces/archive.js";
 import { testConnection } from "../../core/llm/connection.js";
 import type { Handlers } from "./router.js";
@@ -64,6 +65,9 @@ export interface UiBridge {
 }
 
 const PREVIEW_PAGE_SIZE = 20;
+
+/** How many generations the list sends; the screen pages and searches them. */
+const RUNS_LISTED = 500;
 
 export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Handlers {
   return {
@@ -149,7 +153,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     }),
     "generation:list": ({ workspaceId }) => {
       const service = core.generation(workspaceId);
-      return { runs: service.listRuns().map((run) => service.view(run)) };
+      return { runs: service.views(service.listRuns(RUNS_LISTED)) };
     },
     "generation:get": ({ workspaceId, runId }) => {
       const service = core.generation(workspaceId);
@@ -189,13 +193,14 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       return {
         counts: study.counts(undefined, filter),
         settings: study.settings(),
+        defaults: defaultSettings(),
         facets: study.facets(),
       };
     },
-    "study:next": ({ workspaceId, filter }) => {
+    "study:next": ({ workspaceId, filter, extraNew }) => {
       const study = core.study(workspaceId);
-      const next = study.nextCard(undefined, filter);
-      const counts = study.counts(undefined, filter);
+      const next = study.nextCard(undefined, filter, extraNew ?? 0);
+      const counts = study.counts(undefined, filter, extraNew ?? 0);
       if (!next) return { card: null, counts };
       const sides = cardSides(next.item.subtype, next.item.front, next.item.back);
       const previews = study.previews(next);

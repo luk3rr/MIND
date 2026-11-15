@@ -35,7 +35,25 @@ import {
 import type { CardSchedule, TzOffset } from "./scheduler.js";
 
 export const LEARNING_STATES = [1, 3];
-export const DEFAULTS = { new_per_day: "20", daily_goal: "40", desired_retention: "0.9" };
+export const DEFAULTS = {
+  new_per_day: "20",
+  daily_goal: "40",
+  desired_retention: "0.9",
+  maximum_interval: "36500",
+  learning_steps: "1m 10m",
+  relearning_steps: "10m",
+  enable_fuzz: "true",
+};
+export const MAX_INTERVAL_DAYS = 36500;
+export const MAX_STEPS = 5;
+const STEP = /^([1-9]\d{0,3})([mhd])$/;
+
+/** `"1m, 10m"` as a list of steps, or null when a step is malformed or there are too many. */
+export function parseSteps(text: string): string[] | null {
+  const steps = text.split(/[\s,;]+/).filter(Boolean);
+  if (steps.length > MAX_STEPS || steps.some((step) => !STEP.test(step))) return null;
+  return steps;
+}
 export const MAX_NEW_PER_DAY = 500;
 export const MAX_DAILY_GOAL = 2000;
 
@@ -43,6 +61,27 @@ export interface StudySettings {
   newPerDay: number;
   dailyGoal: number;
   desiredRetention: number;
+  /** The longest wait between two reviews, in days. */
+  maximumInterval: number;
+  /** Steps of a new card, such as "1m 10m"; empty goes straight to days. */
+  learningSteps: string;
+  /** Steps after forgetting a card, such as "10m"; empty goes straight to days. */
+  relearningSteps: string;
+  /** Spreads intervals a little so cards made together do not all come back on one day. */
+  enableFuzz: boolean;
+}
+
+/** The settings a workspace starts with, and what "restore defaults" goes back to. */
+export function defaultSettings(): StudySettings {
+  return {
+    newPerDay: Number(DEFAULTS.new_per_day),
+    dailyGoal: Number(DEFAULTS.daily_goal),
+    desiredRetention: Number(DEFAULTS.desired_retention),
+    maximumInterval: Number(DEFAULTS.maximum_interval),
+    learningSteps: DEFAULTS.learning_steps,
+    relearningSteps: DEFAULTS.relearning_steps,
+    enableFuzz: DEFAULTS.enable_fuzz === "true",
+  };
 }
 
 /** What to study in a session; an absent field means "no restriction". */
@@ -76,6 +115,8 @@ export interface TodayCounts {
   learning: number;
   review: number;
   newAvailable: number;
+  /** Unseen cards held back today by the daily limit of new cards. */
+  newWaiting: number;
   reviewedToday: number;
   newStudiedToday: number;
   toStudy: number;
@@ -143,6 +184,10 @@ export class StudyService {
       newPerDay: Number(merged.new_per_day),
       dailyGoal: Number(merged.daily_goal),
       desiredRetention: Number(merged.desired_retention),
+      maximumInterval: Number(merged.maximum_interval),
+      learningSteps: merged.learning_steps,
+      relearningSteps: merged.relearning_steps,
+      enableFuzz: merged.enable_fuzz !== "false",
     };
   }
 
@@ -172,6 +217,30 @@ export class StudyService {
         changes["desired_retention"] = String(update.desiredRetention);
       } else errors.push({ field: "desiredRetention", message: "Use de 0,70 a 0,99." });
     }
+    if (update.maximumInterval !== undefined) {
+      if (
+        Number.isInteger(update.maximumInterval) &&
+        update.maximumInterval >= 1 &&
+        update.maximumInterval <= MAX_INTERVAL_DAYS
+      ) {
+        changes["maximum_interval"] = String(update.maximumInterval);
+      } else
+        errors.push({ field: "maximumInterval", message: `Use de 1 a ${MAX_INTERVAL_DAYS} dias.` });
+    }
+    for (const [field, key, value] of [
+      ["learningSteps", "learning_steps", update.learningSteps],
+      ["relearningSteps", "relearning_steps", update.relearningSteps],
+    ] as const) {
+      if (value === undefined) continue;
+      const steps = parseSteps(value);
+      if (steps === null) {
+        errors.push({
+          field,
+          message: `Use passos como "1m 10m" (m = minutos, h = horas, d = dias), no máximo ${MAX_STEPS}.`,
+        });
+      } else changes[key] = steps.join(" ");
+    }
+    if (update.enableFuzz !== undefined) changes["enable_fuzz"] = String(update.enableFuzz);
     if (errors.length > 0)
       throw new AppError("VALIDATION_ERROR", "Configurações de estudo inválidas.", errors);
     this.workspace.connection.sqlite.transaction(() => {
@@ -187,7 +256,13 @@ export class StudyService {
   }
 
   private scheduler(): Scheduler {
-    return this.options.scheduler ?? new Scheduler(this.settings().desiredRetention);
+    if (this.options.scheduler) return this.options.scheduler;
+    const settings = this.settings();
+    return new Scheduler(settings.desiredRetention, settings.enableFuzz, {
+      maximumInterval: settings.maximumInterval,
+      learningSteps: parseSteps(settings.learningSteps) ?? [],
+      relearningSteps: parseSteps(settings.relearningSteps) ?? [],
+    });
   }
 
   // reading state ----------------------------------------------------------------------------
@@ -213,7 +288,8 @@ export class StudyService {
     ];
   }
 
-  counts(now: Date = this.clock.now(), filter?: StudyFilter): TodayCounts {
+  /** `extraNew` raises today's limit of new cards for this call (the person asked for more). */
+  counts(now: Date = this.clock.now(), filter?: StudyFilter, extraNew = 0): TodayCounts {
     const end = dayEnd(now, this.offset).toISOString();
     const ahead = new Date(now.getTime() + LEARN_AHEAD_MS).toISOString();
     const day = this.today(now);
@@ -242,12 +318,13 @@ export class StudyService {
     const reviewed =
       this.db.select({ total: count() }).from(reviewLog).where(eq(reviewLog.day, day)).get()
         ?.total ?? 0;
-    const allowance = Math.max(this.settings().newPerDay - newToday, 0);
+    const allowance = Math.max(this.settings().newPerDay + extraNew - newToday, 0);
     const newAvailable = Math.min(unseen, allowance);
     return {
       learning,
       review,
       newAvailable,
+      newWaiting: unseen - newAvailable,
       reviewedToday: reviewed,
       newStudiedToday: newToday,
       toStudy: learning + review + newAvailable,
@@ -270,7 +347,7 @@ export class StudyService {
    * learn-ahead cards back keeps a card just rated "again" or "hard" (due in minutes) from coming
    * straight back while other cards are waiting.
    */
-  queue(limit = 20, now: Date = this.clock.now(), filter?: StudyFilter): StudyCard[] {
+  queue(limit = 20, now: Date = this.clock.now(), filter?: StudyFilter, extraNew = 0): StudyCard[] {
     const end = dayEnd(now, this.offset).toISOString();
     const due = now.toISOString();
     const ahead = new Date(now.getTime() + LEARN_AHEAD_MS).toISOString();
@@ -297,7 +374,7 @@ export class StudyService {
     };
     take(LEARNING_STATES, due);
     take([REVIEW_STATE], end);
-    const allowance = this.settings().newPerDay - this.newStudiedToday(this.today(now));
+    const allowance = this.settings().newPerDay + extraNew - this.newStudiedToday(this.today(now));
     const room = Math.min(limit - cards.length, allowance);
     if (room > 0) {
       const fresh = this.db
@@ -313,8 +390,8 @@ export class StudyService {
     return cards;
   }
 
-  nextCard(now: Date = this.clock.now(), filter?: StudyFilter): StudyCard | null {
-    return this.queue(1, now, filter)[0] ?? null;
+  nextCard(now: Date = this.clock.now(), filter?: StudyFilter, extraNew = 0): StudyCard | null {
+    return this.queue(1, now, filter, extraNew)[0] ?? null;
   }
 
   /** Selector options with how many approved items each holds. */

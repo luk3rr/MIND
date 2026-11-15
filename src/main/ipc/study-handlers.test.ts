@@ -16,6 +16,61 @@ afterEach(async () => {
   rig = undefined;
 });
 
+describe("algorithm settings", () => {
+  it("saves the algorithm settings, rejects bad ones and reports the defaults", async () => {
+    rig = await studyRig(1);
+    const dispatch = createRouter(
+      createHandlers(rig.core, { lastRoute: null }, { pickFiles: () => Promise.resolve([]) }),
+      { error: () => undefined },
+    );
+    const workspaceId = rig.workspaceId;
+    expect(
+      await dispatch("study:saveSettings", {
+        workspaceId,
+        desiredRetention: 0.85,
+        maximumInterval: 180,
+        learningSteps: "2m, 20m",
+        relearningSteps: "",
+        enableFuzz: false,
+      }),
+    ).toMatchObject({
+      ok: true,
+      data: {
+        desiredRetention: 0.85,
+        maximumInterval: 180,
+        learningSteps: "2m 20m",
+        relearningSteps: "",
+        enableFuzz: false,
+      },
+    });
+    const today = await dispatch("study:today", { workspaceId });
+    expect(today).toMatchObject({
+      ok: true,
+      data: {
+        settings: { maximumInterval: 180, learningSteps: "2m 20m", enableFuzz: false },
+        defaults: {
+          desiredRetention: 0.9,
+          maximumInterval: 36500,
+          learningSteps: "1m 10m",
+          relearningSteps: "10m",
+          enableFuzz: true,
+        },
+      },
+    });
+    const bad = await dispatch("study:saveSettings", {
+      workspaceId,
+      maximumInterval: 0,
+      learningSteps: "1x 10m",
+      relearningSteps: "1m 2m 3m 4m 5m 6m",
+    });
+    expect(bad).toMatchObject({ ok: false });
+    const fields = (bad as { error: { fields: { field: string }[] } }).error.fields.map(
+      (entry) => entry.field,
+    );
+    expect(fields.sort()).toEqual(["learningSteps", "maximumInterval", "relearningSteps"]);
+  });
+});
+
 describe("study channels", () => {
   it("serves the next card with its sides and interval previews, rates and undoes (FR-12, FR-13)", async () => {
     rig = await studyRig(3);
@@ -75,7 +130,7 @@ describe("study channels", () => {
     const workspaceId = rig.workspaceId;
     expect(
       await dispatch("study:saveSettings", { workspaceId, newPerDay: 1, dailyGoal: 5 }),
-    ).toEqual({
+    ).toMatchObject({
       ok: true,
       data: { newPerDay: 1, dailyGoal: 5, desiredRetention: 0.9 },
     });

@@ -115,7 +115,15 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     },
     "study:rate": () => ({}),
     "study:undo": () => ({ itemId: null }),
-    "study:saveSettings": () => ({ newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 }),
+    "study:saveSettings": () => ({
+      newPerDay: 20,
+      dailyGoal: 40,
+      desiredRetention: 0.9,
+      maximumInterval: 36500,
+      learningSteps: "1m 10m",
+      relearningSteps: "10m",
+      enableFuzz: true,
+    }),
     "practice:next": () => {
       throw new Error("unused");
     },

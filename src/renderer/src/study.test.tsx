@@ -201,6 +201,29 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
     expect(screen.getByLabelText("Verso").querySelector("mark")).toHaveTextContent("mitocôndria");
   });
 
+  it("explains the daily limit of new cards and lets the person study more", async () => {
+    const fake = open("/w/1/study", {
+      studyQueue: [],
+      studyHeldBack: [card(1), card(2), card(3)],
+    });
+    const user = userEvent.setup();
+    expect(await screen.findByText("Limite diário de cards novos atingido")).toBeVisible();
+    expect(screen.getByText(/3 esperam pelo próximo dia/)).toBeVisible();
+    expect(screen.queryByText("Nada para estudar agora")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Estudar mais 3 novos" }));
+    expect(await screen.findByText("Pergunta 1?")).toBeVisible();
+    expect(fake.invoke).toHaveBeenCalledWith("study:next", { workspaceId: 1, extraNew: 10 });
+  });
+
+  it("sends the person to the settings to change the limit", async () => {
+    open("/w/1/study", { studyQueue: [], studyHeldBack: [card(1)] });
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Mudar o limite diário" }));
+    expect(await screen.findByRole("heading", { name: "Configurações" })).toBeVisible();
+    expect(screen.getByLabelText("Cards novos por dia")).toHaveValue("20");
+  });
+
   it("shows the empty state when there is nothing to study and links to practice", async () => {
     open("/w/1/study", { studyQueue: [] });
     expect(await screen.findByText("Nada para estudar agora")).toBeVisible();

@@ -22,6 +22,16 @@ type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
 /** A run as a test seeds it; the fake adds the number of pending drafts from the items. */
 export type FakeRun = Omit<OutputOf<"generation:list">["runs"][number], "pending">;
 export type FakeItem = OutputOf<"review:list">["items"][number];
+export type FakeStudySettings = OutputOf<"study:today">["settings"];
+export const DEFAULT_STUDY_SETTINGS: FakeStudySettings = {
+  newPerDay: 20,
+  dailyGoal: 40,
+  desiredRetention: 0.9,
+  maximumInterval: 36500,
+  learningSteps: "1m 10m",
+  relearningSteps: "10m",
+  enableFuzz: true,
+};
 export type FakeStudyCard = NonNullable<OutputOf<"study:next">["card"]>;
 export type FakeErrorEntry = OutputOf<"errors:list">["entries"][number];
 export type FakeTopic = OutputOf<"topics:list">["topics"][number];
@@ -43,6 +53,11 @@ export interface FakeState {
   estimateUsd: number | null;
   /** The cards the study queue serves, in order; rating one removes it. */
   studyQueue: FakeStudyCard[];
+  /** New cards held back by the daily limit; "study more" lets them in. */
+  studyHeldBack?: FakeStudyCard[];
+  releasedExtra?: number;
+  /** The study settings the settings form saves. */
+  studySettings?: FakeStudySettings;
   reviewedToday: number;
   undoStack: FakeStudyCard[];
   /** Questions the practice queue serves; answering one removes it. */
@@ -143,6 +158,7 @@ function studyCounts(state: FakeState) {
     learning: 0,
     review: 0,
     newAvailable: state.studyQueue.length,
+    newWaiting: state.studyHeldBack?.length ?? 0,
     reviewedToday: state.reviewedToday,
     newStudiedToday: state.reviewedToday,
     toStudy: state.studyQueue.length,
@@ -533,7 +549,8 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       case "study:today":
         return ok({
           counts: studyCounts(state),
-          settings: { newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 },
+          settings: state.studySettings ?? DEFAULT_STUDY_SETTINGS,
+          defaults: DEFAULT_STUDY_SETTINGS,
           facets: {
             topics: state.facetTopics ?? [
               { key: 1, label: "Biologia", count: state.studyQueue.length },
@@ -558,8 +575,16 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           cards: state.studyQueue.length,
           questions: state.questions.length,
         });
-      case "study:next":
+      case "study:next": {
+        const { extraNew } = payload as InputOf<"study:next">;
+        const held = state.studyHeldBack ?? [];
+        const already = state.releasedExtra ?? 0;
+        if ((extraNew ?? 0) > already && held.length > 0) {
+          state.studyQueue = [...state.studyQueue, ...held.splice(0, (extraNew ?? 0) - already)];
+          state.releasedExtra = extraNew ?? 0;
+        }
         return ok({ card: state.studyQueue[0] ?? null, counts: studyCounts(state) });
+      }
       case "study:rate": {
         const first = state.studyQueue[0];
         if (first) {
@@ -584,7 +609,22 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           }
           state.overview.summary.goal = input.dailyGoal;
         }
-        return ok({ newPerDay: 20, dailyGoal: state.overview.summary.goal, desiredRetention: 0.9 });
+        if (input.learningSteps !== undefined && !/^(\d+[mhd]\s*)*$/.test(input.learningSteps)) {
+          return failure(
+            "VALIDATION_ERROR",
+            'Use passos como "1m 10m" (m = minutos, h = horas, d = dias), no máximo 5.',
+            "learningSteps",
+          );
+        }
+        state.studySettings = {
+          ...(state.studySettings ?? DEFAULT_STUDY_SETTINGS),
+          ...Object.fromEntries(
+            Object.entries(input).filter(
+              ([key, value]) => key !== "workspaceId" && value !== undefined,
+            ),
+          ),
+        };
+        return ok(state.studySettings);
       }
       case "practice:next": {
         const input = payload as InputOf<"practice:next">;

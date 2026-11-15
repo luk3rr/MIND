@@ -53,7 +53,7 @@ export function TimeSettingsForm({ workspaceId }: { workspaceId: number }) {
   return (
     <section className="card stack" aria-labelledby="time-settings-title">
       <h2 id="time-settings-title">{T.timeTitle}</h2>
-      <form onSubmit={submit} noValidate>
+      <form onSubmit={submit} noValidate className="stack">
         <div className="field">
           <label htmlFor="time-goal">{T.timeGoalLabel}</label>
           <input

@@ -186,6 +186,8 @@ const studyCounts = z.object({
   learning: z.number().int(),
   review: z.number().int(),
   newAvailable: z.number().int(),
+  /** Unseen cards held back today by the daily limit of new cards. */
+  newWaiting: z.number().int(),
   reviewedToday: z.number().int(),
   newStudiedToday: z.number().int(),
   toStudy: z.number().int(),
@@ -195,6 +197,10 @@ const studySettings = z.object({
   newPerDay: z.number().int(),
   dailyGoal: z.number().int(),
   desiredRetention: z.number(),
+  maximumInterval: z.number().int(),
+  learningSteps: z.string(),
+  relearningSteps: z.string(),
+  enableFuzz: z.boolean(),
 });
 
 const piece = z.object({ text: z.string(), hit: z.boolean() });
@@ -535,11 +541,20 @@ export const channels = {
     output: z.object({
       counts: studyCounts,
       settings: studySettings,
+      /** What "restore defaults" goes back to. */
+      defaults: studySettings,
       facets: studyFacets,
     }),
   },
   "study:next": {
-    input: z.object({ workspaceId, filter: studyFilter.optional() }).strict(),
+    input: z
+      .object({
+        workspaceId,
+        filter: studyFilter.optional(),
+        /** New cards to allow today on top of the daily limit ("study more"). */
+        extraNew: z.number().int().min(0).max(500).optional(),
+      })
+      .strict(),
     output: z.object({
       card: z
         .object({
@@ -585,6 +600,10 @@ export const channels = {
         newPerDay: z.number().int().optional(),
         dailyGoal: z.number().int().optional(),
         desiredRetention: z.number().optional(),
+        maximumInterval: z.number().int().optional(),
+        learningSteps: z.string().max(80).optional(),
+        relearningSteps: z.string().max(80).optional(),
+        enableFuzz: z.boolean().optional(),
       })
       .strict(),
     output: studySettings,

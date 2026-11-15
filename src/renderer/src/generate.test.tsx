@@ -352,6 +352,28 @@ describe("Generate page: review state of each run", () => {
   });
 });
 
+describe("Generate page: runs table", () => {
+  it("shows the material, the pages and the kind of each run", async () => {
+    open("/w/1/generate", {
+      runs: [
+        run({ id: 3, pageFrom: 10, pageTo: 25 }),
+        run({ id: 2, kind: "question", subtype: "certo_errado", pageFrom: null, pageTo: null }),
+        run({ id: 1, pageFrom: 7, pageTo: null }),
+      ],
+    });
+    const table = await screen.findByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Material" })).toBeVisible();
+    const rows = within(table).getAllByRole("row").slice(1);
+    expect(rows[0]).toHaveTextContent("apostila");
+    expect(rows[0]).toHaveTextContent("págs. 10–25");
+    expect(rows[0]).toHaveTextContent("Cards");
+    expect(rows[1]).toHaveTextContent("material inteiro");
+    expect(rows[1]).toHaveTextContent("Questões");
+    expect(rows[1]).toHaveTextContent("Certo ou errado");
+    expect(rows[2]).toHaveTextContent("a partir da pág. 7");
+  });
+});
+
 describe("Review page: discarded items", () => {
   it("can be restored from the discarded tab", async () => {
     const fake = open("/w/1/generate/1", {

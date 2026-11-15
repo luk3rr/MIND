@@ -13,9 +13,13 @@ import { useActivity } from "../time.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 import { FilterSelect, parseFilter, usePersistedFilter } from "../components/FilterSelect.js";
 import { StudyTabs } from "../components/StudyTabs.js";
+import { sectionPath, useRouter } from "../router.js";
 import { ItemActions } from "../components/ItemActions.js";
 
 type Next = OutputOf<"study:next">;
+
+/** How many extra new cards "study more" lets in. */
+const MORE_NEW = 10;
 
 function Pieces({ pieces }: { pieces: { text: string; hit: boolean }[] }) {
   return (
@@ -43,12 +47,19 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
   const [next, setNext] = useState<Next | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // New cards allowed today on top of the daily limit, asked for with "study more".
+  const [extraNew, setExtraNew] = useState(0);
+  const { navigate } = useRouter();
   const shownAt = useRef(0);
   useActivity("cards", next?.card ? { itemId: next.card.itemId } : {});
 
   const load = (keepRevealed = false): void => {
     void window.mind
-      .invoke("study:next", { workspaceId, ...(filter ? { filter } : {}) })
+      .invoke("study:next", {
+        workspaceId,
+        ...(filter ? { filter } : {}),
+        ...(extraNew > 0 ? { extraNew } : {}),
+      })
       .then((result) => {
         if (!result.ok) {
           setError(result.error.message);
@@ -63,7 +74,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
       });
   };
 
-  useEffect(() => load(), [workspaceId, filterValue]);
+  useEffect(() => load(), [workspaceId, filterValue, extraNew]);
 
   const rate = (rating: 1 | 2 | 3 | 4): void => {
     if (!next?.card || !revealed) return;
@@ -112,8 +123,33 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
       )}
       {next && next.card === null && (
         <div className="card">
-          <h2>{T.studyDoneTitle}</h2>
-          <p className="muted">{T.studyDoneBody}</p>
+          {counts && counts.newWaiting > 0 ? (
+            <>
+              <h2>{T.studyLimitTitle}</h2>
+              <p className="muted">{T.studyLimitBody(counts.newStudiedToday, counts.newWaiting)}</p>
+              <div className="row">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setExtraNew((value) => value + MORE_NEW)}
+                >
+                  {T.studyMoreNew(Math.min(MORE_NEW, counts.newWaiting))}
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => navigate(sectionPath(workspaceId, "settings"))}
+                >
+                  {T.studyChangeLimit}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>{T.studyDoneTitle}</h2>
+              <p className="muted">{T.studyDoneBody}</p>
+            </>
+          )}
         </div>
       )}
       {next?.card && (

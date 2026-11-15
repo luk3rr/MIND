@@ -24,6 +24,15 @@
   --info: #8be9fd;
   --purple: #bd93f9;
   --radius: 12px;
+  /* Spacing scale: use these for every gap and margin instead of loose pixel values.
+     space-3 separates the fields of a form (`.stack`), space-4 the blocks of a screen (`.row`,
+     `.content > section`), space-2 the buttons of a row (`.actions`), space-1 a label and its
+     control, and space-5 the big groups of a screen. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.25);
   --font-sans: Inter, "Segoe UI", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;

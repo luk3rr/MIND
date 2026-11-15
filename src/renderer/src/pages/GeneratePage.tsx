@@ -78,15 +78,36 @@ function needsReview(run: Run): boolean {
   return !ACTIVE.has(run.status) && run.pending > 0;
 }
 
+/** The pages a run covered, in words; empty for a run that used the whole material. */
+function pagesText(run: Run): string {
+  const { pageFrom, pageTo } = run;
+  if (pageFrom !== null && pageTo !== null)
+    return pageFrom === pageTo ? T.runPage(pageFrom) : T.runPages(pageFrom, pageTo);
+  if (pageFrom !== null) return T.runFromPage(pageFrom);
+  if (pageTo !== null) return T.runToPage(pageTo);
+  return T.runAllPages;
+}
+
+/** Every material the workspace has, by id, for the titles in the runs table. */
+function materialTitles(
+  materials: ReturnType<typeof useInvoke<"material:list">>,
+): [number, string][] {
+  return materials.state.status === "ready"
+    ? materials.state.data.materials.map((entry) => [entry.id, entry.title])
+    : [];
+}
+
 function RunsTable({
   workspaceId,
   runs,
   topics,
+  materials,
   onChange,
 }: {
   workspaceId: number;
   runs: Run[];
   topics: Map<number, string>;
+  materials: Map<number, string>;
   onChange: () => void;
 }) {
   const { navigate } = useRouter();
@@ -96,6 +117,7 @@ function RunsTable({
       <thead>
         <tr>
           <th>Data</th>
+          <th>{T.runMaterial}</th>
           <th>{T.runType}</th>
           <th>{T.materialStatus}</th>
           <th>Itens</th>
@@ -108,13 +130,26 @@ function RunsTable({
           <tr key={run.id} className={needsReview(run) ? "needs-review" : undefined}>
             <td>{run.createdAt.slice(0, 16).replace("T", " ")}</td>
             <td>
-              {T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype}
-              {run.topicId !== null && run.materialId === null && (
-                <span className="muted">
-                  {" "}
-                  · {T.trainRun}: {topics.get(run.topicId) ?? run.topicId}
-                </span>
+              {run.topicId !== null && run.materialId === null ? (
+                <>
+                  {T.trainRun}: {topics.get(run.topicId) ?? run.topicId}
+                </>
+              ) : (
+                <>
+                  {run.materialId !== null
+                    ? (materials.get(run.materialId) ?? T.runMaterialGone)
+                    : T.runMaterialGone}
+                  <br />
+                  <span className="muted">{pagesText(run)}</span>
+                </>
               )}
+            </td>
+            <td>
+              {run.kind === "question" ? T.kindQuestions : T.kindCards}
+              <br />
+              <span className="muted">
+                {T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype}
+              </span>
             </td>
             <td>
               <span className="pill">{T.runStatus[run.status] ?? run.status}</span>
@@ -535,6 +570,7 @@ export function GeneratePage({
             workspaceId={workspaceId}
             runs={runs.state.data.runs}
             topics={topicNames}
+            materials={new Map(materialTitles(materials))}
             onChange={runs.reload}
           />
         )}

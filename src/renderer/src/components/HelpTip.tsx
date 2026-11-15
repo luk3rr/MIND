@@ -8,8 +8,8 @@ import { useId, useState } from "react";
 import { T } from "../strings.js";
 
 /**
- * A "? Como funciona" button that opens a short help bubble on hover, focus or click. Escape closes it.
- * `title` heads the bubble and `lines` are its short tips.
+ * A "? Como funciona" button that opens a short help bubble on hover, focus or click. Escape
+ * closes it. `title` heads the bubble and `lines` are its short tips.
  */
 export function HelpTip({ title, lines }: { title: string; lines: readonly string[] }) {
   const [pinned, setPinned] = useState(false);
@@ -22,6 +22,20 @@ export function HelpTip({ title, lines }: { title: string; lines: readonly strin
       className="help-tip"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      // Focus inside keeps the bubble open; moving it out closes it.
+      onFocus={() => setFocus(true)}
+      onBlur={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        setFocus(false);
+        setPinned(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setPinned(false);
+          setHover(false);
+          setFocus(false);
+        }
+      }}
     >
       <button
         type="button"
@@ -29,18 +43,6 @@ export function HelpTip({ title, lines }: { title: string; lines: readonly strin
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setPinned((value) => !value)}
-        onFocus={() => setFocus(true)}
-        onBlur={() => {
-          setFocus(false);
-          setPinned(false);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            setPinned(false);
-            setHover(false);
-            setFocus(false);
-          }
-        }}
       >
         <span className="help-tip-mark" aria-hidden="true">
           ?

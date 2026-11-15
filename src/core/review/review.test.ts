@@ -148,6 +148,25 @@ describe("ReviewService", () => {
     expect(() => review.restore(9999)).toThrowError(/Não existe item/);
   });
 
+  it("counts the pending drafts of many runs in one go, like the view of each one", async () => {
+    const { run, review, generation } = await generated(4);
+    const second = generation.start({
+      materialId: rig?.materialId as number,
+      subtype: "cloze",
+      quantity: 3,
+      kind: "card",
+    });
+    await rig?.core.queue.wait(rig.workspaceId, second.jobId as number);
+    review.approveAll(run.id);
+    const runs = generation.listRuns(10);
+    const views = generation.views(runs);
+    expect(views.map((view) => [view.id, view.pending])).toEqual(
+      runs.map((entry) => [entry.id, generation.view(entry).pending]),
+    );
+    expect(views.find((view) => view.id === run.id)?.pending).toBe(0);
+    expect(views.find((view) => view.id === second.id)?.pending).toBeGreaterThan(0);
+  });
+
   it("approves every draft of a run at once", async () => {
     const { run, review } = await generated(5);
     expect(review.approveAll(run.id)).toEqual({ approved: 5, discarded: 0, skipped: 0 });

@@ -82,13 +82,33 @@ function parse(json: string): Card {
   } as Card;
 }
 
+/** What can be tuned besides the retention and the fuzz; the rest keeps the library default. */
+export interface SchedulerOptions {
+  /** The longest wait between two reviews, in days. */
+  maximumInterval?: number;
+  /** Steps of a new card, such as ["1m", "10m"] (m minutes, h hours, d days). */
+  learningSteps?: readonly string[];
+  /** Steps after a forgotten card, such as ["10m"]. */
+  relearningSteps?: readonly string[];
+}
+
+type Step = `${number}${"m" | "h" | "d"}`;
+
 /** FSRS scheduling behind a small interface of our own. */
 export class Scheduler {
   private readonly engine: ReturnType<typeof fsrs>;
 
-  constructor(desiredRetention = 0.9, enableFuzz = true) {
+  constructor(desiredRetention = 0.9, enableFuzz = true, options: SchedulerOptions = {}) {
     this.engine = fsrs(
-      generatorParameters({ request_retention: desiredRetention, enable_fuzz: enableFuzz }),
+      generatorParameters({
+        request_retention: desiredRetention,
+        enable_fuzz: enableFuzz,
+        ...(options.maximumInterval !== undefined
+          ? { maximum_interval: options.maximumInterval }
+          : {}),
+        ...(options.learningSteps ? { learning_steps: options.learningSteps as Step[] } : {}),
+        ...(options.relearningSteps ? { relearning_steps: options.relearningSteps as Step[] } : {}),
+      }),
     );
   }
 

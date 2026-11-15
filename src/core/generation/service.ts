@@ -577,6 +577,27 @@ export class GenerationService {
     };
   }
 
+  /** The views of many runs at once: the drafts of all of them are counted in one query. */
+  views(runs: readonly RunInfo[]): RunView[] {
+    const drafts = new Map(
+      this.db
+        .select({ runId: item.runId, total: count() })
+        .from(item)
+        .where(eq(item.status, "draft"))
+        .groupBy(item.runId)
+        .all()
+        .map((row) => [row.runId, row.total]),
+    );
+    return runs.map((run) => {
+      const active = ["queued", "running"].includes(run.status) && run.jobId !== null;
+      return {
+        ...run,
+        progress: active ? getJob(this.db, run.jobId as number).progress : null,
+        pending: drafts.get(run.id) ?? 0,
+      };
+    });
+  }
+
   get(runId: number): RunInfo {
     const row = this.db.select().from(generationRun).where(eq(generationRun.id, runId)).get();
     if (!row) throw new AppError("RUN_NOT_FOUND", `Não existe geração com id ${runId}.`);

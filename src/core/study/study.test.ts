@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Rating } from "./scheduler.js";
 import { cardSides } from "./rendering.js";
+import { defaultSettings, parseSteps } from "./service.js";
 import { fixedClock } from "../test/helpers.js";
 import { generationRig } from "../test/generation-fixture.js";
 import { studyRig } from "../test/study-fixture.js";
@@ -62,8 +63,10 @@ describe("StudyService settings", () => {
   it("returns defaults and validates updates by field", async () => {
     rig = await studyRig(1);
     const study = rig.core.study(rig.workspaceId);
-    expect(study.settings()).toEqual({ newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 });
+    expect(study.settings()).toEqual(defaultSettings());
+    expect(study.settings()).toMatchObject({ newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 });
     expect(study.updateSettings({ newPerDay: 5, dailyGoal: 10, desiredRetention: 0.95 })).toEqual({
+      ...defaultSettings(),
       newPerDay: 5,
       dailyGoal: 10,
       desiredRetention: 0.95,
@@ -165,6 +168,64 @@ describe("StudyService queue and rating (FR-12, FR-13)", () => {
     expect(study.nextCard()?.item.id).toBe(b);
     study.rate(b, Rating.HARD, { now: rig.clock.now() });
     expect(study.nextCard()?.item.id).toBe(rig.itemIds[2]);
+  });
+
+  it("holds new cards back after the daily limit and lets `extraNew` through", async () => {
+    rig = await studyRig(4);
+    const study = rig.core.study(rig.workspaceId);
+    study.updateSettings({ newPerDay: 2 });
+    for (const id of rig.itemIds.slice(0, 2)) study.rate(id, Rating.EASY, { now: rig.clock.now() });
+    expect(study.counts()).toMatchObject({ newAvailable: 0, newWaiting: 2, newStudiedToday: 2 });
+    expect(study.nextCard()).toBeNull();
+    expect(study.counts(undefined, undefined, 1)).toMatchObject({ newAvailable: 1, newWaiting: 1 });
+    expect(study.nextCard(undefined, undefined, 1)?.item.id).toBe(rig.itemIds[2]);
+    expect(study.queue(10, undefined, undefined, 5)).toHaveLength(2);
+  });
+
+  it("applies the learning steps, the longest interval and the fuzz setting", async () => {
+    rig = await studyRig(2);
+    const study = rig.core.study(rig.workspaceId);
+    const [a, b] = rig.itemIds as [number, number];
+    const first = study.previews(study.card(a))[Rating.GOOD];
+    expect(first).toBe("10 min");
+    study.updateSettings({ learningSteps: "2m 20m", maximumInterval: 30, enableFuzz: false });
+    expect(study.previews(study.card(a))[Rating.AGAIN]).toBe("2 min");
+    expect(study.previews(study.card(a))[Rating.GOOD]).toBe("20 min");
+    // A card that graduates never waits longer than the longest interval.
+    let schedule = study.rate(b, Rating.EASY, { now: rig.clock.now() });
+    expect(Date.parse(schedule.due) - rig.clock.now().getTime()).toBeLessThanOrEqual(
+      30 * 86_400_000,
+    );
+    const firstDue = schedule.due;
+    schedule = study.rate(b, Rating.EASY, { now: new Date(firstDue) });
+    expect(Date.parse(schedule.due) - Date.parse(firstDue)).toBeLessThanOrEqual(30 * 86_400_000);
+    // No steps: a new card goes straight to days.
+    study.updateSettings({ learningSteps: "" });
+    expect(study.previews(study.card(a))[Rating.GOOD]).toMatch(/ d$/);
+  });
+
+  it("validates the algorithm settings", async () => {
+    rig = await studyRig(1);
+    const study = rig.core.study(rig.workspaceId);
+    expect(study.settings()).toMatchObject({
+      maximumInterval: 36500,
+      learningSteps: "1m 10m",
+      relearningSteps: "10m",
+      enableFuzz: true,
+    });
+    for (const bad of [
+      { maximumInterval: 0 },
+      { maximumInterval: 36501 },
+      { learningSteps: "5" },
+      { learningSteps: "1m 2m 3m 4m 5m 6m" },
+      { relearningSteps: "10x" },
+    ]) {
+      expect(() => study.updateSettings(bad)).toThrowError(/inválidas/);
+    }
+    expect(parseSteps("1m, 10m  1h;2d")).toEqual(["1m", "10m", "1h", "2d"]);
+    expect(parseSteps("")).toEqual([]);
+    expect(parseSteps("0m")).toBeNull();
+    expect(defaultSettings().learningSteps).toBe("1m 10m");
   });
 
   it("includes reviews due later today but not tomorrow", async () => {

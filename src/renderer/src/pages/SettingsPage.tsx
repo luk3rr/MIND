@@ -8,6 +8,7 @@ import { useState } from "react";
 import { ProviderForm } from "../components/ProviderForm.js";
 import { useInvoke } from "../hooks.js";
 import { useSettingsStatus } from "../settings-status.js";
+import { StudySettingsForm } from "../components/StudySettingsForm.js";
 import { TimeSettingsForm } from "../components/TimeSettingsForm.js";
 import { UpdateSettings } from "../components/UpdateSettings.js";
 import { T } from "../strings.js";
@@ -115,6 +116,7 @@ export function SettingsPage({ workspaceId }: { workspaceId: number }) {
           </button>
         </div>
       </section>
+      <StudySettingsForm workspaceId={workspaceId} />
       <TimeSettingsForm workspaceId={workspaceId} />
       <UpdateSettings />
       <section className="card stack" aria-labelledby="privacy-title">
