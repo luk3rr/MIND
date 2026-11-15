@@ -10,7 +10,7 @@
 </p>
 
 Importe seus materiais (PDF, Word, Markdown, texto e páginas web) e o **MIND** gera flashcards e
-questões no estilo de prova e estude tudo com repetição espaçada ([FSRS](https://pt.wikipedia.org/wiki/Repeti%C3%A7%C3%A3o_espa%C3%A7ada)).
+questões no estilo de prova e estude tudo com [repetição espaçada](https://spacerep.me/pt/blog/o-que-e-fsrs-guia-simples-algoritmo-moderno-repeticao-espacada/) ([FSRS](https://pt.wikipedia.org/wiki/Repeti%C3%A7%C3%A3o_espa%C3%A7ada)).
 
 - **Seu material, sua máquina.** Tudo fica guardado localmente no seu computador. Apenas trechos curtos vão ao provedor de
   IA que você configurar.
@@ -18,6 +18,9 @@ questões no estilo de prova e estude tudo com repetição espaçada ([FSRS](htt
   de onde veio; as questões ainda passam por uma segunda verificação feita por outro modelo.
 - **Estude offline.** Revisão, prática, estatísticas e biblioteca funcionam sem internet. Só geração,
   verificação e chat precisam dela.
+- **Consulte o original e acompanhe o seu tempo.** Abra o PDF original no próprio app (na janela
+  principal, em outra janela ou no leitor do sistema), vá direto à página citada por um card e veja
+  quanto tempo você estudou, com meta diária.
 - **Interface em português do Brasil** (os materiais podem estar em qualquer idioma).
 
 ## Instalação
@@ -36,13 +39,17 @@ pacote (`sudo apt remove mind`) também não apaga os seus dados.
 
 1. Abra o MIND e crie um workspace (um por assunto ou prova).
 2. Em **Configurações** (ou no assistente da primeira execução) cole sua chave da
-   [OpenRouter](https://openrouter.ai) e leia o aviso sobre o que é enviado. A chave também pode vir
-   da variável de ambiente `OPENROUTER_API_KEY`.
+   [OpenRouter](https://openrouter.ai) e leia o aviso sobre o que é enviado.
+   3. [Como gerar uma chave na OpenRouter?](https://youtu.be/cwg7jUJ7Xx4?si=-Nb_KhuYFJJCoF7H)
 3. Em **Biblioteca**, importe um arquivo ou uma página web. `samples/fotossintese.md` é um texto
    curto para experimentar.
 4. Em **Gerar**, escolha o material, o tipo (cards ou questões) e a quantidade; o custo estimado
    aparece antes de começar. Revise os rascunhos e aprove os que quiser.
-5. **Estude** a fila do dia e **Pratique** questões.
+5. **Estude** a fila do dia e **Pratique** questões. O tempo de estudo é contado sozinho
+   (revisão, prática e leitura; pausa após 2 minutos sem interação) ou pelo cronômetro em **Hoje**;
+   a meta diária e o limite de inatividade ficam em **Configurações**. Em **Biblioteca**, **Ler**
+   abre o PDF original, e **Ver no PDF** (em cards, questões, erros, buscas e no Chat) leva à página
+   citada.
 6. Acompanhe o progresso em **Estatísticas**, revise os erros em **Erros**, treine os pontos fracos
    a partir de **Hoje** e pergunte ao **Chat** sobre o seu próprio material.
 
