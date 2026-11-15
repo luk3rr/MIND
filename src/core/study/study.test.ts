@@ -112,8 +112,9 @@ describe("StudyService queue and rating (FR-12, FR-13)", () => {
     const first = rig.itemIds[0] as number;
     const updated = study.rate(first, Rating.GOOD, { now: rig.clock.now(), durationMs: 4200 });
     expect(updated).toMatchObject({ state: 1, reps: 1, lapses: 0 });
-    // The card is in learning and due within the 20-minute learn-ahead window, so it comes first.
-    expect(study.nextCard()?.item.id).toBe(first);
+    // The card is in learning but not due yet, so the next new card comes first.
+    expect(study.nextCard()?.item.id).toBe(rig.itemIds[1]);
+    expect(study.queue(10).map((c) => c.item.id)).toEqual([rig.itemIds[1], rig.itemIds[2], first]);
     expect(study.counts()).toMatchObject({ learning: 1, newAvailable: 2 });
     const logs = rig.core.registry
       .open(rig.workspaceId)
@@ -154,6 +155,16 @@ describe("StudyService queue and rating (FR-12, FR-13)", () => {
     expect(order[0]).toBe(b);
     expect(order.at(-1)).toBe(d);
     expect(order).not.toContain(a);
+  });
+
+  it("does not bring a card rated again or hard straight back while others wait", async () => {
+    rig = await studyRig(3);
+    const study = rig.core.study(rig.workspaceId);
+    const [a, b] = rig.itemIds as [number, number, number];
+    study.rate(a, Rating.AGAIN, { now: rig.clock.now() });
+    expect(study.nextCard()?.item.id).toBe(b);
+    study.rate(b, Rating.HARD, { now: rig.clock.now() });
+    expect(study.nextCard()?.item.id).toBe(rig.itemIds[2]);
   });
 
   it("includes reviews due later today but not tomorrow", async () => {

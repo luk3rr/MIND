@@ -264,30 +264,39 @@ export class StudyService {
     };
   }
 
-  /** Upcoming cards: due learning cards, reviews due today, then new cards in the quota. */
+  /**
+   * Upcoming cards: learning cards that are already due, reviews due today, new cards in the
+   * quota, and only then learning cards still inside the learn-ahead window. Holding the
+   * learn-ahead cards back keeps a card just rated "again" or "hard" (due in minutes) from coming
+   * straight back while other cards are waiting.
+   */
   queue(limit = 20, now: Date = this.clock.now(), filter?: StudyFilter): StudyCard[] {
     const end = dayEnd(now, this.offset).toISOString();
+    const due = now.toISOString();
     const ahead = new Date(now.getTime() + LEARN_AHEAD_MS).toISOString();
     const wanted = filterConditions(filter, this.db);
     const cards: StudyCard[] = [];
-    for (const [states, cutoff] of [
-      [LEARNING_STATES, ahead],
-      [[REVIEW_STATE], end],
-    ] as const) {
+    const seen = new Set<number>();
+    const take = (states: readonly number[], cutoff: string): void => {
       const remaining = limit - cards.length;
-      if (remaining <= 0) break;
+      if (remaining <= 0) return;
       const rows = this.db
         .select({ state: cardState })
         .from(cardState)
         .innerJoin(item, eq(item.id, cardState.itemId))
         .where(and(...wanted, inArray(cardState.state, [...states]), lte(cardState.due, cutoff)))
         .orderBy(asc(cardState.due))
-        .limit(remaining)
+        .limit(remaining + seen.size)
         .all();
       for (const { state } of rows) {
+        if (cards.length >= limit) break;
+        if (seen.has(state.itemId)) continue;
+        seen.add(state.itemId);
         cards.push({ item: this.review.get(state.itemId), schedule: this.scheduleOf(state) });
       }
-    }
+    };
+    take(LEARNING_STATES, due);
+    take([REVIEW_STATE], end);
     const allowance = this.settings().newPerDay - this.newStudiedToday(this.today(now));
     const room = Math.min(limit - cards.length, allowance);
     if (room > 0) {
@@ -300,6 +309,7 @@ export class StudyService {
         .all();
       for (const row of fresh) cards.push({ item: this.review.get(row.id), schedule: null });
     }
+    take(LEARNING_STATES, ahead);
     return cards;
   }
 
