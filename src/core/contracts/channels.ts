@@ -374,6 +374,12 @@ export const channels = {
     input: z.object({ workspaceId, url: z.string().max(3000) }).strict(),
     output: materialInfo,
   },
+  "material:rename": {
+    input: z
+      .object({ workspaceId, id: z.number().int().positive(), title: z.string().max(1000) })
+      .strict(),
+    output: materialInfo,
+  },
   "material:delete": {
     input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),
     output: z.object({}).strict(),

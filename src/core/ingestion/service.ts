@@ -7,12 +7,14 @@
 import { logger, since } from "../logging.js";
 
 const log = logger("ingestion");
-import { and, asc, count, desc, eq, lt } from "drizzle-orm";
+
+export const MAX_TITLE_LENGTH = 200;
+import { and, asc, count, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { copyFileSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { basename, dirname, extname, join, relative } from "node:path";
 import { AppError } from "../contracts/errors.js";
-import { chunk, material } from "../db/workspace-schema.js";
+import { chunk, generationRun, item, material } from "../db/workspace-schema.js";
 import { JobCancelled } from "../jobs/queue.js";
 import { getJob } from "../jobs/store.js";
 import type { JobContext, JobQueue } from "../jobs/queue.js";
@@ -399,6 +401,50 @@ export class MaterialService {
       this.db.select({ total: count() }).from(chunk).where(eq(chunk.materialId, materialId)).get()
         ?.total ?? 0
     );
+  }
+
+  /**
+   * Changes the title of a material. The file on disk keeps its name; the title is what the app
+   * shows, including on the cards and questions generated from it, which carry a copy of it.
+   */
+  rename(id: number, rawTitle: string): MaterialInfo {
+    this.get(id);
+    const title = rawTitle.split(/\s+/).filter(Boolean).join(" ");
+    if (!title) {
+      throw new AppError("VALIDATION_ERROR", "O nome do material não pode ser vazio.", [
+        { field: "title", message: "Informe um nome." },
+      ]);
+    }
+    if (title.length > MAX_TITLE_LENGTH) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        `O nome pode ter no máximo ${MAX_TITLE_LENGTH} caracteres.`,
+        [{ field: "title", message: `No máximo ${MAX_TITLE_LENGTH} caracteres.` }],
+      );
+    }
+    this.db.transaction((tx) => {
+      tx.update(material).set({ title }).where(eq(material.id, id)).run();
+      tx.update(item)
+        .set({ sourceTitle: title })
+        .where(
+          or(
+            inArray(
+              item.chunkId,
+              tx.select({ id: chunk.id }).from(chunk).where(eq(chunk.materialId, id)),
+            ),
+            inArray(
+              item.runId,
+              tx
+                .select({ id: generationRun.id })
+                .from(generationRun)
+                .where(eq(generationRun.materialId, id)),
+            ),
+          ),
+        )
+        .run();
+    });
+    log.info("material renamed", { material: id });
+    return this.get(id);
   }
 
   delete(id: number): void {

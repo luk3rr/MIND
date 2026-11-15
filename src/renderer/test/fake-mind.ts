@@ -315,6 +315,16 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         state.materials = [created, ...state.materials];
         return ok(created);
       }
+      case "material:rename": {
+        const { id, title } = payload as InputOf<"material:rename">;
+        const found = state.materials.find((entry) => entry.id === id);
+        const clean = title.split(/\s+/).filter(Boolean).join(" ");
+        if (!found) return failure("MATERIAL_NOT_FOUND", "Material não encontrado.");
+        if (!clean)
+          return failure("VALIDATION_ERROR", "O nome do material não pode ser vazio.", "title");
+        found.title = clean;
+        return ok(found);
+      }
       case "material:delete": {
         const { id } = payload as InputOf<"material:delete">;
         state.materials = state.materials.filter((m) => m.id !== id);

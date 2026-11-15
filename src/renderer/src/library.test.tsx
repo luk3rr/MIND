@@ -248,3 +248,43 @@ describe("Library page", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+describe("Renaming a material", () => {
+  it("renames from the library, cleans the spaces and refuses an empty name", async () => {
+    const material: FakeMaterial = {
+      id: 3,
+      title: "Aula_01_Moeda",
+      kind: "pdf",
+      filename: "Aula_01_Moeda.pdf",
+      status: "indexed",
+      pageCount: 3,
+      charCount: 10,
+      ocrConfidence: null,
+      jobId: 1,
+      errorCode: null,
+      errorDetail: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      sourceUrl: null,
+      progress: null,
+      chunkCount: 3,
+    };
+    const { state } = installFakeMind({
+      workspaces: [{ id: 1, name: "Estudos", createdAt: "2026-01-01T00:00:00.000Z" }],
+      route: "/w/1/library",
+      materials: [material],
+    });
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Renomear Aula_01_Moeda" }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText("Nome do material");
+    expect(input).toHaveValue("Aula_01_Moeda");
+    await user.clear(input);
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("não pode ser vazio");
+    await user.type(input, "  Aula 01 —   Moeda ");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(state.materials[0]?.title).toBe("Aula 01 — Moeda"));
+    expect(await screen.findByRole("button", { name: "Aula 01 — Moeda" })).toBeInTheDocument();
+  });
+});

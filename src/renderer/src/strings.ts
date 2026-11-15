@@ -345,4 +345,7 @@ export const T = {
   openActionLabel: (action: string, title: string) => `${action} ${title}`,
   readerCited: "Trecho citado",
   seeInPdf: "Ver no PDF",
+  renameMaterial: "Renomear",
+  renameMaterialTitle: "Renomear material",
+  renameMaterialLabel: "Nome do material",
 } as const;

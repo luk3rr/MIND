@@ -11,3 +11,5 @@ Não há API HTTP. A interface é o `window.mind` com `invoke(canal, payload)` e
 - **Rotas do renderer**: `/w/:workspaceId/:secao[/:detalheId]` com `?chunk=` ou `?topic=&subtype=`; lista fechada de seções. [src: src/renderer/src/router.tsx]
 
 **Adições do intent study-time-pdf-viewer (2026-11-14).** Evento `time:changed`. Canais `time:state|start|pause|resume|stop|activity|blur|getSettings|saveSettings|stats|sessions|deleteSession`; `reader:info|page|text|search|locate|savePosition|openWindow`; `material:openOriginal`. Códigos de erro novos: `SESSION_NOT_FOUND`, `FILE_MISSING`, `PDF_PROTECTED`, `OPEN_FAILED`. `pdfSource` opcional em item, cartão do estudo e entrada de erro. `CONTRACT_VERSION` continua 1 (mudanças aditivas). Rota nova `/w/:id/library/:materialId/read?page=N&quote=…` (também na janela separada via `?route=`). [src: src/core/contracts/channels.ts]
+
+**Renomear material.** Canal `material:rename` (`{ workspaceId, id, title }`): atualiza `material.title` (1 a 200 caracteres, espaços normalizados) e a cópia `item.sourceTitle` dos itens gerados a partir dele; o nome do arquivo em disco não muda. [src: src/core/ingestion/service.ts]

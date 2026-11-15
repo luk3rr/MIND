@@ -57,6 +57,7 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
   const [importing, setImporting] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Material | null>(null);
+  const [toRename, setToRename] = useState<Material | null>(null);
   const [askUrl, setAskUrl] = useState(false);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<OutputOf<"material:search">["hits"] | null>(null);
@@ -265,6 +266,14 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                     <button
                       type="button"
                       className="btn ghost"
+                      aria-label={T.openActionLabel(T.renameMaterial, material.title)}
+                      onClick={() => setToRename(material)}
+                    >
+                      {T.renameMaterial}
+                    </button>{" "}
+                    <button
+                      type="button"
+                      className="btn ghost"
                       onClick={() => setToDelete(material)}
                     >
                       {T.deleteWorkspace}
@@ -284,6 +293,25 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
           onClose={() => setAskUrl(false)}
           onSubmit={async (url) => {
             const result = await window.mind.invoke("material:importUrl", { workspaceId, url });
+            if (!result.ok) return result.error.fields?.[0]?.message ?? result.error.message;
+            reload();
+            return null;
+          }}
+        />
+      )}
+      {toRename && (
+        <PromptDialog
+          title={T.renameMaterialTitle}
+          label={T.renameMaterialLabel}
+          initial={toRename.title}
+          submitLabel={T.save}
+          onClose={() => setToRename(null)}
+          onSubmit={async (title) => {
+            const result = await window.mind.invoke("material:rename", {
+              workspaceId,
+              id: toRename.id,
+              title,
+            });
             if (!result.ok) return result.error.fields?.[0]?.message ?? result.error.message;
             reload();
             return null;
