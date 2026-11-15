@@ -50,6 +50,12 @@ describe("reader windows (FR-19, ADR-4)", () => {
       "/w/2/library/9/read?page=12",
     );
     expect(readerRoute({ workspaceId: 2, materialId: 9 })).toBe("/w/2/library/9/read");
+    expect(readerRoute({ workspaceId: 2, materialId: 9, page: 3, quote: "  luz \n solar " })).toBe(
+      "/w/2/library/9/read?page=3&quote=luz+solar",
+    );
+    expect(readerRoute({ workspaceId: 2, materialId: 9, quote: "sem página" })).toBe(
+      "/w/2/library/9/read",
+    );
   });
 
   it("opens one window per material and focuses it when asked again", () => {

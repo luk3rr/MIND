@@ -105,6 +105,49 @@ describe("ReviewService", () => {
     expect(() => review.edit(9999, "a", "b", null)).toThrowError(/Não existe item/);
   });
 
+  it("discards an approved item without touching the run counters", async () => {
+    const { run, review, generation } = await generated(3);
+    const [first, second] = review.list({ runId: run.id }).map((entry) => entry.id) as [
+      number,
+      number,
+    ];
+    review.review([first]);
+    const before = generation.get(run.id);
+    expect(generation.view(before).pending).toBe(2);
+    expect(review.discardApproved(first)).toBe(true);
+    expect(review.get(first).status).toBe("discarded");
+    // A draft is reviewed in the review screen, and a discarded item has nothing left to discard.
+    expect(review.discardApproved(second)).toBe(false);
+    expect(review.discardApproved(first)).toBe(false);
+    expect(() => review.discardApproved(9999)).toThrowError(/Não existe item/);
+    expect(generation.get(run.id)).toEqual(before);
+    expect(generation.view(before).pending).toBe(2);
+    review.approveAll(run.id);
+    expect(generation.view(generation.get(run.id)).pending).toBe(0);
+  });
+
+  it("restores a discarded item: approved if it had been approved, otherwise a draft", async () => {
+    const { run, review, generation } = await generated(3);
+    const [approved, dropped] = review.list({ runId: run.id }).map((entry) => entry.id) as [
+      number,
+      number,
+      number,
+    ];
+    review.review([approved], [dropped]);
+    review.discardApproved(approved);
+    expect(generation.get(run.id).discardedReview).toBe(1);
+
+    expect(review.restore(approved)).toBe("approved");
+    expect(review.get(approved).status).toBe("approved");
+    expect(review.restore(dropped)).toBe("draft");
+    expect(review.get(dropped).status).toBe("draft");
+    expect(generation.get(run.id).discardedReview).toBe(0);
+    expect(generation.view(generation.get(run.id)).pending).toBe(2);
+    // Nothing to restore the second time or for an item that was never discarded.
+    expect(review.restore(approved)).toBeNull();
+    expect(() => review.restore(9999)).toThrowError(/Não existe item/);
+  });
+
   it("approves every draft of a run at once", async () => {
     const { run, review } = await generated(5);
     expect(review.approveAll(run.id)).toEqual({ approved: 5, discarded: 0, skipped: 0 });

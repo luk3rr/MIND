@@ -305,9 +305,56 @@ describe("Generate page", () => {
 
   it("opens the review of a finished run", async () => {
     open("/w/1/generate", { runs: [run()], items: [item(1)] });
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Revisar" }));
+    await userEvent.setup().click(await screen.findByRole("button", { name: /Revisar/ }));
     expect(await screen.findByRole("heading", { name: "Revisar itens gerados" })).toBeVisible();
     expect(screen.getByText("Pergunta 1?")).toBeVisible();
+  });
+});
+
+describe("Generate page: review state of each run", () => {
+  it("highlights runs with drafts and says Revisado once they are all reviewed", async () => {
+    open("/w/1/generate", { runs: [run()], items: [item(1), item(2)] });
+    const user = userEvent.setup();
+    const pending = await screen.findByRole("button", { name: /Revisar\s*2/ });
+    expect(pending.closest("tr")).toHaveClass("needs-review");
+    await user.click(pending);
+    await user.click(await screen.findByRole("button", { name: "Aprovar todos" }));
+    await waitFor(() => expect(screen.getByText("Nada aqui.")).toBeVisible());
+    await user.click(screen.getByRole("button", { name: /Voltar/ }));
+    const reviewed = await screen.findByRole("button", { name: "Revisado" });
+    expect(reviewed.closest("tr")).not.toHaveClass("needs-review");
+  });
+});
+
+describe("Review page: discarded items", () => {
+  it("can be restored from the discarded tab", async () => {
+    const fake = open("/w/1/generate/1", {
+      runs: [run()],
+      items: [item(1, { status: "discarded", approvedAt: "2026-03-01T10:00:00.000Z" })],
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("tab", { name: /Descartados/ }));
+    await user.click(await screen.findByRole("button", { name: "Restaurar" }));
+    await waitFor(() => expect(fake.state.items[0]?.status).toBe("approved"));
+    expect(await screen.findByText("Nada aqui.")).toBeVisible();
+  });
+});
+
+describe("Review page: approved items", () => {
+  it("can still be edited or discarded from the approved tab", async () => {
+    const fake = open("/w/1/generate/1", {
+      runs: [run()],
+      items: [item(1, { status: "approved" })],
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("tab", { name: /Aprovados/ }));
+    const card = (await screen.findByText("Pergunta 1?")).closest("article") as HTMLElement;
+    expect(within(card).getByRole("button", { name: "Editar" })).toBeVisible();
+    await user.click(within(card).getByRole("button", { name: "Descartar" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }),
+    );
+    await waitFor(() => expect(fake.state.items[0]?.status).toBe("discarded"));
   });
 });
 

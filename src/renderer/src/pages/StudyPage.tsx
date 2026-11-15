@@ -13,6 +13,7 @@ import { useActivity } from "../time.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 import { FilterSelect, parseFilter } from "../components/FilterSelect.js";
 import { StudyTabs } from "../components/StudyTabs.js";
+import { ItemActions } from "../components/ItemActions.js";
 
 type Next = OutputOf<"study:next">;
 
@@ -43,7 +44,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
   const shownAt = useRef(0);
   useActivity("cards", next?.card ? { itemId: next.card.itemId } : {});
 
-  const load = (): void => {
+  const load = (keepRevealed = false): void => {
     void window.mind
       .invoke("study:next", { workspaceId, ...(filter ? { filter } : {}) })
       .then((result) => {
@@ -53,12 +54,14 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
         }
         setError(null);
         setNext(result.data);
-        setRevealed(false);
-        shownAt.current = performance.now();
+        if (!keepRevealed) {
+          setRevealed(false);
+          shownAt.current = performance.now();
+        }
       });
   };
 
-  useEffect(load, [workspaceId, filterValue]);
+  useEffect(() => load(), [workspaceId, filterValue]);
 
   const rate = (rating: 1 | 2 | 3 | 4): void => {
     if (!next?.card || !revealed) return;
@@ -72,7 +75,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
   };
 
   const undo = (): void => {
-    void window.mind.invoke("study:undo", { workspaceId }).then(load);
+    void window.mind.invoke("study:undo", { workspaceId }).then(() => load());
   };
 
   useHotkeys(
@@ -161,11 +164,19 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
               </div>
             </>
           )}
-          <p>
+          <div className="row study-actions">
             <button type="button" className="btn ghost" onClick={undo}>
               {T.undo}
             </button>
-          </p>
+            {revealed && (
+              <ItemActions
+                workspaceId={workspaceId}
+                itemId={next.card.itemId}
+                onEdited={() => load(true)}
+                onDiscarded={() => load()}
+              />
+            )}
+          </div>
         </div>
       )}
     </section>

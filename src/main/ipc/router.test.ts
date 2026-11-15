@@ -102,6 +102,8 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "review:approve": () => ({ approved: 0, discarded: 0, skipped: 0 }),
     "review:discard": () => ({ approved: 0, discarded: 0, skipped: 0 }),
     "review:approveAll": () => ({ approved: 0, discarded: 0, skipped: 0 }),
+    "review:discardApproved": () => ({ discarded: false }),
+    "review:restore": () => ({ status: null }),
     "review:edit": () => {
       throw new Error("unused");
     },

@@ -57,6 +57,39 @@ const card = (pdfSource: FakeStudyCard["pdfSource"]): FakeStudyCard => ({
   previews: { "1": "1 min", "2": "6 min", "3": "10 min", "4": "3 d" },
 });
 
+describe("See in PDF in a separate window", () => {
+  it("opens a new reader window on the cited page without leaving the study session", async () => {
+    const fake = open("/w/1/study", {
+      studyQueue: [card(source)],
+      summary: { materials: 1, cards: 1, questions: 0 },
+    });
+    const user = userEvent.setup();
+    await screen.findByText("Pergunta?");
+    await user.keyboard(" ");
+    await user.click(await screen.findByRole("button", { name: "PDF em nova janela, pág. 2" }));
+    await waitFor(() =>
+      expect(fake.state.opened).toEqual([
+        { kind: "window", materialId: 4, page: 2, quote: "A fotossíntese converte luz" },
+      ]),
+    );
+    expect(screen.getByText("Pergunta?")).toBeVisible();
+    expect(screen.getByRole("button", { name: /Ver no PDF/ })).toBeVisible();
+  });
+
+  it("says when the window could not be opened", async () => {
+    open("/w/1/study", {
+      studyQueue: [card(source)],
+      summary: { materials: 1, cards: 1, questions: 0 },
+      openFailure: "Não foi possível abrir uma nova janela.",
+    });
+    const user = userEvent.setup();
+    await screen.findByText("Pergunta?");
+    await user.keyboard(" ");
+    await user.click(await screen.findByRole("button", { name: "PDF em nova janela, pág. 2" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível abrir");
+  });
+});
+
 describe("See in PDF (FR-22, US-12)", () => {
   it("opens the reader on the cited page with the quote from a studied card", async () => {
     const { invoke } = open("/w/1/study", {

@@ -31,6 +31,8 @@ export const CHANNEL_NAMES = [
   "review:discard",
   "review:approveAll",
   "review:edit",
+  "review:discardApproved",
+  "review:restore",
   "study:today",
   "study:next",
   "study:rate",

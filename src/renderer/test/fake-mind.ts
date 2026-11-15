@@ -19,7 +19,8 @@ interface Workspace {
 export type ProviderState = FakeState["provider"];
 export type FakeMaterial = OutputOf<"material:list">["materials"][number];
 type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
-export type FakeRun = OutputOf<"generation:list">["runs"][number];
+/** A run as a test seeds it; the fake adds the number of pending drafts from the items. */
+export type FakeRun = Omit<OutputOf<"generation:list">["runs"][number], "pending">;
 export type FakeItem = OutputOf<"review:list">["items"][number];
 export type FakeStudyCard = NonNullable<OutputOf<"study:next">["card"]>;
 export type FakeErrorEntry = OutputOf<"errors:list">["entries"][number];
@@ -80,7 +81,12 @@ export interface FakeState {
   /** How many questions answered wrongly are waiting to be redone. */
   practiceRetry: number;
   /** Windows and system viewers the user asked for, newest last. */
-  opened: { kind: "window" | "system" | "release"; materialId: number; page?: number }[];
+  opened: {
+    kind: "window" | "system" | "release";
+    materialId: number;
+    page?: number;
+    quote?: string;
+  }[];
   update: OutputOf<"update:state">;
   /** The release the next "check" finds; null means the app is up to date. */
   updateFound: { version: string; url: string } | null;
@@ -137,6 +143,11 @@ function studyCounts(state: FakeState) {
     newStudiedToday: state.reviewedToday,
     toStudy: state.studyQueue.length,
   };
+}
+
+function withPending(state: FakeState, run: FakeRun) {
+  const pending = state.items.filter((i) => i.runId === run.id && i.status === "draft").length;
+  return { ...run, pending };
 }
 
 function practiceCounts(state: FakeState) {
@@ -403,7 +414,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           progress: 0,
         };
         state.runs = [run, ...state.runs];
-        return ok(run);
+        return ok(withPending(state, run));
       }
       case "generation:cancel": {
         const { runId } = payload as InputOf<"generation:cancel">;
@@ -413,10 +424,12 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         return ok({ cancelled: true });
       }
       case "generation:list":
-        return ok({ runs: state.runs });
+        return ok({ runs: state.runs.map((r) => withPending(state, r)) });
       case "generation:get": {
         const found = state.runs.find((r) => r.id === (payload as InputOf<"generation:get">).runId);
-        return found ? ok(found) : failure("RUN_NOT_FOUND", "Geração não encontrada.");
+        return found
+          ? ok(withPending(state, found))
+          : failure("RUN_NOT_FOUND", "Geração não encontrada.");
       }
       case "review:list": {
         const input = payload as InputOf<"review:list">;
@@ -425,7 +438,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         const forRun = state.items.filter((i) => i.runId === input.runId);
         const count = (status: string) => forRun.filter((i) => i.status === status).length;
         return ok({
-          run,
+          run: withPending(state, run),
           items: forRun.filter((i) => !input.status || i.status === input.status),
           counts: {
             draft: count("draft"),
@@ -452,6 +465,25 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           discarded: status === "discarded" ? ids.length : 0,
           skipped: 0,
         });
+      }
+      case "review:discardApproved": {
+        const { itemId } = payload as InputOf<"review:discardApproved">;
+        const found = state.items.find((i) => i.id === itemId);
+        if (!found) return failure("ITEM_NOT_FOUND", "Item não encontrado.");
+        if (found.status !== "approved") return ok({ discarded: false });
+        state.items = state.items.map((i) => (i.id === itemId ? { ...i, status: "discarded" } : i));
+        state.studyQueue = state.studyQueue.filter((c) => c.itemId !== itemId);
+        state.questions = state.questions.filter((q) => q.item.id !== itemId);
+        return ok({ discarded: true });
+      }
+      case "review:restore": {
+        const { itemId } = payload as InputOf<"review:restore">;
+        const found = state.items.find((i) => i.id === itemId);
+        if (!found) return failure("ITEM_NOT_FOUND", "Item não encontrado.");
+        if (found.status !== "discarded") return ok({ status: null });
+        const status = found.approvedAt === null ? "draft" : "approved";
+        state.items = state.items.map((i) => (i.id === itemId ? { ...i, status } : i));
+        return ok({ status });
       }
       case "review:approveAll": {
         const { runId } = payload as InputOf<"review:approveAll">;
@@ -814,9 +846,14 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         state.opened.push({ kind: "release", materialId: 0 });
         return ok({});
       case "reader:openWindow": {
-        const { materialId, page } = payload as InputOf<"reader:openWindow">;
+        const { materialId, page, quote } = payload as InputOf<"reader:openWindow">;
         if (state.openFailure) return failure("OPEN_FAILED", state.openFailure);
-        state.opened.push({ kind: "window", materialId, ...(page !== undefined ? { page } : {}) });
+        state.opened.push({
+          kind: "window",
+          materialId,
+          ...(page !== undefined ? { page } : {}),
+          ...(quote !== undefined ? { quote } : {}),
+        });
         return ok({});
       }
       case "material:openOriginal": {

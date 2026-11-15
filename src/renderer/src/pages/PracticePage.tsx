@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { FilterSelect, parseFilter } from "../components/FilterSelect.js";
+import { ItemActions } from "../components/ItemActions.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 import { StudyTabs } from "../components/StudyTabs.js";
 import { useHotkeys, useInvoke } from "../hooks.js";
@@ -134,6 +135,40 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
   };
   const previous = (): void => {
     if (index > 0) setIndex(index - 1);
+  };
+  /** Takes the question out of the session after it was discarded, and moves to the next one. */
+  const dropCurrent = (): void => {
+    const rest = deck.filter((_, at) => at !== index);
+    setDeck(rest);
+    if (index < rest.length) return;
+    if (exhausted) setIndex(rest.length);
+    else fetchNext(rest, rest.length);
+  };
+  /** Shows the text of the question after an edit, including the comment of an answered one. */
+  const refreshCurrent = (): void => {
+    const at = index;
+    const itemId = question?.item.id;
+    if (itemId === undefined) return;
+    void window.mind.invoke("review:get", { workspaceId, itemId }).then((response) => {
+      if (!response.ok) return;
+      const fresh = response.data.item;
+      setDeck((current) =>
+        current.map((candidate, position) =>
+          position === at
+            ? {
+                ...candidate,
+                question: {
+                  ...candidate.question,
+                  item: { ...candidate.question.item, front: fresh.front, back: fresh.back },
+                },
+                result: candidate.result
+                  ? { ...candidate.result, explanation: fresh.back }
+                  : candidate.result,
+              }
+            : candidate,
+        ),
+      );
+    });
   };
   const skipped = deck.filter((candidate) => candidate.result === null).length;
   const firstSkipped = deck.findIndex((candidate) => candidate.result === null);
@@ -321,6 +356,12 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                 <button type="button" className="btn" onClick={forward}>
                   {T.practiceNext}
                 </button>
+                <ItemActions
+                  workspaceId={workspaceId}
+                  itemId={question.item.id}
+                  onEdited={refreshCurrent}
+                  onDiscarded={dropCurrent}
+                />
               </div>
             </div>
           )}

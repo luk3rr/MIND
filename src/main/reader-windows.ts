@@ -18,12 +18,21 @@ export interface ReaderTarget {
   workspaceId: number;
   materialId: number;
   page?: number;
+  /** Text to highlight on the page. */
+  quote?: string;
 }
+
+/** The longest quote the reader route carries (the same limit as the renderer's router). */
+const MAX_QUOTE = 300;
 
 /** The in-app route of the reader of a material, with an optional page. */
 export function readerRoute(target: ReaderTarget): string {
   const base = `/w/${target.workspaceId}/library/${target.materialId}/read`;
-  return target.page === undefined ? base : `${base}?page=${target.page}`;
+  if (target.page === undefined) return base;
+  const params = new URLSearchParams({ page: String(target.page) });
+  const quote = target.quote?.replace(/\s+/g, " ").trim().slice(0, MAX_QUOTE);
+  if (quote) params.set("quote", quote);
+  return `${base}?${params.toString()}`;
 }
 
 /** Keeps at most one separate reader window per material: opening it again focuses it. */

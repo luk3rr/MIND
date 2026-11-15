@@ -235,6 +235,43 @@ export class ReviewService {
     return result;
   }
 
+  /**
+   * Takes an approved item out of study and practice (for one found wrong while studying). The
+   * run counters are left alone: they measure the review of the drafts, and the history of
+   * ratings and attempts is kept. Returns false when there was nothing to discard.
+   */
+  discardApproved(itemId: number): boolean {
+    const row = this.db.select().from(item).where(eq(item.id, itemId)).get();
+    if (!row) throw new AppError("ITEM_NOT_FOUND", `Não existe item com id ${itemId}.`);
+    if (row.status !== "approved") return false;
+    this.db.update(item).set({ status: "discarded" }).where(eq(item.id, itemId)).run();
+    return true;
+  }
+
+  /**
+   * Brings a discarded item back: as approved when it had been approved (it returns to study with
+   * its history), otherwise as a draft to be reviewed. Returns the new status, or null when the
+   * item was not discarded.
+   */
+  restore(itemId: number): "draft" | "approved" | null {
+    const row = this.db.select().from(item).where(eq(item.id, itemId)).get();
+    if (!row) throw new AppError("ITEM_NOT_FOUND", `Não existe item com id ${itemId}.`);
+    if (row.status !== "discarded") return null;
+    const status = row.approvedAt === null ? "draft" : "approved";
+    this.workspace.connection.sqlite.transaction(() => {
+      this.db.update(item).set({ status }).where(eq(item.id, itemId)).run();
+      // A draft discarded in the review no longer counts as discarded there.
+      if (status === "draft") {
+        this.db
+          .update(generationRun)
+          .set({ discardedReview: sql`max(${generationRun.discardedReview} - 1, 0)` })
+          .where(eq(generationRun.id, row.runId))
+          .run();
+      }
+    })();
+    return status;
+  }
+
   approveAll(runId: number): ReviewResult {
     const ids = this.list({ runId, status: "draft", limit: 10_000 }).map((entry) => entry.id);
     return this.review(ids);

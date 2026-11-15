@@ -126,6 +126,8 @@ const runInfo = z.object({
   finishedAt: z.string().nullable(),
   /** Progress (0 to 1) of an active run, otherwise null. */
   progress: z.number().nullable(),
+  /** Drafts of the run still waiting for review. */
+  pending: z.number().int(),
 });
 
 const itemInfo = z.object({
@@ -518,6 +520,14 @@ export const channels = {
       .strict(),
     output: itemInfo,
   },
+  "review:discardApproved": {
+    input: z.object({ workspaceId, itemId: z.number().int().positive() }).strict(),
+    output: z.object({ discarded: z.boolean() }),
+  },
+  "review:restore": {
+    input: z.object({ workspaceId, itemId: z.number().int().positive() }).strict(),
+    output: z.object({ status: z.enum(["draft", "approved"]).nullable() }),
+  },
   "study:today": {
     input: z.object({ workspaceId, filter: studyFilter.optional() }).strict(),
     output: z.object({
@@ -863,7 +873,14 @@ export const channels = {
     }),
   },
   "reader:openWindow": {
-    input: z.object({ ...readerTarget, page: z.number().int().min(1).optional() }).strict(),
+    input: z
+      .object({
+        ...readerTarget,
+        page: z.number().int().min(1).optional(),
+        /** Text to highlight on the page, as a card or question cites it. */
+        quote: z.string().min(1).max(2000).optional(),
+      })
+      .strict(),
     output: z.object({}).strict(),
   },
   "material:openOriginal": {

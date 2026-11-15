@@ -72,6 +72,11 @@ function RunItems({ run }: { run: Run }) {
   );
 }
 
+/** A finished run with drafts that no one has approved or discarded yet. */
+function needsReview(run: Run): boolean {
+  return !ACTIVE.has(run.status) && run.pending > 0;
+}
+
 function RunsTable({
   workspaceId,
   runs,
@@ -99,7 +104,7 @@ function RunsTable({
       </thead>
       <tbody>
         {runs.map((run) => (
-          <tr key={run.id}>
+          <tr key={run.id} className={needsReview(run) ? "needs-review" : undefined}>
             <td>{run.createdAt.slice(0, 16).replace("T", " ")}</td>
             <td>
               {T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype}
@@ -142,10 +147,11 @@ function RunsTable({
               ) : (
                 <button
                   type="button"
-                  className="btn ghost"
+                  className={needsReview(run) ? "btn" : "btn ghost"}
                   onClick={() => navigate(runPath(workspaceId, run.id))}
                 >
-                  {T.review}
+                  {run.pending === 0 && run.generated > 0 ? T.reviewed : T.review}
+                  {needsReview(run) && <span className="pill"> {run.pending}</span>}
                 </button>
               )}
             </td>

@@ -123,9 +123,11 @@ describe("open channels (FR-19, FR-20, FR-21, NFR-4)", () => {
       ok: true,
       data: {},
     });
+    await dispatch("reader:openWindow", { workspaceId, materialId, page: 2, quote: "trecho" });
     expect(opened).toEqual([
       { workspaceId, materialId, page: 2 },
       { workspaceId, materialId },
+      { workspaceId, materialId, page: 2, quote: "trecho" },
     ]);
   });
 

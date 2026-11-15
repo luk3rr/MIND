@@ -73,6 +73,36 @@ describe("filter of the questions (like the cards)", () => {
   });
 });
 
+describe("fixing a question while practicing", () => {
+  it("edits the comment and discards the question after answering it", async () => {
+    const first = question(1);
+    const fake = open({
+      questions: [first, question(2)],
+      items: [first.item, question(2).item],
+    });
+    const user = userEvent.setup();
+    await screen.findByText("Enunciado 1?");
+    expect(screen.queryByRole("button", { name: "Editar" })).toBeNull();
+    await user.click(screen.getByRole("radio", { name: /Alternativa A/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+
+    await user.click(await screen.findByRole("button", { name: "Editar" }));
+    const comment = await screen.findByLabelText("Comentário");
+    await user.clear(comment);
+    await user.type(comment, "Comentário melhor");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    expect(await screen.findByText("Comentário melhor")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Descartar" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }),
+    );
+    expect(await screen.findByText("Enunciado 2?")).toBeVisible();
+    expect(screen.queryByText("Enunciado 1?")).not.toBeInTheDocument();
+    expect(fake.state.items[0]?.status).toBe("discarded");
+  });
+});
+
 describe("skipping and going back", () => {
   it("skips without answering, goes back to the unanswered question and answers it later", async () => {
     const { invoke } = open({ questions: [question(1), question(2)] });

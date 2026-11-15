@@ -50,7 +50,12 @@ export interface UiBridge {
   /** Opens the native dialog for a backup `.zip`; null when cancelled. */
   pickBackup?(): Promise<string | null>;
   /** Opens (or focuses) the separate reader window of a PDF. */
-  openReaderWindow?(target: { workspaceId: number; materialId: number; page?: number }): void;
+  openReaderWindow?(target: {
+    workspaceId: number;
+    materialId: number;
+    page?: number;
+    quote?: string;
+  }): void;
   /** Opens an address in the system browser (only ever the release page of an update). */
   openExternal?(url: string): Promise<void>;
   /** Opens a file in the system's default application; returns an error text, empty on success. */
@@ -173,6 +178,12 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "review:approveAll": ({ workspaceId, runId }) => core.review(workspaceId).approveAll(runId),
     "review:edit": ({ workspaceId, itemId, front, back, topic }) =>
       core.review(workspaceId).edit(itemId, front, back, topic),
+    "review:discardApproved": ({ workspaceId, itemId }) => ({
+      discarded: core.review(workspaceId).discardApproved(itemId),
+    }),
+    "review:restore": ({ workspaceId, itemId }) => ({
+      status: core.review(workspaceId).restore(itemId),
+    }),
     "study:today": ({ workspaceId, filter }) => {
       const study = core.study(workspaceId);
       return {
@@ -370,12 +381,17 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       await ui.openExternal(url);
       return {};
     },
-    "reader:openWindow": ({ workspaceId, materialId, page }) => {
+    "reader:openWindow": ({ workspaceId, materialId, page, quote }) => {
       core.reader(workspaceId).assertReadable(materialId);
       if (!ui.openReaderWindow) {
         throw new AppError("OPEN_FAILED", "Não foi possível abrir uma nova janela.");
       }
-      ui.openReaderWindow({ workspaceId, materialId, ...(page !== undefined ? { page } : {}) });
+      ui.openReaderWindow({
+        workspaceId,
+        materialId,
+        ...(page !== undefined ? { page } : {}),
+        ...(quote !== undefined ? { quote } : {}),
+      });
       return {};
     },
     "material:openOriginal": async ({ workspaceId, materialId }) => {

@@ -369,6 +369,7 @@ export const T = {
   openActionLabel: (action: string, title: string) => `${action} ${title}`,
   readerCited: "Trecho citado",
   seeInPdf: "Ver no PDF",
+  seeInPdfWindow: "PDF em nova janela",
   renameMaterial: "Renomear",
   renameMaterialTitle: "Renomear material",
   renameMaterialLabel: "Nome do material",
@@ -404,6 +405,11 @@ export const T = {
     "Resolva questões (múltipla escolha e Certo/Errado) e confira o gabarito com o comentário.",
   studySubCards: "Revisão de cards",
   helpLabel: "Como funciona",
+  discardItemTitle: "Descartar este item?",
+  discardItemBody:
+    "Ele sai do estudo e da prática. O histórico de respostas é mantido e você pode restaurá-lo na aba Descartados da revisão.",
+  reviewed: "Revisado",
+  restore: "Restaurar",
   helpCardsTitle: "Como revisar cards",
   helpCardsLines: [
     "Leia a frente e tente lembrar a resposta antes de revelar (Espaço).",
@@ -423,6 +429,7 @@ export const T = {
   discardReasons: {
     wrong_subtype: "tipo diferente do pedido",
     empty_front: "frente vazia",
+    not_self_contained: "depende do trecho de origem (não se entende sozinho)",
     empty_back: "verso vazio",
     cloze_without_gap: "lacuna ausente no cloze",
     true_false_without_verdict: "verso sem Verdadeiro/Falso",

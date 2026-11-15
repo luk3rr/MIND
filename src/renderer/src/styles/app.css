@@ -783,3 +783,34 @@ mark {
 .help-tip-bubble li + li {
   margin-top: 4px;
 }
+
+tr.needs-review td {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+tr.needs-review td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+tr.needs-review .btn .pill {
+  margin-left: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  border-color: transparent;
+}
+
+.see-in-pdf {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+.btn.sm {
+  padding: 3px 9px;
+  font-size: 12px;
+  gap: 5px;
+}
+
+.study-actions {
+  margin-top: 16px;
+  gap: 10px;
+}

@@ -111,6 +111,42 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
     expect(fake.state.reviewedToday).toBe(1);
   });
 
+  it("edits or discards the card on the spot, after the answer is shown", async () => {
+    const cardItem: FakeItem = {
+      ...question(1, ["A"]).item,
+      kind: "card",
+      subtype: "qa",
+      front: "Pergunta 1?",
+      back: "Resposta 1",
+      options: [],
+      answer: null,
+    };
+    const fake = open("/w/1/study", {
+      studyQueue: [card(1), card(2)],
+      items: [cardItem, { ...cardItem, id: 2, front: "Pergunta 2?" }],
+    });
+    const user = userEvent.setup();
+    await screen.findByText("Pergunta 1?");
+    expect(screen.queryByRole("button", { name: "Editar" })).toBeNull();
+    await user.keyboard(" ");
+
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+    const front = within(await screen.findByRole("dialog")).getByLabelText("Frente");
+    await user.clear(front);
+    await user.type(front, "Pergunta corrigida?");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(fake.state.items[0]?.front).toBe("Pergunta corrigida?"));
+    // The answer stays on screen after the edit.
+    expect(screen.getByText("Resposta 1")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Descartar" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }),
+    );
+    expect(await screen.findByText("Pergunta 2?")).toBeVisible();
+    expect(fake.state.items[0]?.status).toBe("discarded");
+  });
+
   it("works with the keyboard: Space reveals and 1 to 4 rate", async () => {
     const fake = open("/w/1/study", { studyQueue: [card(1), card(2)] });
     const user = userEvent.setup();
