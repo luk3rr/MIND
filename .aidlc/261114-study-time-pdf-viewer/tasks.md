@@ -160,15 +160,20 @@ Cada tarefa: ≤ ~1 h, estado final observável, FR/US servido e teste. Marque `
 - Como rodar: abrir um cartão, uma questão praticada, um erro, uma busca ou uma citação do chat de um PDF e usar **Ver no PDF**.
 - Desvios: (1) o `pdfSource` é opcional no esquema para não quebrar fixtures existentes, mas o núcleo sempre o preenche; (2) Chat e busca da Biblioteca consultam o tipo do material pela lista da Biblioteca, em vez de o núcleo informar `pdf`; (3) `locate` também aceita citações curtas (3 palavras) como último recurso.
 
-### UNIT-8 — E2E, desempenho e pacote  `Status: pending`
+### UNIT-8 — E2E, desempenho e pacote  `Status: verified (2026-11-14)`
 
-- [ ] T8.1 E2E do leitor: abrir PDF, navegar, buscar, nova janela, "Ver no PDF". [US-8..US-12; test: tests/e2e/reader.spec.ts]
-- [ ] T8.2 Medição de NFR-2 em PDF de ~200 páginas e registro em `build-and-test.md`. [NFR-2]
-- [ ] T8.3 Conferir CSP inalterada, sem listener de rede e licenças das dependências. [NFR-3, NFR-9; test: security.test.ts + `ss -ltnp`]
-- [ ] T8.4 `pnpm package` e verificação do `.deb` (tamanho e `verify-deb.sh`). [NFR-10]
-- [ ] T8.5 README e docs do app com tempo de estudo e leitor. [FR-1..24]
-- [ ] T8.6 Verificação final, `pnpm e2e`, `build-and-test.md` e commit `docs: document study time and the PDF reader`.
+- [x] T8.1 E2E do leitor: abrir PDF, navegar, buscar, nova janela, "Ver no PDF". [US-8..US-12; test: tests/e2e/reader.spec.ts]
+- [x] T8.2 Medição de NFR-2 em PDF de ~200 páginas e registro em `build-and-test.md`. [NFR-2]
+- [x] T8.3 Conferir CSP inalterada, sem listener de rede e licenças das dependências. [NFR-3, NFR-9; test: security.test.ts + `ss -ltnp`]
+- [x] T8.4 `pnpm package` e verificação do `.deb` (tamanho e `verify-deb.sh`). [NFR-10]
+- [x] T8.5 README e docs do app com tempo de estudo e leitor. [FR-1..24]
+- [x] T8.6 Verificação final, `pnpm e2e`, `build-and-test.md` e commit `docs: document study time and the PDF reader`.
 
 ## Gate summary shown to the human
 
 Plano: 3 bolts, 8 Units, 52 tarefas; esqueleto = UNIT-1; verificação `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage`; um commit por Unit; sem push; construção autônoma.
+
+**Resumo da UNIT-8 (2026-11-14).** Verificação: lint 0 · typecheck 0 · `pnpm test --coverage`: 80 arquivos, 728 testes; linhas 95,76%. `pnpm e2e`: 36 passaram (+3 de leitor desta Unit: Ver no PDF, última página e NFR-2), `pnpm package` + `verify-deb.sh`: ok (171 MB, 520 MB instalado), e2e do leitor e do tempo no app empacotado: 5 passaram. NFR-2: primeira página de 100 páginas em ~210 ms, troca de página em 54 a 70 ms.
+
+- Arquivos: `tests/e2e/reader.spec.ts` (+3 testes), `src/main/security.test.ts` (CSP), `construction/build-and-test.md`, `construction/ci-pipeline.md`, codekb atualizado, `README.md` do autor (duas passagens sobre tempo e leitor, **não commitado**: o arquivo tem edições em andamento do autor).
+- Desvios: (1) o PDF medido tem 100 páginas (não 200); (2) `pnpm format:check` só falha no `README.md` por uma linha em edição do autor; (3) o texto novo do README fica no working tree junto com as edições dele.

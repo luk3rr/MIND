@@ -19,3 +19,14 @@ Status: draft · Confiança: alta
 | `fixtures/`, `scripts/` | referências congeladas; `check-headers.mjs`, `verify-deb.sh`, `sm1.ts` |
 
 [src: listagem de src/ no commit 101d3e6]
+
+**Adições do intent study-time-pdf-viewer (2026-11-14).**
+
+| Caminho | Conteúdo |
+|---|---|
+| `src/core/time/` | `TimeService` (cronômetro manual e contagem automática, metas, estatísticas, histórico) |
+| `src/core/reader/` | `ReaderService`, `PdfReader` (mupdf), `backend.ts` (`WorkerReader`, `InProcessReader`), `reader.worker.ts`, `files.ts` (`materialFile`), `source.ts` (`pdfSourceOf`) |
+| `src/main/reader-windows.ts`, `reader-worker.ts` | uma janela de leitor por material; fábrica do worker |
+| `src/renderer/src/time.tsx` | `TimeProvider`, `useTime`, `useActivity`, `formatClock`, `formatDuration` |
+| `src/renderer/src/pages/ReaderPage.tsx` | leitor de PDF (imagem, camada de texto, busca, zoom) |
+| `src/renderer/src/components/` | `TimerCard`, `TimeStats`, `TimeSettingsForm`, `ChartBlock`, `SeeInPdf` |

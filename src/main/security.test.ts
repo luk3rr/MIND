@@ -55,3 +55,16 @@ describe("CSP", () => {
     expect(CSP).toContain("object-src 'none'");
   });
 });
+
+describe("CSP with the PDF reader (NFR-3)", () => {
+  it("is unchanged by the reader: page images are data URLs and nothing else is allowed in", () => {
+    expect(CSP).toContain("default-src 'self'");
+    expect(CSP).toContain("script-src 'self';");
+    expect(CSP).toContain("img-src 'self' data:");
+    expect(CSP).toContain("connect-src 'self'");
+    expect(CSP).toContain("object-src 'none'");
+    for (const forbidden of ["blob:", "unsafe-eval", "wasm-unsafe-eval", "http:", "https:"]) {
+      expect(CSP).not.toContain(forbidden);
+    }
+  });
+});
