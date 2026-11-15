@@ -507,3 +507,84 @@ mark {
   gap: 8px;
   color: #fff;
 }
+
+.reader-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.reader-page-input {
+  width: 56px;
+  text-align: center;
+}
+.reader-body {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
+  height: calc(100vh - 250px);
+  min-height: 320px;
+}
+.reader-pages {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reader-page-link {
+  all: unset;
+  cursor: pointer;
+  text-align: center;
+  padding: 4px 0;
+  border-radius: 6px;
+  color: var(--muted);
+}
+.reader-page-link[aria-current="page"] {
+  background: var(--side-active);
+  color: var(--fg);
+}
+.reader-page-link:focus-visible {
+  outline: 2px solid var(--info);
+}
+.reader-viewport {
+  overflow: auto;
+  background: var(--panel-2);
+  border-radius: 10px;
+  padding: 16px;
+}
+.reader-page {
+  position: relative;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.reader-page img {
+  display: block;
+  user-select: none;
+}
+.reader-text {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.reader-line {
+  position: absolute;
+  white-space: pre;
+  color: transparent;
+  transform-origin: 0 0;
+  cursor: text;
+}
+.reader-line::selection {
+  background: rgba(80, 140, 255, 0.4);
+}
+.reader-hit {
+  position: absolute;
+  background: rgba(255, 213, 0, 0.35);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+.reader-hit.current {
+  background: rgba(255, 140, 0, 0.5);
+  outline: 2px solid rgba(255, 140, 0, 0.9);
+}

@@ -10,7 +10,7 @@ import type { OutputOf } from "../../../core/contracts/index.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
 import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
-import { materialPath, useRouter } from "../router.js";
+import { materialPath, useRouter, readerPath } from "../router.js";
 import { T } from "../strings.js";
 
 type Material = OutputOf<"material:list">["materials"][number];
@@ -200,6 +200,16 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                   </td>
                   <td>{material.chunkCount}</td>
                   <td>
+                    {material.kind === "pdf" && material.status === "indexed" && (
+                      <button
+                        type="button"
+                        className="btn"
+                        aria-label={`${T.readAction} ${material.title}`}
+                        onClick={() => navigate(readerPath(workspaceId, material.id))}
+                      >
+                        {T.readAction}
+                      </button>
+                    )}{" "}
                     <button
                       type="button"
                       className="btn ghost"

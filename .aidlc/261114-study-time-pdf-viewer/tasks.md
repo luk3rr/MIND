@@ -112,15 +112,23 @@ Cada tarefa: ≤ ~1 h, estado final observável, FR/US servido e teste. Marque `
 - Como rodar: pelos testes (`pnpm exec vitest run src/core/reader`); a interface vem na UNIT-5.
 - Desvios: (1) a busca é feita por glifos do mupdf (ignora maiúsculas e acentos) em vez de `page.search`, que diferencia maiúsculas; (2) `hits[]` do `reader:search` é uma entrada por ocorrência; (3) o worker real só roda no app (testado com um worker de mentira e, de ponta a ponta, na UNIT-5/8); (4) `reader:info.lastPage` volta `null` até a UNIT-7.
 
-### UNIT-5 — Leitor de PDF (UI)  `Status: pending`
+### UNIT-5 — Leitor de PDF (UI)  `Status: verified (2026-11-14)`
 
-- [ ] T5.1 Rota `/w/:id/library/:materialId/read?page=` e `ReaderPage` com página única, esqueleto de carga e erros com ações. [FR-15, FR-24, US-8; test: reader.test.tsx, router.test.tsx]
-- [ ] T5.2 Navegação (anterior, próxima, ir para N, teclado) e zoom (50–300%, largura). [FR-16, US-8; test: reader.test.tsx]
-- [ ] T5.3 Camada de texto transparente para seleção e cópia. [FR-18, US-9; test: reader.test.tsx]
-- [ ] T5.4 Busca com contagem, próxima/anterior e realce. [FR-17, US-9; test: reader.test.tsx]
-- [ ] T5.5 Painel de páginas simples e rótulos acessíveis, foco e atalhos. [NFR-6; test: reader.test.tsx]
-- [ ] T5.6 Ação **Ler** na Biblioteca (PDF indexado) e `useActivity("reading", { materialId })` no leitor. [FR-15, FR-3; test: library.test.tsx]
-- [ ] T5.7 Verificação e commit `feat(reader): add the in-app PDF reader`.
+- [x] T5.1 Rota `/w/:id/library/:materialId/read?page=` e `ReaderPage` com página única, esqueleto de carga e erros com ações. [FR-15, FR-24, US-8; test: reader.test.tsx, router.test.tsx]
+- [x] T5.2 Navegação (anterior, próxima, ir para N, teclado) e zoom (50–300%, largura). [FR-16, US-8; test: reader.test.tsx]
+- [x] T5.3 Camada de texto transparente para seleção e cópia. [FR-18, US-9; test: reader.test.tsx]
+- [x] T5.4 Busca com contagem, próxima/anterior e realce. [FR-17, US-9; test: reader.test.tsx]
+- [x] T5.5 Painel de páginas simples e rótulos acessíveis, foco e atalhos. [NFR-6; test: reader.test.tsx]
+- [x] T5.6 Ação **Ler** na Biblioteca (PDF indexado) e `useActivity("reading", { materialId })` no leitor. [FR-15, FR-3; test: library.test.tsx]
+- [x] T5.7 Verificação e commit `feat(reader): add the in-app PDF reader`.
+
+
+**Resumo da UNIT-5 (2026-11-14).** Verificação: lint 0 · format 0 · typecheck 0 · `pnpm test --coverage`: 77 arquivos, 696 testes, todos passam; linhas 95,62% · ramos 86,08% · funções 93,41%. e2e do leitor (`tests/e2e/reader.spec.ts`, com o worker real do mupdf dentro do Electron): passou.
+
+- Arquivos: `renderer/src/pages/ReaderPage.tsx`, `router.tsx` (rota `/read`, `readerPath`), `App.tsx`, `pages/LibraryPage.tsx` (ação Ler), `strings.ts`, `styles/app.css`, testes `reader.test.tsx`, `router.test.tsx`, `tests/e2e/reader.spec.ts`.
+- Como rodar: `pnpm dev`, importar um PDF e clicar em **Ler** na Biblioteca.
+- Desvios: (1) a barra do leitor não tem ainda "Nova janela" e "Sistema" (UNIT-6); (2) o painel lateral é só a lista de números de página (miniaturas ficam para depois, A6); (3) o realce do trecho citado (`?quote=`) e a última página lida vêm na UNIT-7.
+- Observação de processo: o `README.md` está sendo editado em paralelo pelo autor; o commit da UNIT-4 incluiu, sem querer, uma dessas edições (corrigido daqui em diante: só caminhos explícitos no `git add`).
 
 ### UNIT-6 — Janela separada e abrir no sistema  `Status: pending`
 

@@ -9,6 +9,7 @@ import { Shell } from "./components/Shell.js";
 import { GeneratePage } from "./pages/GeneratePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { MaterialPreviewPage } from "./pages/MaterialPreviewPage.js";
+import { ReaderPage } from "./pages/ReaderPage.js";
 import { ReviewPage } from "./pages/ReviewPage.js";
 import { ChatPage } from "./pages/ChatPage.js";
 import { ErrorsPage } from "./pages/ErrorsPage.js";
@@ -50,7 +51,15 @@ function Screen() {
         {route.section === "library" && route.detailId === undefined && (
           <LibraryPage workspaceId={route.workspaceId} />
         )}
-        {route.section === "library" && route.detailId !== undefined && (
+        {route.section === "library" && route.detailId !== undefined && route.reader && (
+          <ReaderPage
+            key={`${route.detailId}-${route.page ?? ""}`}
+            workspaceId={route.workspaceId}
+            materialId={route.detailId}
+            {...(route.page !== undefined ? { initialPage: route.page } : {})}
+          />
+        )}
+        {route.section === "library" && route.detailId !== undefined && !route.reader && (
           <MaterialPreviewPage
             key={`${route.detailId}-${route.chunkId ?? ""}`}
             workspaceId={route.workspaceId}

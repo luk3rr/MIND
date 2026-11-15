@@ -20,6 +20,10 @@ export type Route =
       chunkId?: number;
       /** The practice sub-screen of Study (`/w/:id/study/practice`). */
       practice?: boolean;
+      /** The PDF reader of a material (`/w/:id/library/:materialId/read?page=N`). */
+      reader?: boolean;
+      /** The page the reader opens on. */
+      page?: number;
       /** Generate screen pre-filled to train on a weak topic (`?topic=<id>&subtype=<type>`). */
       topicId?: number;
       subtype?: string;
@@ -41,27 +45,32 @@ export function parseRoute(path: string): Route {
   if (path === "/setup/1") return { name: "setup", step: 1 };
   if (path === "/setup/2") return { name: "setup", step: 2 };
   const [pathname = "", query] = path.split("?");
-  const [empty, prefix, workspace, section, material, ...extra] = pathname.split("/");
+  const [empty, prefix, workspace, section, material, action, ...extra] = pathname.split("/");
   const practice = section === "study" && material === "practice";
+  const reader = action === "read";
   const valid =
     empty === "" &&
     prefix === "w" &&
     isNumber(workspace) &&
     SECTION_SLUGS.includes(section as SectionSlug) &&
     (material === undefined || isNumber(material) || practice) &&
+    (action === undefined || (reader && section === "library" && isNumber(material))) &&
     extra.length === 0;
   const params = parseQuery(query);
   const chunk = params?.get("chunk") ?? undefined;
   const topic = params?.get("topic") ?? undefined;
   const subtype = params?.get("subtype") ?? undefined;
+  const page = params?.get("page") ?? undefined;
+  const allowed = reader ? ["page"] : ["chunk", "topic", "subtype"];
   const queryValid =
     query === undefined ||
     (params !== null &&
-      [...params.keys()].every((key) => ["chunk", "topic", "subtype"].includes(key)) &&
+      [...params.keys()].every((key) => allowed.includes(key)) &&
       (chunk === undefined || isNumber(chunk)) &&
+      (page === undefined || (isNumber(page) && Number(page) >= 1)) &&
       (topic === undefined || (isNumber(topic) && section === "generate")) &&
       (subtype === undefined || (topic !== undefined && /^[a-z_0-9]{1,30}$/.test(subtype))) &&
-      (chunk !== undefined || topic !== undefined));
+      (reader ? page !== undefined : chunk !== undefined || topic !== undefined));
   if (!valid || !queryValid) return { name: "unknown" };
   return {
     name: "section",
@@ -69,6 +78,8 @@ export function parseRoute(path: string): Route {
     section: section as SectionSlug,
     ...(material !== undefined && !practice ? { detailId: Number(material) } : {}),
     ...(practice ? { practice: true } : {}),
+    ...(reader ? { reader: true } : {}),
+    ...(page !== undefined ? { page: Number(page) } : {}),
     ...(chunk !== undefined ? { chunkId: Number(chunk) } : {}),
     ...(topic !== undefined ? { topicId: Number(topic) } : {}),
     ...(subtype !== undefined ? { subtype } : {}),
@@ -88,6 +99,12 @@ export function trainPath(workspaceId: number, topicId: number, subtype?: string
 export function materialPath(workspaceId: number, materialId: number, chunkId?: number): string {
   const base = `/w/${workspaceId}/library/${materialId}`;
   return chunkId === undefined ? base : `${base}?chunk=${chunkId}`;
+}
+
+/** The in-app reader of a PDF material, optionally on a page. */
+export function readerPath(workspaceId: number, materialId: number, page?: number): string {
+  const base = `/w/${workspaceId}/library/${materialId}/read`;
+  return page === undefined ? base : `${base}?page=${page}`;
 }
 
 interface RouterValue {

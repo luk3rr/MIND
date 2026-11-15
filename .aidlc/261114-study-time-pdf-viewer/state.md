@@ -7,7 +7,7 @@
 - Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous (Construction; falhas e ações irreversíveis ainda param) iteration=unit-major
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-14; pnpm em ~/.local/share/pnpm/bin)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.5 Code Generation UNIT-5   Updated: 2026-11-14T21:14:55-03:00
+- Current: phase=construction stage=3.5 Code Generation UNIT-6   Updated: 2026-11-14T21:18:52-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
@@ -44,7 +44,7 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-2 Contagem automática | UNIT-1 | verified | yes (2026-11-14) |
 | UNIT-3 Meta, estatísticas e backup | UNIT-1 | verified | yes (2026-11-14) |
 | UNIT-4 Núcleo do leitor | n/a | verified | yes (2026-11-14) |
-| UNIT-5 Leitor de PDF (UI) | UNIT-4, UNIT-2 | pending | no |
+| UNIT-5 Leitor de PDF (UI) | UNIT-4, UNIT-2 | verified | yes (2026-11-14) |
 | UNIT-6 Janela separada e abrir no sistema | UNIT-5 | pending | no |
 | UNIT-7 Ver no PDF e última página | UNIT-5 | pending | no |
 | UNIT-8 E2E, desempenho e pacote | UNIT-3, UNIT-6, UNIT-7 | pending | no |

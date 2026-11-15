@@ -547,6 +547,25 @@ sequenceDiagram
 
 **Spike A19 (resultado).** As caixas de linha do mupdf coincidem com onde a página desenha o texto: o teste lê os pixels da página e acha tinta dentro da caixa e nenhuma fora dela. A camada de texto da UNIT-5 usa uma caixa por linha (suficiente para selecionar e copiar frases); ADR-1 permanece.
 
+### UNIT-5 — Functional design
+
+**Rota e telas.** `/w/:id/library/:materialId/read?page=N` abre o `ReaderPage` dentro do `Shell` (somente em `library` com id; qualquer outra combinação é rota desconhecida); a Biblioteca ganha a ação **Ler** (só PDF indexado). O leitor mostra uma página por vez: a imagem renderizada pelo núcleo, uma **camada de texto** transparente (uma `span` por linha, esticada com `scaleX` até a caixa da linha, selecionável e copiável), os realces da busca e um painel de números de página.
+
+```mermaid
+stateDiagram-v2
+  [*] --> abrindo: reader:info
+  abrindo --> erro: FILE_MISSING, PDF_PROTECTED, EXTRACTION_FAILED
+  abrindo --> lendo: ok
+  lendo --> lendo: página (botões, caixa, painel, ←/→, PgUp/PgDn)
+  lendo --> lendo: zoom (50 a 300%, ajustar à largura, Ctrl+= / - / 0)
+  lendo --> buscando: Enter na busca (reader:search)
+  buscando --> lendo: salta para a página da ocorrência
+```
+
+**Zoom e nitidez.** O zoom efetivo (padrão: ajustar à largura, entre 50% e 300%) define o tamanho em pontos; a imagem é pedida em `zoom × devicePixelRatio` (em passos de 0,05) e a página seguinte é pré-carregada. Enquanto a página nova carrega, a imagem anterior fica na tela.
+
+**Busca.** `reader:search` devolve uma entrada por ocorrência; o leitor mostra "i de n ocorrências", salta para a página de cada uma e realça a atual com outra cor; setas (aqui, botões) ciclam. **Acessibilidade.** Barra de ferramentas com rótulos, foco visível, `aria-current` na página do painel, imagem com texto alternativo "Página N". **Tempo.** `useActivity("reading", { materialId })` reporta leitura; o rodapé mostra "Lendo há …" quando a sessão é de leitura.
+
 ## 3.2–3.4 NFR e infraestrutura (todas as Units)
 
 - **3.2 NFR requirements:** os NFR de 2.3 valem como estão; por Unit, cada Definition of Done cita os que a Unit possui (2.7).
