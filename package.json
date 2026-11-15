@@ -1,6 +1,6 @@
 {
   "name": "mind",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local-first study tool: generates flashcards and questions with cited sources from your own materials.",
   "private": true,
   "type": "module",
