@@ -16,7 +16,7 @@ import type { SourceChunk } from "./planning.js";
 import { cardBatchSchema } from "./schemas.js";
 import { dependsOnSource, withSelfContained } from "./self-contained.js";
 import type { CardOut, CardPayload } from "./schemas.js";
-import { upsertTopic } from "./topics.js";
+import { topTopics, upsertTopic, withKnownTopics } from "./topics.js";
 import type { KnownTopics } from "./topics.js";
 
 const CLOZE_GAP = /\{\{c\d+::[\s\S]+?\}\}/;
@@ -100,14 +100,18 @@ export class CardGenerator {
       label: chunkLabel(c),
       text: c.text,
     }));
-    const messages = withSelfContained(
-      buildCardMessages(
-        request.subtype,
-        request.count,
-        promptChunks,
-        request.avoid ?? [],
-        request.extra ?? {},
+    const messages = withKnownTopics(
+      withSelfContained(
+        buildCardMessages(
+          request.subtype,
+          request.count,
+          promptChunks,
+          request.avoid ?? [],
+          request.extra ?? {},
+        ),
       ),
+      // A topic chosen for the whole run makes the label the model writes irrelevant.
+      request.topicId ? [] : topTopics(this.db),
     );
     const { value, usage } = await this.provider.complete(messages, cardBatchSchema, {
       model: request.model,

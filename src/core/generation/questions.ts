@@ -20,7 +20,7 @@ import type { PromptChunk, PromptExtra } from "./prompts.js";
 import { buildQuestionMessages } from "./question-prompts.js";
 import { PROFILES, questionBatchSchema } from "./schemas.js";
 import type { OptionOut, QuestionOut, QuestionPayload } from "./schemas.js";
-import { upsertTopic } from "./topics.js";
+import { topTopics, upsertTopic, withKnownTopics } from "./topics.js";
 import type { KnownTopics } from "./topics.js";
 
 const CERTO_ERRADO_OPTIONS: OptionOut[] = [
@@ -119,14 +119,17 @@ export class QuestionGenerator {
       text: c.text,
     }));
     const { value, usage } = await this.provider.complete(
-      withSelfContained(
-        buildQuestionMessages(
-          request.profile,
-          request.count,
-          promptChunks,
-          request.avoid ?? [],
-          request.extra ?? {},
+      withKnownTopics(
+        withSelfContained(
+          buildQuestionMessages(
+            request.profile,
+            request.count,
+            promptChunks,
+            request.avoid ?? [],
+            request.extra ?? {},
+          ),
         ),
+        request.topicId ? [] : topTopics(this.db),
       ),
       questionBatchSchema,
       { model: request.model, purpose: "generation", schemaName: "QuestionBatch" },

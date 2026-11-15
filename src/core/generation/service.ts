@@ -7,16 +7,16 @@
 import { logger } from "../logging.js";
 
 const log = logger("generation");
-import { and, count, desc, eq, inArray, ne, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import type { FieldError } from "../contracts/errors.js";
-import { chunk, generationRun, item, material } from "../db/workspace-schema.js";
+import { chunk, generationRun, item, material, topic } from "../db/workspace-schema.js";
 import { JobCancelled } from "../jobs/queue.js";
 import { getJob } from "../jobs/store.js";
 import type { JobContext, JobQueue } from "../jobs/queue.js";
 import type { Llm } from "../core.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
-import { CardGenerator } from "./cards.js";
+import { CardGenerator, cleanTopic } from "./cards.js";
 import type { BatchOutcome, DiscardNote } from "./cards.js";
 import { CARDS_PER_BATCH, QUESTIONS_PER_BATCH, planBatches, selectChunks } from "./planning.js";
 import { QuestionGenerator } from "./questions.js";
@@ -52,6 +52,8 @@ export interface GenerationRequest {
   instructions?: string;
   /** Write new variations of the items already approved on this material or topic. */
   variations?: boolean;
+  /** Puts every item of the run in this topic (created when new) instead of the model's labels. */
+  topicName?: string;
 }
 
 export interface EstimateInfo {
@@ -389,6 +391,18 @@ export class GenerationService {
     return this.get(row.id);
   }
 
+  /** The topic called `name` (any case), created when it does not exist; null when no name. */
+  private namedTopic(name: string | undefined): number | null {
+    const clean = cleanTopic(name);
+    if (clean === null) return null;
+    const found = this.db
+      .select()
+      .from(topic)
+      .where(sql`lower(${topic.name}) = ${clean.toLowerCase()}`)
+      .get();
+    return found?.id ?? this.db.insert(topic).values({ name: clean }).returning().get().id;
+  }
+
   cancel(runId: number): boolean {
     const run = this.get(runId);
     return run.jobId === null ? false : this.queue.cancel(this.workspace.info.id, run.jobId);
@@ -418,6 +432,8 @@ export class GenerationService {
       ...(request.instructions?.trim() ? { instructions: request.instructions.trim() } : {}),
       ...(seeds.length > 0 ? { seeds } : {}),
     };
+    // Training puts the items in the trained topic; otherwise the person may name one for the run.
+    const forcedTopic = request.topicId ?? this.namedTopic(request.topicName);
     let accepted = 0;
     let finished = 0;
     let active = 0;
@@ -450,7 +466,7 @@ export class GenerationService {
                 model,
                 judgeModel,
                 remaining,
-                topicId: request.topicId ?? null,
+                topicId: forcedTopic,
                 avoid,
                 extra,
               })
@@ -461,7 +477,7 @@ export class GenerationService {
                 chunks,
                 model,
                 remaining,
-                topicId: request.topicId ?? null,
+                topicId: forcedTopic,
                 avoid,
                 extra,
               });

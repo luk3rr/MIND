@@ -93,6 +93,8 @@ const generationRequest = z
     instructions: z.string().max(2000).optional(),
     /** Write variations of the items already approved on this material or topic. */
     variations: z.boolean().optional(),
+    /** Puts every item of the run in this topic (created when new) instead of letting the model choose. */
+    topicName: z.string().max(200).optional(),
   })
   .strict();
 
