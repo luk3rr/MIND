@@ -63,10 +63,10 @@ Aplicativos instalados → MIND**; a desinstalação também preserva os seus da
    [OpenRouter](https://openrouter.ai) e leia o aviso sobre o que é enviado.
    1. [Como gerar uma chave na OpenRouter?](https://youtu.be/cwg7jUJ7Xx4?si=-Nb_KhuYFJJCoF7H)
 3. Em **Biblioteca**, importe um arquivo ou uma página web. `samples/fotossintese.md` é um texto
-   curto para experimentar. 
+   curto para experimentar.
 4. Em **Gerar**, escolha o material, o tipo (cards ou questões) e a quantidade; o custo estimado
    aparece antes de começar. Revise os rascunhos e aprove os que quiser.
-5. **Estude** a fila do dia e **Pratique** questões. 
+5. **Estude** a fila do dia e **Pratique** questões.
 6. Acompanhe o progresso em **Estatísticas**, revise os erros em **Erros**, treine os pontos fracos
    a partir de **Hoje** e pergunte ao **Chat** sobre o seu próprio material.
 

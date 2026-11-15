@@ -64,6 +64,16 @@ export function WorkspaceSwitcher({ activeId }: { activeId: number }) {
             </button>
           ))}
           <hr />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              navigate("/welcome");
+            }}
+          >
+            {T.leaveWorkspace}
+          </button>
           <button type="button" role="menuitem" onClick={() => choose("create")}>
             {T.newWorkspace}
           </button>

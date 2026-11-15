@@ -5,7 +5,6 @@
  */
 
 import { parseRoute, sectionPath, useRouter } from "../router.js";
-import { sectionLabel } from "../sections.js";
 import { T } from "../strings.js";
 import type { SectionSlug } from "../sections.js";
 
@@ -18,7 +17,7 @@ export function backLabel(path: string): string | null {
     return route.detailId !== undefined ? T.backToPreview : T.backToLibrary;
   }
   if (route.section === "study" && route.practice) return T.backToPractice;
-  return T.backTo(sectionLabel(route.section));
+  return T.backToSection[route.section];
 }
 
 /**

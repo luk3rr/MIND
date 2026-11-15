@@ -59,7 +59,12 @@ describe("backLabel", () => {
     expect(backLabel("/w/1/library/4")).toBe("Voltar à prévia do material");
     expect(backLabel("/w/1/study")).toBe("Voltar a Estudar");
     expect(backLabel("/w/1/study/practice")).toBe("Voltar à Prática");
-    expect(backLabel("/w/1/chat")).toBe("Voltar a Chat");
+    expect(backLabel("/w/1/chat")).toBe("Voltar ao Chat");
+    expect(backLabel("/w/1/today")).toBe("Voltar a Hoje");
+    expect(backLabel("/w/1/stats")).toBe("Voltar às Estatísticas");
+    expect(backLabel("/w/1/errors")).toBe("Voltar aos Erros");
+    expect(backLabel("/w/1/settings")).toBe("Voltar às Configurações");
+    expect(backLabel("/w/1/generate")).toBe("Voltar a Gerar");
     expect(backLabel("/welcome")).toBeNull();
   });
 });
@@ -120,5 +125,38 @@ describe("going back to where the person came from", () => {
     await screen.findByRole("heading", { name: "Hoje" });
     fireEvent.keyDown(document, { key: "ArrowLeft", altKey: true });
     expect(screen.getByRole("heading", { name: "Hoje" })).toBeInTheDocument();
+  });
+});
+
+describe("leaving a workspace (start screen)", () => {
+  it("goes to the start screen to pick another workspace, and pauses the study timer", async () => {
+    const { invoke } = open("/w/1/today");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Workspace: Estudos/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Sair do workspace" }));
+    expect(await screen.findByRole("heading", { name: "Escolha um workspace" })).toBeVisible();
+    expect(invoke).toHaveBeenCalledWith("time:pause", { workspaceId: 1 });
+    const list = screen.getByRole("list", { name: "Workspace" });
+    expect(
+      within(list)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Estudos", "Outro"]);
+    await user.click(within(list).getByRole("button", { name: "Abrir Outro" }));
+    expect(await screen.findByRole("heading", { name: "Hoje" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /Workspace: Outro/ })).toBeVisible();
+  });
+
+  it("offers to create a workspace from the start screen", async () => {
+    open("/w/1/today", { nextId: 3 });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Workspace: Estudos/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Sair do workspace" }));
+    await user.click(await screen.findByRole("button", { name: "Novo workspace" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Nome do workspace"), "Terceiro");
+    await user.click(within(dialog).getByRole("button", { name: "Criar" }));
+    expect(await screen.findByRole("heading", { name: "Hoje" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /Workspace: Terceiro/ })).toBeVisible();
   });
 });

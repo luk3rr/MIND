@@ -11,18 +11,33 @@ import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { isErrorInfo, useWorkspaces } from "../workspaces.js";
 
-/** Shown when there is no workspace yet. */
+/** The start screen: the first workspace to create, or the list to pick from, create or import. */
 export function WelcomePage() {
-  const { create } = useWorkspaces();
+  const { create, workspaces } = useWorkspaces();
   const { navigate } = useRouter();
   const [open, setOpen] = useState(false);
   const backup = useBackup();
 
   return (
     <main className="content" style={{ maxWidth: 560, margin: "10vh auto" }}>
-      <h1>{T.welcomeTitle}</h1>
-      <div className="card">
-        <p>{T.welcomeBody}</p>
+      <h1>{workspaces.length > 0 ? T.welcomePickTitle : T.welcomeTitle}</h1>
+      <div className="card stack">
+        <p>{workspaces.length > 0 ? T.welcomePickBody : T.welcomeBody}</p>
+        {workspaces.length > 0 && (
+          <ul className="quick-list" aria-label={T.workspace}>
+            {workspaces.map((workspace) => (
+              <li key={workspace.id}>
+                <button
+                  type="button"
+                  aria-label={T.welcomeOpen(workspace.name)}
+                  onClick={() => navigate(sectionPath(workspace.id, "today"))}
+                >
+                  {workspace.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <button type="button" className="btn" onClick={() => setOpen(true)}>
           {T.newWorkspace}
         </button>{" "}
