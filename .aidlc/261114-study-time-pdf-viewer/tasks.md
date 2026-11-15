@@ -146,12 +146,19 @@ Cada tarefa: ≤ ~1 h, estado final observável, FR/US servido e teste. Marque `
 - Desvios: (1) o canal `reader:openExternal` de 2.8 foi dispensado: `material:openOriginal` cobre PDF e os demais tipos; (2) o "Abrir no sistema" real (`shell.openPath`) não é exercitado no e2e para não lançar um aplicativo externo; ele é coberto por teste do handler com `openPath` simulado.
 - Processo: o `README.md` do autor ficou fora de todos os `git add` e do `prettier --write`.
 
-### UNIT-7 — Ver no PDF e última página  `Status: pending`
+### UNIT-7 — Ver no PDF e última página  `Status: verified (2026-11-14)`
 
-- [ ] T7.1 `reader:locate` (caixas do `quote` na página) e destaque no leitor. [FR-22, US-12; test: reader.test.ts, reader.test.tsx]
-- [ ] T7.2 `SeeInPdfButton` em Revisão, Estudo, Prática, Erros, busca e citações do Chat (só PDF com página). [FR-22; test: study.test.tsx, chat.test.tsx, library.test.tsx]
-- [ ] T7.3 `reader:savePosition` e retomada da última página. [FR-23, US-13; test: reader.test.tsx]
-- [ ] T7.4 Verificação e commit `feat(reader): jump to the cited page and resume reading`.
+- [x] T7.1 `reader:locate` (caixas do `quote` na página) e destaque no leitor. [FR-22, US-12; test: reader.test.ts, reader.test.tsx]
+- [x] T7.2 `SeeInPdfButton` em Revisão, Estudo, Prática, Erros, busca e citações do Chat (só PDF com página). [FR-22; test: study.test.tsx, chat.test.tsx, library.test.tsx]
+- [x] T7.3 `reader:savePosition` e retomada da última página. [FR-23, US-13; test: reader.test.tsx]
+- [x] T7.4 Verificação e commit `feat(reader): jump to the cited page and resume reading`.
+
+
+**Resumo da UNIT-7 (2026-11-14).** Verificação: lint 0 · format 0 · typecheck 0 · `pnpm test --coverage`: 80 arquivos, 727 testes, todos passam; linhas 95,76% · ramos 86,5% · funções 93,68%. `pnpm e2e` (fim do BOLT-2): **36 passaram**, 1 ignorado.
+
+- Arquivos: `core/reader/{source,pdf-reader,service,backend}.ts`, `core/review/service.ts` e `core/notebook/service.ts` (`pdfSource`), contratos (`reader:locate`, `reader:savePosition`, `pdfSource` opcional em item, cartão e erro), `handlers.ts`, `renderer/src/{router.tsx,App.tsx,components/SeeInPdf.tsx,pages/{ReaderPage,StudyPage,PracticePage,ReviewPage,ErrorsPage,ChatPage,LibraryPage}.tsx}`, `strings.ts`, `styles/app.css`, testes (`see-in-pdf.test.tsx`, `reader.test.ts`, `source.test.ts`, `reader-handlers.test.ts`, `router.test.tsx`).
+- Como rodar: abrir um cartão, uma questão praticada, um erro, uma busca ou uma citação do chat de um PDF e usar **Ver no PDF**.
+- Desvios: (1) o `pdfSource` é opcional no esquema para não quebrar fixtures existentes, mas o núcleo sempre o preenche; (2) Chat e busca da Biblioteca consultam o tipo do material pela lista da Biblioteca, em vez de o núcleo informar `pdf`; (3) `locate` também aceita citações curtas (3 palavras) como último recurso.
 
 ### UNIT-8 — E2E, desempenho e pacote  `Status: pending`
 

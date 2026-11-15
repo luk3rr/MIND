@@ -4,7 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { eq } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
+import { meta } from "../db/workspace-schema.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 import type { ReaderBackend } from "./backend.js";
 import { materialFile } from "./files.js";
@@ -40,6 +42,8 @@ export class PageCache {
     }
   }
 }
+
+const positionKey = (materialId: number): string => `reader.lastPage.${materialId}`;
 
 export interface ReaderInfo {
   title: string;
@@ -78,7 +82,33 @@ export class ReaderService {
   async info(materialId: number): Promise<ReaderInfo> {
     const { path, title } = this.pdf(materialId);
     const { pageCount, pages } = await this.backend.call("info", [path]);
-    return { title, pageCount, pages, lastPage: null };
+    const saved = Number(this.readMeta(positionKey(materialId)));
+    const lastPage = Number.isInteger(saved) && saved >= 1 && saved <= pageCount ? saved : null;
+    return { title, pageCount, pages, lastPage };
+  }
+
+  /** Remembers the page the person was reading so the next visit resumes there. */
+  savePosition(materialId: number, page: number): void {
+    this.pdf(materialId);
+    this.workspace.connection.db
+      .insert(meta)
+      .values({ key: positionKey(materialId), value: String(page) })
+      .onConflictDoUpdate({ target: meta.key, set: { value: String(page) } })
+      .run();
+  }
+
+  /** The boxes of a quoted passage on a page, for the highlight of "see in the PDF". */
+  async locate(materialId: number, page: number, quote: string): Promise<Box[]> {
+    const { path } = this.pdf(materialId);
+    return this.backend.call("locate", [path, page, quote]);
+  }
+
+  private readMeta(key: string): string | undefined {
+    return this.workspace.connection.db
+      .select({ value: meta.value })
+      .from(meta)
+      .where(eq(meta.key, key))
+      .get()?.value;
   }
 
   async page(materialId: number, page: number, scale: number): Promise<PageImage> {

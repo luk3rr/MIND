@@ -53,6 +53,7 @@ function Screen() {
             workspaceId={route.workspaceId}
             materialId={route.detailId}
             {...(route.page !== undefined ? { initialPage: route.page } : {})}
+            {...(route.quote !== undefined ? { quote: route.quote } : {})}
           />
         </main>
       </TimeProvider>
@@ -68,10 +69,11 @@ function Screen() {
         )}
         {route.section === "library" && route.detailId !== undefined && route.reader && (
           <ReaderPage
-            key={`${route.detailId}-${route.page ?? ""}`}
+            key={`${route.detailId}-${route.page ?? ""}-${route.quote ?? ""}`}
             workspaceId={route.workspaceId}
             materialId={route.detailId}
             {...(route.page !== undefined ? { initialPage: route.page } : {})}
+            {...(route.quote !== undefined ? { quote: route.quote } : {})}
           />
         )}
         {route.section === "library" && route.detailId !== undefined && !route.reader && (

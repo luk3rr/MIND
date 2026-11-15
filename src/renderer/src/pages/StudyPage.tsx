@@ -11,6 +11,7 @@ import { MathText } from "../MathText.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
+import { SeeInPdf } from "../components/SeeInPdf.js";
 
 type Next = OutputOf<"study:next">;
 type Today = OutputOf<"study:today">;
@@ -203,7 +204,10 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
               </div>
               <p className="muted">
                 {T.source}: {next.card.sourceTitle}
-                {next.card.sourcePage !== null ? ` · ${T.page} ${next.card.sourcePage}` : ""}
+                {next.card.sourcePage !== null ? ` · ${T.page} ${next.card.sourcePage}` : ""}{" "}
+                {next.card.pdfSource && (
+                  <SeeInPdf workspaceId={workspaceId} {...next.card.pdfSource} />
+                )}
               </p>
               <div className="rating-row row">
                 {(["1", "2", "3", "4"] as const).map((key) => (

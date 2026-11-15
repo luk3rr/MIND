@@ -588,3 +588,7 @@ mark {
   background: rgba(255, 140, 0, 0.5);
   outline: 2px solid rgba(255, 140, 0, 0.9);
 }
+.reader-hit.cited {
+  background: rgba(255, 213, 0, 0.45);
+  outline: 2px solid rgba(255, 190, 0, 0.9);
+}

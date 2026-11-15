@@ -13,6 +13,7 @@ import { MathText } from "../MathText.js";
 import { clozePlain } from "../math.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
+import { SeeInPdf } from "../components/SeeInPdf.js";
 
 type Item = OutputOf<"review:list">["items"][number];
 type Status = "draft" | "approved" | "discarded";
@@ -205,6 +206,12 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
                     {item.sourcePage !== null ? `, ${T.page} ${item.sourcePage}` : ""}
                   </span>
                   <br />“{item.quote}”
+                  {item.pdfSource && (
+                    <>
+                      <br />
+                      <SeeInPdf workspaceId={workspaceId} {...item.pdfSource} />
+                    </>
+                  )}
                 </blockquote>
                 {item.status === "draft" && (
                   <div className="row">

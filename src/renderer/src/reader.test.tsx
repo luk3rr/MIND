@@ -122,6 +122,8 @@ describe("Reader page (FR-15, FR-16, FR-18, FR-24)", () => {
         },
         lines: { 1: [line("Primeira linha do texto", 50), line("Segunda linha", 70)] },
         hits: [],
+        cited: [],
+        saved: [],
         failure: null,
       },
     });
@@ -151,6 +153,8 @@ describe("Reader page (FR-15, FR-16, FR-18, FR-24)", () => {
         },
         lines: {},
         hits: [hit(1, 50), hit(3, 90)],
+        cited: [],
+        saved: [],
         failure: null,
       },
     });
@@ -187,6 +191,8 @@ describe("Reader page (FR-15, FR-16, FR-18, FR-24)", () => {
         info: { title: "", pageCount: 0, pages: [], lastPage: null },
         lines: {},
         hits: [],
+        cited: [],
+        saved: [],
         failure: { code: "FILE_MISSING", message: "O arquivo original não foi encontrado." },
       },
     });
@@ -251,6 +257,8 @@ describe("opening in a window and in the system (FR-19, FR-20, FR-21)", () => {
         info: { title: "", pageCount: 0, pages: [], lastPage: null },
         lines: {},
         hits: [],
+        cited: [],
+        saved: [],
         failure: { code: "PDF_PROTECTED", message: "O PDF está protegido por senha." },
       },
     });

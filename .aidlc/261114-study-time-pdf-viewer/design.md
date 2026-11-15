@@ -586,6 +586,23 @@ sequenceDiagram
   H-->>UI: {} ou OPEN_FAILED
 ```
 
+### UNIT-7 — Functional design
+
+**Regras.** Itens (revisão, estudo, prática), entradas do caderno de erros trazem `pdfSource` `{ materialId, page, quote }` **somente** quando o trecho citado tem página e o material é PDF (`pdfSourceOf`, via `chunk → material`); resultados de busca da Biblioteca e citações do Chat usam o mesmo botão quando o material é PDF e há página. "Ver no PDF" navega para `/w/:id/library/:materialId/read?page=N&quote=…` (quote normalizado, até 300 caracteres; rotas com quote não são gravadas como última rota). O leitor chama `reader:locate` e desenha os retângulos com o rótulo "Trecho citado"; se o trecho inteiro não é achado, tenta as 12, 6 e 3 primeiras palavras (sem acentos nem maiúsculas) e, não achando, só abre na página. A última página lida é gravada (`reader:savePosition`, 0,8 s depois de parar numa página) em `meta` (`reader.lastPage.<id>`) e o leitor sem página na rota retoma dela; `lastPage` fora do intervalo é ignorada.
+
+```mermaid
+sequenceDiagram
+  participant C as Cartão / resposta / busca / chat
+  participant R as ReaderPage
+  participant S as ReaderService
+  C->>R: navigate(/read?page=N&quote=...)
+  R->>S: reader:info, reader:page, reader:text
+  R->>S: reader:locate {page, quote}
+  S-->>R: retângulos do trecho
+  R-->>R: destaca "Trecho citado"
+  R->>S: reader:savePosition {page} (depois de 0,8 s)
+```
+
 ## 3.2–3.4 NFR e infraestrutura (todas as Units)
 
 - **3.2 NFR requirements:** os NFR de 2.3 valem como estão; por Unit, cada Definition of Done cita os que a Unit possui (2.7).

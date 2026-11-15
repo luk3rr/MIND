@@ -60,11 +60,14 @@ export function ReaderPage({
   workspaceId,
   materialId,
   initialPage,
+  quote,
   standalone = false,
 }: {
   workspaceId: number;
   materialId: number;
   initialPage?: number;
+  /** A passage to highlight on the first page shown. */
+  quote?: string;
   /** True in a separate reader window: no way back to the library and no further windows. */
   standalone?: boolean;
 }) {
@@ -85,6 +88,8 @@ export function ReaderPage({
   const [truncated, setTruncated] = useState(false);
   const [hitIndex, setHitIndex] = useState(0);
   const [pageDraft, setPageDraft] = useState<string | null>(null);
+  const [cited, setCited] = useState<Lines | null>(null);
+  const resumed = useRef(initialPage !== undefined);
 
   const report = (result: { ok: boolean; error?: { message: string } }): void => {
     setError(result.ok ? null : (result.error?.message ?? T.openFailed));
@@ -101,6 +106,39 @@ export function ReaderPage({
   const total = info.state.status === "ready" ? info.state.data.pageCount : 0;
   const current = total > 0 ? Math.min(Math.max(page, 1), total) : page;
   const size = info.state.status === "ready" ? info.state.data.pages[current - 1] : undefined;
+  const lastPage = info.state.status === "ready" ? info.state.data.lastPage : null;
+
+  // Without a page in the route the reader resumes where the person stopped last time (FR-23).
+  useEffect(() => {
+    if (resumed.current || info.state.status !== "ready") return;
+    resumed.current = true;
+    if (lastPage !== null) setPage(lastPage);
+  }, [info.state.status, lastPage]);
+
+  useEffect(() => {
+    if (total === 0) return undefined;
+    const timer = setTimeout(() => {
+      void window.mind.invoke("reader:savePosition", { workspaceId, materialId, page: current });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [workspaceId, materialId, current, total]);
+
+  // The passage a card or answer cites is highlighted on the page it points to (FR-22).
+  useEffect(() => {
+    setCited(null);
+    if (!quote || current !== initialPage || total === 0) return undefined;
+    let cancelled = false;
+    void window.mind
+      .invoke("reader:locate", { workspaceId, materialId, page: current, quote })
+      .then((result) => {
+        if (!cancelled && result.ok) {
+          setCited(result.data.rects.map((rect) => ({ ...rect, text: "" })));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId, materialId, current, quote, initialPage, total]);
 
   useEffect(() => {
     const element = viewport.current;
@@ -412,6 +450,20 @@ export function ReaderPage({
                 />
               )),
             )}
+            {cited?.map((rect, index) => (
+              <div
+                key={`cited-${index}`}
+                className="reader-hit cited"
+                role="img"
+                aria-label={T.readerCited}
+                style={{
+                  left: rect.x * effective,
+                  top: rect.y * effective,
+                  width: rect.width * effective,
+                  height: rect.height * effective,
+                }}
+              />
+            ))}
             <div className="reader-text" aria-label="Texto da página">
               {lines.map((line, index) => (
                 <LineText key={`${current}-${index}`} line={line} zoom={effective} />

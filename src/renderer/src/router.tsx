@@ -24,6 +24,8 @@ export type Route =
       reader?: boolean;
       /** The page the reader opens on. */
       page?: number;
+      /** A passage to highlight on that page. */
+      quote?: string;
       /** Generate screen pre-filled to train on a weak topic (`?topic=<id>&subtype=<type>`). */
       topicId?: number;
       subtype?: string;
@@ -61,13 +63,16 @@ export function parseRoute(path: string): Route {
   const topic = params?.get("topic") ?? undefined;
   const subtype = params?.get("subtype") ?? undefined;
   const page = params?.get("page") ?? undefined;
-  const allowed = reader ? ["page"] : ["chunk", "topic", "subtype"];
+  const quote = params?.get("quote") ?? undefined;
+  const allowed = reader ? ["page", "quote"] : ["chunk", "topic", "subtype"];
   const queryValid =
     query === undefined ||
     (params !== null &&
       [...params.keys()].every((key) => allowed.includes(key)) &&
       (chunk === undefined || isNumber(chunk)) &&
       (page === undefined || (isNumber(page) && Number(page) >= 1)) &&
+      (quote === undefined ||
+        (page !== undefined && quote.length >= 1 && quote.length <= MAX_QUOTE)) &&
       (topic === undefined || (isNumber(topic) && section === "generate")) &&
       (subtype === undefined || (topic !== undefined && /^[a-z_0-9]{1,30}$/.test(subtype))) &&
       (reader ? page !== undefined : chunk !== undefined || topic !== undefined));
@@ -80,6 +85,7 @@ export function parseRoute(path: string): Route {
     ...(practice ? { practice: true } : {}),
     ...(reader ? { reader: true } : {}),
     ...(page !== undefined ? { page: Number(page) } : {}),
+    ...(quote !== undefined ? { quote } : {}),
     ...(chunk !== undefined ? { chunkId: Number(chunk) } : {}),
     ...(topic !== undefined ? { topicId: Number(topic) } : {}),
     ...(subtype !== undefined ? { subtype } : {}),
@@ -101,10 +107,22 @@ export function materialPath(workspaceId: number, materialId: number, chunkId?: 
   return chunkId === undefined ? base : `${base}?chunk=${chunkId}`;
 }
 
-/** The in-app reader of a PDF material, optionally on a page. */
-export function readerPath(workspaceId: number, materialId: number, page?: number): string {
+/** The longest quote a reader route carries. */
+export const MAX_QUOTE = 300;
+
+/** The in-app reader of a PDF material, optionally on a page with a passage to highlight. */
+export function readerPath(
+  workspaceId: number,
+  materialId: number,
+  page?: number,
+  quote?: string,
+): string {
   const base = `/w/${workspaceId}/library/${materialId}/read`;
-  return page === undefined ? base : `${base}?page=${page}`;
+  if (page === undefined) return base;
+  const params = new URLSearchParams({ page: String(page) });
+  const text = quote?.replace(/\s+/g, " ").trim().slice(0, MAX_QUOTE);
+  if (text) params.set("quote", text);
+  return `${base}?${params.toString()}`;
 }
 
 /**
@@ -142,7 +160,10 @@ export function RouterProvider({
   const navigate = useCallback(
     (next: string) => {
       setPath(next);
-      if (!standalone) void window.mind.invoke("window:setLastRoute", { route: next });
+      // A route that carries a quote is a one-off jump; it is not worth restoring on restart.
+      if (!standalone && !next.includes("quote=")) {
+        void window.mind.invoke("window:setLastRoute", { route: next });
+      }
     },
     [standalone],
   );

@@ -10,7 +10,7 @@ import type { ErrorCode } from "../contracts/errors.js";
 import { PdfReader } from "./pdf-reader.js";
 
 /** The reading operations; each one takes the absolute path of the PDF first. */
-export type ReaderMethods = Pick<PdfReader, "info" | "renderPage" | "text" | "search">;
+export type ReaderMethods = Pick<PdfReader, "info" | "renderPage" | "text" | "search" | "locate">;
 export type ReaderMethod = keyof ReaderMethods;
 export type ReaderResult<M extends ReaderMethod> = ReturnType<ReaderMethods[M]>;
 

@@ -229,3 +229,38 @@ describe("findOccurrences (FR-17)", () => {
     reader.close();
   });
 });
+
+describe("quote location and reading position (FR-22, FR-23)", () => {
+  it("finds the boxes of a quote, falling back to its first words", async () => {
+    const { add, reader } = rig();
+    const id = add("three.pdf", { copy: join(FIXTURES, "three-pages.pdf") });
+    const exact = await reader.locate(id, 1, "Primeira página com função");
+    expect(exact).toHaveLength(1);
+    expect(exact[0]?.width).toBeGreaterThan(50);
+    const loose = await reader.locate(
+      id,
+      1,
+      "primeira PAGINA com funcao e depois um texto que a página não tem de jeito nenhum",
+    );
+    expect(loose).toHaveLength(1);
+    expect(await reader.locate(id, 1, "nada disso existe aqui")).toEqual([]);
+    expect(await reader.locate(id, 2, "Primeira página com função")).toEqual([]);
+  });
+
+  it("remembers the last page and ignores a saved page that is out of range", async () => {
+    const { add, reader, workspace } = rig();
+    const id = add("three.pdf", { copy: join(FIXTURES, "three-pages.pdf") });
+    expect((await reader.info(id)).lastPage).toBeNull();
+    reader.savePosition(id, 3);
+    expect((await reader.info(id)).lastPage).toBe(3);
+    reader.savePosition(id, 2);
+    expect((await reader.info(id)).lastPage).toBe(2);
+    reader.savePosition(id, 40);
+    expect((await reader.info(id)).lastPage).toBeNull();
+    const md = add("n.md", "# x", "md");
+    expect(() => reader.savePosition(md, 1)).toThrowError(
+      expect.objectContaining({ code: "UNSUPPORTED_FILE" }),
+    );
+    expect(workspace.root).toBeTruthy();
+  });
+});

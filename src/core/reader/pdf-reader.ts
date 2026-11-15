@@ -246,6 +246,21 @@ export class PdfReader {
     return { hits, truncated: false };
   }
 
+  /**
+   * Where a quoted passage sits on a page: the first occurrence of the whole quote, or else of its
+   * first twelve, six or three words. Nothing is returned when none of them is found.
+   */
+  locate(path: string, number: number, quote: string): Box[] {
+    const glyphs = glyphsOf(this.page(path, number));
+    const words = quote.split(/\s+/).filter(Boolean);
+    for (const attempt of [words.length, 12, 6, 3]) {
+      if (attempt > words.length || attempt < 1) continue;
+      const found = findOccurrences(glyphs, words.slice(0, attempt).join(" "));
+      if (found[0]) return found[0];
+    }
+    return [];
+  }
+
   close(): void {
     for (const document of this.docs.values()) document.destroy();
     this.docs.clear();

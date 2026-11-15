@@ -76,6 +76,8 @@ export const CHANNEL_NAMES = [
   "reader:page",
   "reader:text",
   "reader:search",
+  "reader:locate",
+  "reader:savePosition",
   "reader:openWindow",
   "material:openOriginal",
 ] as const;

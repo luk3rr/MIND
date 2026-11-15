@@ -343,4 +343,6 @@ export const T = {
   openOriginal: "Abrir original",
   openFailed: "Não foi possível abrir o arquivo.",
   openActionLabel: (action: string, title: string) => `${action} ${title}`,
+  readerCited: "Trecho citado",
+  seeInPdf: "Ver no PDF",
 } as const;

@@ -9,6 +9,8 @@ import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
 import { attempt, generationRun, item, reviewLog, topic } from "../db/workspace-schema.js";
+import { pdfSourceOf } from "../reader/source.js";
+import type { PdfSource } from "../reader/source.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 
 export const NOTEBOOK_KIND = "notebook";
@@ -27,6 +29,7 @@ export interface ErrorEntry {
   sourceTitle: string;
   sourcePage: number | null;
   fromQuestion: boolean;
+  pdfSource: PdfSource | null;
   /** Times the card was rated "Errei". */
   failures: number;
   lastErrorAt: string;
@@ -200,6 +203,7 @@ export class ErrorNotebook {
           sourceTitle: row.sourceTitle,
           sourcePage: row.sourcePage,
           fromQuestion: row.origin === ERROR_NOTE,
+          pdfSource: pdfSourceOf(this.db, row.chunkId, row.sourcePage, row.quote),
           failures: seen?.count ?? 0,
           lastErrorAt: seen?.last ?? row.createdAt,
         };

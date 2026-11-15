@@ -11,6 +11,7 @@ import { MathText } from "../MathText.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
+import { SeeInPdf } from "../components/SeeInPdf.js";
 
 type Next = OutputOf<"practice:next">;
 type Result = OutputOf<"practice:answer">;
@@ -167,6 +168,12 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                     : ""}
                 </span>
                 <br />“{question.item.quote}”
+                {question.item.pdfSource && (
+                  <>
+                    <br />
+                    <SeeInPdf workspaceId={workspaceId} {...question.item.pdfSource} />
+                  </>
+                )}
               </blockquote>
               {!result.correct && (
                 <div>

@@ -186,3 +186,46 @@ describe("open channels (FR-19, FR-20, FR-21, NFR-4)", () => {
     });
   });
 });
+
+describe("quote and position channels, and the PDF source of items (FR-22, FR-23)", () => {
+  it("locates a quote, saves the position and resumes it", async () => {
+    core = createCore({ dataDir: tempDir(), env: {} });
+    const workspaceId = core.registry.create("Fonte").id;
+    const workspace = core.registry.open(workspaceId);
+    mkdirSync(join(workspace.filesDir, "m1"), { recursive: true });
+    copyFileSync(
+      join(import.meta.dirname, "..", "..", "..", "fixtures", "pdfs", "three-pages.pdf"),
+      join(workspace.filesDir, "m1", "a.pdf"),
+    );
+    const materialId = workspace.connection.db
+      .insert(material)
+      .values({ title: "a", kind: "pdf", filename: "a.pdf", storedPath: "files/m1/a.pdf" })
+      .returning({ id: material.id })
+      .get().id;
+    const dispatch = createRouter(
+      createHandlers(core, { lastRoute: null }, { pickFiles: () => Promise.resolve([]) }),
+      { error: () => undefined },
+    );
+    expect(
+      await dispatch("reader:locate", {
+        workspaceId,
+        materialId,
+        page: 1,
+        quote: "Primeira página",
+      }),
+    ).toMatchObject({
+      ok: true,
+      data: { rects: [expect.objectContaining({ width: expect.any(Number) })] },
+    });
+    expect(await dispatch("reader:savePosition", { workspaceId, materialId, page: 3 })).toEqual({
+      ok: true,
+      data: {},
+    });
+    expect(await dispatch("reader:info", { workspaceId, materialId })).toMatchObject({
+      data: { lastPage: 3 },
+    });
+    expect(
+      await dispatch("reader:locate", { workspaceId, materialId, page: 1, quote: "" }),
+    ).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+  });
+});

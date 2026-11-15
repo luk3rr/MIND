@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { useInvoke } from "../hooks.js";
 import { T } from "../strings.js";
+import { SeeInPdf } from "../components/SeeInPdf.js";
 
 /** Everything the user got wrong, with a button that turns a missed question into a card. */
 export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
@@ -72,7 +73,8 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
                   {entry.topic ? ` · ${entry.topic}` : ""}
                   {entry.failures > 0 ? ` · ${T.errorFailures(entry.failures)}` : ""} · {T.source}:{" "}
                   {entry.sourceTitle}
-                  {entry.sourcePage !== null ? `, ${T.page} ${entry.sourcePage}` : ""}
+                  {entry.sourcePage !== null ? `, ${T.page} ${entry.sourcePage}` : ""}{" "}
+                  {entry.pdfSource && <SeeInPdf workspaceId={workspaceId} {...entry.pdfSource} />}
                 </p>
               </li>
             ))}

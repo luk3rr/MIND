@@ -12,6 +12,7 @@ import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
 import { materialPath, useRouter, readerPath } from "../router.js";
 import { T } from "../strings.js";
+import { SeeInPdf } from "../components/SeeInPdf.js";
 
 type Material = OutputOf<"material:list">["materials"][number];
 
@@ -150,7 +151,18 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                   {hit.materialTitle}
                   {hit.page !== null ? `, ${T.page} ${hit.page}` : ""}
                   {hit.section ? `, ${hit.section}` : ""}
-                </button>
+                </button>{" "}
+                {hit.page !== null &&
+                  state.status === "ready" &&
+                  state.data.materials.find((entry) => entry.id === hit.materialId)?.kind ===
+                    "pdf" && (
+                    <SeeInPdf
+                      workspaceId={workspaceId}
+                      materialId={hit.materialId}
+                      page={hit.page}
+                      quote={hit.text.slice(0, 200)}
+                    />
+                  )}
                 <p className="muted">{hit.text.slice(0, 280)}</p>
               </li>
             ))}

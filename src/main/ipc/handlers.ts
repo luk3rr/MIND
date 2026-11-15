@@ -189,6 +189,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
           topic: next.item.topic,
           sourceTitle: next.item.sourceTitle,
           sourcePage: next.item.sourcePage,
+          pdfSource: next.item.pdfSource,
           isNew: next.schedule === null,
           front: sides.front,
           back: sides.back,
@@ -342,6 +343,13 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       core.reader(workspaceId).text(materialId, page),
     "reader:search": ({ workspaceId, materialId, query }) =>
       core.reader(workspaceId).search(materialId, query),
+    "reader:locate": async ({ workspaceId, materialId, page, quote }) => ({
+      rects: await core.reader(workspaceId).locate(materialId, page, quote),
+    }),
+    "reader:savePosition": ({ workspaceId, materialId, page }) => {
+      core.reader(workspaceId).savePosition(materialId, page);
+      return {};
+    },
     "reader:openWindow": ({ workspaceId, materialId, page }) => {
       core.reader(workspaceId).assertReadable(materialId);
       if (!ui.openReaderWindow) {

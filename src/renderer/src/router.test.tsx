@@ -75,3 +75,25 @@ describe("standaloneRoute (FR-19)", () => {
     expect(standaloneRoute("?route=https%3A%2F%2Fevil.example")).toBeNull();
   });
 });
+
+describe("reader route with a quote (FR-22)", () => {
+  it("round-trips the page and the quote", () => {
+    const path = readerPath(1, 4, 37, "O que é “fotossíntese”?   Uma   resposta");
+    expect(parseRoute(path)).toMatchObject({
+      reader: true,
+      detailId: 4,
+      page: 37,
+      quote: "O que é “fotossíntese”? Uma resposta",
+    });
+    expect(readerPath(1, 4, 3, "   ")).toBe("/w/1/library/4/read?page=3");
+    expect(readerPath(1, 4, 3, "x".repeat(500))).toContain("quote=" + "x".repeat(300));
+    expect(parseRoute(readerPath(1, 4, 3, "x".repeat(500)))).toMatchObject({ page: 3 });
+  });
+
+  it("rejects a quote without a page or a quote that is too long", () => {
+    expect(parseRoute("/w/1/library/4/read?quote=abc")).toEqual({ name: "unknown" });
+    expect(parseRoute(`/w/1/library/4/read?page=2&quote=${"y".repeat(301)}`)).toEqual({
+      name: "unknown",
+    });
+  });
+});

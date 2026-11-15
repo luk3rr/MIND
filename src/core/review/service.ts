@@ -10,6 +10,8 @@ import { isoNow, systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
 import { chunk, generationRun, item, topic } from "../db/workspace-schema.js";
 import { cleanTopic, payloadProblem } from "../generation/cards.js";
+import { pdfSourceOf } from "../reader/source.js";
+import type { PdfSource } from "../reader/source.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 
 const FRONT_PROBLEMS = new Set(["empty_front", "empty_statement", "cloze_without_gap"]);
@@ -35,6 +37,8 @@ export interface ItemInfo {
   sourcePage: number | null;
   quote: string;
   chunkId: number | null;
+  /** Where the quote can be checked in the original PDF; null when it cannot. */
+  pdfSource: PdfSource | null;
   edited: boolean;
   origin: string;
   createdAt: string;
@@ -70,7 +74,7 @@ export class ReviewService {
     return this.workspace.connection.db;
   }
 
-  private static info({ item: row, topic: topicName }: Row): ItemInfo {
+  private info({ item: row, topic: topicName }: Row): ItemInfo {
     const payload = JSON.parse(row.payloadJson) as Record<string, unknown>;
     const isQuestion = row.kind === "question";
     return {
@@ -86,6 +90,7 @@ export class ReviewService {
       sourcePage: row.sourcePage,
       quote: row.quote,
       chunkId: row.chunkId,
+      pdfSource: pdfSourceOf(this.db, row.chunkId, row.sourcePage, row.quote),
       edited: row.edited,
       origin: row.origin,
       createdAt: row.createdAt,
@@ -113,7 +118,7 @@ export class ReviewService {
       .limit(options.limit ?? 200)
       .offset(options.offset ?? 0)
       .all()
-      .map((row) => ReviewService.info(row));
+      .map((row) => this.info(row));
   }
 
   count(options: ListOptions = {}): number {
@@ -130,7 +135,7 @@ export class ReviewService {
       .where(eq(item.id, itemId))
       .get();
     if (!row) throw new AppError("ITEM_NOT_FOUND", `Não existe item com id ${itemId}.`);
-    return ReviewService.info(row);
+    return this.info(row);
   }
 
   /** Text of the source chunk, or null when the chunk no longer exists. */

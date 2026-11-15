@@ -70,6 +70,10 @@ export interface FakeState {
     /** Text lines by page number; a page without lines has no text. */
     lines: Record<number, OutputOf<"reader:text">["lines"]>;
     hits: OutputOf<"reader:search">["hits"];
+    /** The boxes `reader:locate` answers with. */
+    cited: OutputOf<"reader:locate">["rects"];
+    /** The pages saved as the reading position, in order. */
+    saved: number[];
     /** When set, every reader call fails with this error. */
     failure: ErrorInfo | null;
   };
@@ -199,6 +203,8 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       },
       lines: {},
       hits: [],
+      cited: [],
+      saved: [],
       failure: null,
     },
     opened: [],
@@ -733,6 +739,11 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         const found = state.reader.hits.filter((hit) => hit.rects.length > 0 && query.length > 0);
         return ok({ hits: found, truncated: false });
       }
+      case "reader:locate":
+        return ok({ rects: state.reader.cited });
+      case "reader:savePosition":
+        state.reader.saved.push((payload as InputOf<"reader:savePosition">).page);
+        return ok({});
       case "reader:openWindow": {
         const { materialId, page } = payload as InputOf<"reader:openWindow">;
         if (state.openFailure) return failure("OPEN_FAILED", state.openFailure);

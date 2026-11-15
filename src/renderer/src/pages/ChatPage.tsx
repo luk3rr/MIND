@@ -13,6 +13,7 @@ import { useInvoke } from "../hooks.js";
 import { MathText } from "../MathText.js";
 import { materialPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
+import { SeeInPdf } from "../components/SeeInPdf.js";
 
 type Reply = OutputOf<"chat:ask">;
 
@@ -20,6 +21,12 @@ type Reply = OutputOf<"chat:ask">;
 export function ChatPage({ workspaceId }: { workspaceId: number }) {
   const { navigate } = useRouter();
   const history = useInvoke("chat:history", { workspaceId });
+  const library = useInvoke("material:list", { workspaceId });
+  const kinds = new Map(
+    library.state.status === "ready"
+      ? library.state.data.materials.map((entry) => [entry.id, entry.kind] as const)
+      : [],
+  );
   const [messages, setMessages] = useState<Reply[]>([]);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
@@ -111,7 +118,15 @@ export function ChatPage({ workspaceId }: { workspaceId: number }) {
                       >
                         {T.chatOpenSource}: {citation.materialTitle}
                         {citation.page !== null ? `, ${T.page} ${citation.page}` : ""}
-                      </button>
+                      </button>{" "}
+                      {citation.page !== null && kinds.get(citation.materialId) === "pdf" && (
+                        <SeeInPdf
+                          workspaceId={workspaceId}
+                          materialId={citation.materialId}
+                          page={citation.page}
+                          quote={citation.quote}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>

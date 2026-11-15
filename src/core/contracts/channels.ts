@@ -19,6 +19,11 @@ const route = z
 
 const workspaceId = z.number().int().positive();
 const workspaceName = z.string().max(500);
+/** Where a card or question can be checked in the original PDF (absent when it cannot). */
+const pdfSource = z
+  .object({ materialId: z.number().int(), page: z.number().int(), quote: z.string() })
+  .nullable()
+  .optional();
 const workspaceInfo = z.object({
   id: workspaceId,
   name: z.string(),
@@ -130,6 +135,7 @@ const itemInfo = z.object({
   sourcePage: z.number().int().nullable(),
   quote: z.string(),
   chunkId: z.number().int().nullable(),
+  pdfSource,
   edited: z.boolean(),
   origin: z.string(),
   createdAt: z.string(),
@@ -211,6 +217,7 @@ const errorEntry = z.object({
   sourceTitle: z.string(),
   sourcePage: z.number().int().nullable(),
   fromQuestion: z.boolean(),
+  pdfSource,
   failures: z.number().int(),
   lastErrorAt: z.string(),
 });
@@ -508,6 +515,7 @@ export const channels = {
           topic: z.string().nullable(),
           sourceTitle: z.string(),
           sourcePage: z.number().int().nullable(),
+          pdfSource,
           isNew: z.boolean(),
           front: z.array(piece),
           back: z.array(piece),
@@ -838,6 +846,20 @@ export const channels = {
   },
   "material:openOriginal": {
     input: z.object(readerTarget).strict(),
+    output: z.object({}).strict(),
+  },
+  "reader:locate": {
+    input: z
+      .object({
+        ...readerTarget,
+        page: z.number().int().min(1),
+        quote: z.string().min(1).max(2000),
+      })
+      .strict(),
+    output: z.object({ rects: z.array(box) }),
+  },
+  "reader:savePosition": {
+    input: z.object({ ...readerTarget, page: z.number().int().min(1) }).strict(),
     output: z.object({}).strict(),
   },
   "workspace:delete": {
