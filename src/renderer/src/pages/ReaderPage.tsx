@@ -330,13 +330,32 @@ function ScrollPages({
 
   // Going to a page (buttons, panel, search, shortcuts) scrolls to it; the scroll that follows
   // must not make the page counter jump back, so it is ignored for a moment.
+  const goToRequest = useCallback(
+    (page: number): void => {
+      const element = viewport.current;
+      if (!element) return;
+      quiet.current = Date.now() + 400;
+      element.scrollTop = offsets[page - 1] ?? 0;
+      latest.current = page;
+      update();
+    },
+    [viewport, offsets, update],
+  );
   useLayoutEffect(() => {
-    const element = viewport.current;
-    if (!element || !request) return;
-    quiet.current = Date.now() + 400;
-    element.scrollTop = offsets[request.page - 1] ?? 0;
-    latest.current = request.page;
-    update();
+    if (!request) return undefined;
+    // When the reader opens already scrolling (See in PDF, resume), this component and its scroll
+    // area mount together and the area is not attached yet: apply the request right after.
+    if (viewport.current) {
+      goToRequest(request.page);
+      return undefined;
+    }
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) goToRequest(request.page);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [request]);
 
   // A new zoom changes every height: stay on the page being read.

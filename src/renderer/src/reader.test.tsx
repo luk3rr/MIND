@@ -410,4 +410,41 @@ describe("continuous scroll mode", () => {
       ).toBeGreaterThan(before),
     );
   });
+
+  it("opens on the requested page when it starts in scrolling (See in PDF) and keeps it", async () => {
+    window.localStorage.setItem("mind.reader.mode", "scroll");
+    open("/w/1/library/4/read?page=3");
+    expect(await screen.findByRole("img", { name: "Página 3" })).toBeInTheDocument();
+    const viewport = document.querySelector(".reader-viewport") as HTMLElement;
+    expect(viewport.scrollTop).toBeGreaterThan(2000);
+    expect(screen.getByLabelText("Ir para a página")).toHaveValue("3");
+    // Any later action must not send the person back to the first page.
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    fireEvent.scroll(viewport);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByLabelText("Ir para a página")).toHaveValue("3");
+    expect(viewport.scrollTop).toBeGreaterThan(2000);
+  });
+
+  it("resumes on the last page read when it opens in scrolling", async () => {
+    window.localStorage.setItem("mind.reader.mode", "scroll");
+    open("/w/1/library/4/read", {
+      reader: {
+        info: {
+          title: "apostila",
+          pageCount: 3,
+          pages: [595, 595, 595].map((width) => ({ width, height: 842 })),
+          lastPage: 3,
+        },
+        lines: {},
+        hits: [],
+        cited: [],
+        saved: [],
+        failure: null,
+      },
+    });
+    expect(await screen.findByRole("img", { name: "Página 3" })).toBeInTheDocument();
+    const viewport = document.querySelector(".reader-viewport") as HTMLElement;
+    await waitFor(() => expect(viewport.scrollTop).toBeGreaterThan(2000));
+  });
 });

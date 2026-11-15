@@ -182,3 +182,43 @@ test("reads a 100-page PDF in continuous scroll mode and draws only the nearby p
     "true",
   );
 });
+
+test("See in PDF lands on the cited page when the reader is in scroll mode", async () => {
+  const dir = newProfile();
+  profiles.push(dir);
+  current = await launch(dir);
+  const { page } = current;
+  await prepare(current, [PDF]);
+  // Choose the continuous scroll once; it is remembered for the next openings.
+  await page.getByRole("button", { name: /^Ler / }).click();
+  await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Rolagem contínua" }).click();
+  await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
+
+  await page.getByRole("textbox", { name: "Buscar nos materiais" }).fill("Terceira");
+  await page.getByRole("textbox", { name: "Buscar nos materiais" }).press("Enter");
+  await page.getByRole("button", { name: /^Ver no PDF, pág\. 3$/ }).click();
+
+  await expect(page.getByRole("button", { name: "Rolagem contínua" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByLabel("Ir para a página")).toHaveValue("3");
+  // The cited page is the one on screen, not just the number in the box.
+  const inView = async () =>
+    page.evaluate(() => {
+      const viewport = document.querySelector(".reader-viewport") as HTMLElement;
+      const target = document.querySelector('.reader-page[data-page="3"]') as HTMLElement | null;
+      if (!target) return false;
+      const outer = viewport.getBoundingClientRect();
+      const box = target.getBoundingClientRect();
+      return box.bottom > outer.top && box.top < outer.bottom;
+    });
+  await expect.poll(inView).toBe(true);
+  await expect(page.getByRole("img", { name: "Página 3" })).toBeVisible();
+  // Interacting afterwards keeps the person there.
+  await page.locator(".reader-viewport").hover();
+  await page.mouse.wheel(0, 40);
+  await page.waitForTimeout(700);
+  await expect(page.getByLabel("Ir para a página")).toHaveValue("3");
+});
