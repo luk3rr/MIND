@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { useInvoke } from "../hooks.js";
-import { sectionPath, useRouter } from "../router.js";
+import { BackLink } from "../components/BackLink.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
 
@@ -20,7 +20,6 @@ export function MaterialPreviewPage({
   materialId: number;
   chunkId?: number;
 }) {
-  const { navigate } = useRouter();
   useActivity("reading", { materialId });
   const [offset, setOffset] = useState<number | undefined>(undefined);
   const request = {
@@ -32,13 +31,7 @@ export function MaterialPreviewPage({
 
   return (
     <section aria-labelledby="preview-title">
-      <button
-        type="button"
-        className="link"
-        onClick={() => navigate(sectionPath(workspaceId, "library"))}
-      >
-        {T.backToLibrary}
-      </button>
+      <BackLink workspaceId={workspaceId} fallback="library" fallbackLabel={T.backToLibrary} />
       {state.status === "loading" && <p role="status">{T.loading}</p>}
       {state.status === "error" && (
         <div className="alert" role="alert">

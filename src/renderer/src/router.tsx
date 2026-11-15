@@ -141,12 +141,24 @@ interface RouterValue {
   route: Route;
   /** True in a separate reader window, which has no sidebar and does not save its route. */
   standalone: boolean;
+  /** The screen the person came from, or null when there is none to go back to. */
+  previousPath: string | null;
   navigate(path: string): void;
+  /** Goes back to the screen the person came from; with none, goes to `fallback`. */
+  back(fallback: string): void;
 }
 
 const RouterContext = createContext<RouterValue | null>(null);
 
-/** Keeps the current path in state and records it as the last route (FR-27). */
+/** How many screens the back history keeps. */
+export const MAX_HISTORY = 50;
+
+function workspaceOf(path: string): number | null {
+  const route = parseRoute(path);
+  return route.name === "section" ? route.workspaceId : null;
+}
+
+/** Keeps the current path and the history of screens, and records the path as the last route (FR-27). */
 export function RouterProvider({
   initialPath,
   standalone = false,
@@ -156,10 +168,11 @@ export function RouterProvider({
   standalone?: boolean;
   children: ReactNode;
 }) {
-  const [path, setPath] = useState(initialPath);
-  const navigate = useCallback(
-    (next: string) => {
-      setPath(next);
+  const [stack, setStack] = useState<string[]>([initialPath]);
+  const path = stack[stack.length - 1] ?? initialPath;
+
+  const remember = useCallback(
+    (next: string): void => {
       // A route that carries a quote is a one-off jump; it is not worth restoring on restart.
       if (!standalone && !next.includes("quote=")) {
         void window.mind.invoke("window:setLastRoute", { route: next });
@@ -167,9 +180,36 @@ export function RouterProvider({
     },
     [standalone],
   );
+
+  const navigate = useCallback(
+    (next: string) => {
+      setStack((current) => {
+        const last = current[current.length - 1];
+        if (last === next) return current;
+        // The history belongs to a workspace: changing workspace starts a new one.
+        if (last !== undefined && workspaceOf(last) !== workspaceOf(next)) return [next];
+        return [...current, next].slice(-MAX_HISTORY);
+      });
+      remember(next);
+    },
+    [remember],
+  );
+
+  const back = useCallback(
+    (fallback: string) => {
+      if (stack.length > 1) {
+        const previous = stack[stack.length - 2] as string;
+        setStack(stack.slice(0, -1));
+        remember(previous);
+      } else navigate(fallback);
+    },
+    [stack, remember, navigate],
+  );
+
+  const previousPath = stack.length > 1 ? (stack[stack.length - 2] ?? null) : null;
   const value = useMemo(
-    () => ({ path, route: parseRoute(path), standalone, navigate }),
-    [path, standalone, navigate],
+    () => ({ path, route: parseRoute(path), standalone, previousPath, navigate, back }),
+    [path, standalone, previousPath, navigate, back],
   );
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }

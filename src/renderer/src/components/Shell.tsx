@@ -29,7 +29,7 @@ export function Shell({
   section: SectionSlug;
   children: ReactNode;
 }) {
-  const { navigate } = useRouter();
+  const { navigate, back, previousPath } = useRouter();
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [quick, setQuick] = useState(false);
   const { state: status, reload: refresh } = useInvoke("settings:get", {});
@@ -46,6 +46,9 @@ export function Shell({
   useHotkeys({
     "mod+s": () => setQuick(true),
     "mod+,": () => navigate(sectionPath(workspaceId, "settings")),
+    "alt+arrowleft": () => {
+      if (previousPath) back(sectionPath(workspaceId, "today"));
+    },
   });
 
   return (

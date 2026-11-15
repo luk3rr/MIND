@@ -144,3 +144,41 @@ test("shows the first page of a 100-page PDF within 2 s and turns pages quickly 
   expect(first).toBeLessThan(2000);
   expect(Math.max(...turns)).toBeLessThan(500);
 });
+
+test("reads a 100-page PDF in continuous scroll mode and draws only the nearby pages", async () => {
+  const dir = newProfile();
+  profiles.push(dir);
+  current = await launch(dir);
+  const { page } = current;
+  await prepare(current, [BIG]);
+  await page.getByRole("button", { name: /^Ler / }).click();
+  await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Rolagem contínua" }).click();
+  await expect(page.locator(".reader-scroll")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible();
+
+  // The mouse wheel moves through the pages and the counter follows.
+  const viewport = page.locator(".reader-viewport");
+  await viewport.hover();
+  await page.mouse.wheel(0, 4000);
+  await expect(page.getByLabel("Ir para a página")).not.toHaveValue("1", { timeout: 5000 });
+  const drawn = await page.locator(".reader-page img").count();
+  expect(drawn).toBeGreaterThan(0);
+  expect(drawn).toBeLessThan(10);
+
+  // Choosing a far page scrolls straight to it.
+  const box = page.getByLabel("Ir para a página");
+  await box.fill("60");
+  await box.press("Enter");
+  await expect(page.getByRole("img", { name: "Página 60" })).toBeVisible({ timeout: 5000 });
+  expect(await page.locator(".reader-page img").count()).toBeLessThan(10);
+  await page.screenshot({ path: process.env["MIND_E2E_SHOT"] ?? "test-results/scroll.png" });
+
+  // The mode is remembered: the reader opens scrolling next time.
+  await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
+  await page.getByRole("button", { name: /^Ler / }).click();
+  await expect(page.getByRole("button", { name: "Rolagem contínua" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});

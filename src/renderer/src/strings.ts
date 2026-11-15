@@ -348,4 +348,9 @@ export const T = {
   renameMaterial: "Renomear",
   renameMaterialTitle: "Renomear material",
   renameMaterialLabel: "Nome do material",
+  backTo: (place: string) => `Voltar a ${place}`,
+  backToReader: "Voltar ao leitor",
+  backToPreview: "Voltar à prévia do material",
+  backToPractice: "Voltar à Prática",
+  readerScrollMode: "Rolagem contínua",
 } as const;

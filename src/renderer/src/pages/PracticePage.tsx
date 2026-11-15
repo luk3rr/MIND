@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { useHotkeys } from "../hooks.js";
 import { MathText } from "../MathText.js";
-import { sectionPath, useRouter } from "../router.js";
+import { BackLink } from "../components/BackLink.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
@@ -18,7 +18,6 @@ type Result = OutputOf<"practice:answer">;
 
 /** Answers approved questions one at a time, with the correction, comments and source. */
 export function PracticePage({ workspaceId }: { workspaceId: number }) {
-  const { navigate } = useRouter();
   const [next, setNext] = useState<Next | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -78,13 +77,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
 
   return (
     <section aria-labelledby="practice-title">
-      <button
-        type="button"
-        className="link"
-        onClick={() => navigate(sectionPath(workspaceId, "study"))}
-      >
-        {T.backToStudy}
-      </button>
+      <BackLink workspaceId={workspaceId} fallback="study" fallbackLabel={T.backToStudy} />
       <h1 id="practice-title">{T.practiceTitle}</h1>
       {next && (
         <p className="muted">

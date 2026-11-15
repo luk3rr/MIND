@@ -11,7 +11,7 @@ import { Dialog } from "../components/Dialog.js";
 import { useInvoke } from "../hooks.js";
 import { MathText } from "../MathText.js";
 import { clozePlain } from "../math.js";
-import { sectionPath, useRouter } from "../router.js";
+import { BackLink } from "../components/BackLink.js";
 import { T } from "../strings.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 
@@ -103,7 +103,6 @@ function EditDialog({
 
 /** Review of one generation run: each item next to the quote that supports it. */
 export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId: number }) {
-  const { navigate } = useRouter();
   const [status, setStatus] = useState<Status>("draft");
   const { state, reload } = useInvoke("review:list", { workspaceId, runId, status });
   const [editing, setEditing] = useState<Item | null>(null);
@@ -114,13 +113,7 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
 
   return (
     <section aria-labelledby="review-title">
-      <button
-        type="button"
-        className="link"
-        onClick={() => navigate(sectionPath(workspaceId, "generate"))}
-      >
-        {T.backToGenerate}
-      </button>
+      <BackLink workspaceId={workspaceId} fallback="generate" fallbackLabel={T.backToGenerate} />
       <h1 id="review-title">{T.reviewTitle}</h1>
       {state.status === "loading" && <p role="status">{T.loading}</p>}
       {state.status === "error" && (

@@ -9,16 +9,17 @@ import {
   ChevronRight,
   ExternalLink,
   Maximize2,
+  Rows3,
   Search,
   SquareArrowOutUpRight,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { useHotkeys, useInvoke } from "../hooks.js";
-import { sectionPath, useRouter } from "../router.js";
+import { BackLink } from "../components/BackLink.js";
 import { T } from "../strings.js";
 import { formatClock, useActivity, useTime } from "../time.js";
 
@@ -55,6 +56,318 @@ function LineText({ line, zoom }: { line: Lines[number]; zoom: number }) {
   );
 }
 
+type PageSize = OutputOf<"reader:info">["pages"][number];
+
+/** Space between two pages in the continuous scroll mode, in pixels. */
+const GAP = 16;
+const MODE_KEY = "mind.reader.mode";
+
+/** The reading mode the person chose last time ("page" when nothing was saved). */
+function savedMode(): "page" | "scroll" {
+  try {
+    return window.localStorage.getItem(MODE_KEY) === "scroll" ? "scroll" : "page";
+  } catch {
+    return "page";
+  }
+}
+
+function saveMode(mode: "page" | "scroll"): void {
+  try {
+    window.localStorage.setItem(MODE_KEY, mode);
+  } catch {
+    // The choice is only a convenience; without storage the reader starts in page mode.
+  }
+}
+
+/** The image and the text lines of one page, loaded while `enabled`; the last ones stay on screen. */
+function usePageData(
+  workspaceId: number,
+  materialId: number,
+  page: number,
+  scale: number,
+  enabled: boolean,
+) {
+  const [image, setImage] = useState<{ page: number; dataUrl: string } | null>(null);
+  const [text, setText] = useState<{ page: number; lines: Lines } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let cancelled = false;
+    void window.mind
+      .invoke("reader:page", { workspaceId, materialId, page, scale })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          setError(null);
+          setImage({ page, dataUrl: result.data.dataUrl });
+        } else setError(result.error.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId, materialId, page, scale, enabled]);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let cancelled = false;
+    void window.mind.invoke("reader:text", { workspaceId, materialId, page }).then((result) => {
+      if (!cancelled) setText({ page, lines: result.ok ? result.data.lines : [] });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId, materialId, page, enabled]);
+
+  return { image, text, error };
+}
+
+interface PageHit {
+  rects: { x: number; y: number; width: number; height: number }[];
+  current: boolean;
+}
+
+/** One drawn page: the image, the search highlights, the cited passage and the selectable text. */
+function PageSurface({
+  number,
+  size,
+  zoom,
+  data,
+  hits,
+  cited,
+  style,
+}: {
+  number: number;
+  size: PageSize;
+  zoom: number;
+  data: ReturnType<typeof usePageData>;
+  hits: PageHit[];
+  cited: Lines | null;
+  style?: React.CSSProperties;
+}) {
+  const width = size.width * zoom;
+  const height = size.height * zoom;
+  const box = (rect: PageHit["rects"][number]): React.CSSProperties => ({
+    left: rect.x * zoom,
+    top: rect.y * zoom,
+    width: rect.width * zoom,
+    height: rect.height * zoom,
+  });
+  return (
+    <div className="reader-page" style={{ width, height, ...style }} data-page={number}>
+      {data.image && (
+        <img
+          src={data.image.dataUrl}
+          alt={T.readerPageImage(data.image.page)}
+          width={width}
+          height={height}
+          draggable={false}
+        />
+      )}
+      {hits.flatMap((hit, index) =>
+        hit.rects.map((rect, rectIndex) => (
+          <div
+            key={`${index}-${rectIndex}`}
+            className={hit.current ? "reader-hit current" : "reader-hit"}
+            style={box(rect)}
+          />
+        )),
+      )}
+      {cited?.map((rect, index) => (
+        <div
+          key={`cited-${index}`}
+          className="reader-hit cited"
+          role="img"
+          aria-label={T.readerCited}
+          style={box(rect)}
+        />
+      ))}
+      <div className="reader-text" aria-label="Texto da página">
+        {data.text?.page === number &&
+          data.text.lines.map((line, index) => (
+            <LineText key={`${number}-${index}`} line={line} zoom={zoom} />
+          ))}
+      </div>
+    </div>
+  );
+}
+
+/** A page of the continuous mode: it only loads its image and text while it is near the screen. */
+function ScrollPage({
+  workspaceId,
+  materialId,
+  number,
+  size,
+  zoom,
+  scale,
+  near,
+  hits,
+  cited,
+}: {
+  workspaceId: number;
+  materialId: number;
+  number: number;
+  size: PageSize;
+  zoom: number;
+  scale: number;
+  near: boolean;
+  hits: PageHit[];
+  cited: Lines | null;
+}) {
+  const data = usePageData(workspaceId, materialId, number, scale, near);
+  const style = { margin: `0 auto ${GAP}px` };
+  if (!near) {
+    return (
+      <div
+        className="reader-page placeholder"
+        style={{ width: size.width * zoom, height: size.height * zoom, ...style }}
+        data-page={number}
+      />
+    );
+  }
+  return (
+    <PageSurface
+      number={number}
+      size={size}
+      zoom={zoom}
+      data={data}
+      hits={hits}
+      cited={cited}
+      style={style}
+    />
+  );
+}
+
+/**
+ * All the pages one after the other. Every page has its final size from the start, so the scroll
+ * bar is exact; only the pages within a screen of the visible area are drawn.
+ */
+function ScrollPages({
+  workspaceId,
+  materialId,
+  pages,
+  zoom,
+  scale,
+  viewport,
+  request,
+  hitsByPage,
+  cited,
+  citedPage,
+  onVisiblePage,
+}: {
+  workspaceId: number;
+  materialId: number;
+  pages: PageSize[];
+  zoom: number;
+  scale: number;
+  viewport: React.RefObject<HTMLDivElement | null>;
+  /** Asks for a scroll to a page; a new object scrolls even to the same page again. */
+  request: { page: number } | null;
+  hitsByPage: Map<number, PageHit[]>;
+  cited: Lines | null;
+  citedPage: number | undefined;
+  onVisiblePage: (page: number) => void;
+}) {
+  const offsets = useMemo(() => {
+    let top = 0;
+    return pages.map((size) => {
+      const at = top;
+      top += size.height * zoom + GAP;
+      return at;
+    });
+  }, [pages, zoom]);
+  const [range, setRange] = useState<[number, number]>([0, 1]);
+  const quiet = useRef(0);
+  const latest = useRef(1);
+  const later = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const update = useCallback(() => {
+    const element = viewport.current;
+    if (!element || offsets.length === 0) return;
+    const top = element.scrollTop;
+    const height = element.clientHeight || 800;
+    const from = top - height;
+    const to = top + 2 * height;
+    let first = offsets.length - 1;
+    let last = 0;
+    let current = 0;
+    offsets.forEach((offset, index) => {
+      const bottom = offset + (pages[index]?.height ?? 0) * zoom;
+      if (bottom >= from && offset <= to) {
+        first = Math.min(first, index);
+        last = Math.max(last, index);
+      }
+      if (offset <= top + height * 0.25) current = index;
+    });
+    setRange((previous) =>
+      previous[0] === first && previous[1] === last ? previous : [first, last],
+    );
+    latest.current = current + 1;
+    const wait = quiet.current - Date.now();
+    if (wait <= 0) onVisiblePage(current + 1);
+    else {
+      // A scroll made right after a jump is looked at again once the quiet period is over.
+      clearTimeout(later.current);
+      later.current = setTimeout(update, wait + 20);
+    }
+  }, [viewport, offsets, pages, zoom, onVisiblePage]);
+
+  useEffect(() => {
+    const element = viewport.current;
+    if (!element) return undefined;
+    let frame = 0;
+    const onScroll = (): void => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(update);
+    };
+    element.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(later.current);
+      element.removeEventListener("scroll", onScroll);
+    };
+  }, [viewport, update]);
+
+  // Going to a page (buttons, panel, search, shortcuts) scrolls to it; the scroll that follows
+  // must not make the page counter jump back, so it is ignored for a moment.
+  useLayoutEffect(() => {
+    const element = viewport.current;
+    if (!element || !request) return;
+    quiet.current = Date.now() + 400;
+    element.scrollTop = offsets[request.page - 1] ?? 0;
+    latest.current = request.page;
+    update();
+  }, [request]);
+
+  // A new zoom changes every height: stay on the page being read.
+  useLayoutEffect(() => {
+    const element = viewport.current;
+    if (!element) return;
+    quiet.current = Date.now() + 400;
+    element.scrollTop = offsets[latest.current - 1] ?? 0;
+    update();
+  }, [zoom]);
+
+  return (
+    <div className="reader-scroll">
+      {pages.map((size, index) => (
+        <ScrollPage
+          key={index}
+          workspaceId={workspaceId}
+          materialId={materialId}
+          number={index + 1}
+          size={size}
+          zoom={zoom}
+          scale={scale}
+          near={index >= range[0] && index <= range[1]}
+          hits={hitsByPage.get(index + 1) ?? []}
+          cited={citedPage === index + 1 ? cited : null}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** Reads the original PDF of a material inside the app: pages, zoom, search and copy. */
 export function ReaderPage({
   workspaceId,
@@ -71,7 +384,6 @@ export function ReaderPage({
   /** True in a separate reader window: no way back to the library and no further windows. */
   standalone?: boolean;
 }) {
-  const { navigate } = useRouter();
   const time = useTime();
   useActivity("reading", { materialId });
   const info = useInvoke("reader:info", { workspaceId, materialId });
@@ -80,8 +392,10 @@ export function ReaderPage({
   const [viewportWidth, setViewportWidth] = useState(0);
   const viewport = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const [image, setImage] = useState<{ page: number; dataUrl: string } | null>(null);
-  const [lines, setLines] = useState<Lines>([]);
+  const [mode, setMode] = useState<"page" | "scroll">(savedMode);
+  const [scrollRequest, setScrollRequest] = useState<{ page: number } | null>({
+    page: initialPage ?? 1,
+  });
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hits | null>(null);
@@ -112,7 +426,10 @@ export function ReaderPage({
   useEffect(() => {
     if (resumed.current || info.state.status !== "ready") return;
     resumed.current = true;
-    if (lastPage !== null) setPage(lastPage);
+    if (lastPage !== null) {
+      setPage(lastPage);
+      setScrollRequest({ page: lastPage });
+    }
   }, [info.state.status, lastPage]);
 
   useEffect(() => {
@@ -126,10 +443,10 @@ export function ReaderPage({
   // The passage a card or answer cites is highlighted on the page it points to (FR-22).
   useEffect(() => {
     setCited(null);
-    if (!quote || current !== initialPage || total === 0) return undefined;
+    if (!quote || initialPage === undefined || total === 0) return undefined;
     let cancelled = false;
     void window.mind
-      .invoke("reader:locate", { workspaceId, materialId, page: current, quote })
+      .invoke("reader:locate", { workspaceId, materialId, page: initialPage, quote })
       .then((result) => {
         if (!cancelled && result.ok) {
           setCited(result.data.rects.map((rect) => ({ ...rect, text: "" })));
@@ -138,7 +455,7 @@ export function ReaderPage({
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, materialId, current, quote, initialPage, total]);
+  }, [workspaceId, materialId, quote, initialPage, total]);
 
   useEffect(() => {
     const element = viewport.current;
@@ -156,44 +473,18 @@ export function ReaderPage({
   const ratio = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
   const scale = Math.round(effective * ratio * 20) / 20;
 
-  useEffect(() => {
-    if (!size) return undefined;
-    let cancelled = false;
-    void window.mind
-      .invoke("reader:page", { workspaceId, materialId, page: current, scale })
-      .then((result) => {
-        if (cancelled) return;
-        if (result.ok) {
-          setError(null);
-          setImage({ page: current, dataUrl: result.data.dataUrl });
-          // The next page is drawn ahead of time so turning the page feels instant.
-          if (current < total) {
-            void window.mind.invoke("reader:page", {
-              workspaceId,
-              materialId,
-              page: current + 1,
-              scale,
-            });
-          }
-        } else setError(result.error.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceId, materialId, current, scale, size, total]);
+  const data = usePageData(workspaceId, materialId, current, scale, mode === "page" && !!size);
 
+  // The next page is drawn ahead of time so turning the page feels instant.
   useEffect(() => {
-    if (!size) return undefined;
-    let cancelled = false;
-    void window.mind
-      .invoke("reader:text", { workspaceId, materialId, page: current })
-      .then((result) => {
-        if (!cancelled) setLines(result.ok ? result.data.lines : []);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceId, materialId, current, size]);
+    if (mode !== "page" || data.image?.page !== current || current >= total) return;
+    void window.mind.invoke("reader:page", {
+      workspaceId,
+      materialId,
+      page: current + 1,
+      scale,
+    });
+  }, [mode, data.image?.page, current, total, workspaceId, materialId, scale]);
 
   // Ctrl + mouse wheel zooms the page smoothly, like in a browser (the wheel alone scrolls).
   const effectiveRef = useRef(1);
@@ -212,17 +503,28 @@ export function ReaderPage({
   }, [info.state.status]);
 
   const goTo = (next: number): void => {
-    if (total > 0) setPage(Math.min(Math.max(next, 1), total));
+    if (total === 0) return;
+    const clamped = Math.min(Math.max(next, 1), total);
+    setPage(clamped);
+    setScrollRequest({ page: clamped });
   };
+  const changeMode = (next: "page" | "scroll"): void => {
+    setMode(next);
+    saveMode(next);
+    setScrollRequest({ page: current });
+  };
+  const visiblePage = useCallback((next: number): void => setPage(next), []);
   const zoomBy = (delta: number): void => {
     setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round((effective + delta) * 4) / 4)));
   };
 
   useHotkeys({
     arrowright: () => goTo(current + 1),
-    pagedown: () => goTo(current + 1),
     arrowleft: () => goTo(current - 1),
-    pageup: () => goTo(current - 1),
+    // In the continuous mode these keys scroll the page the usual way.
+    ...(mode === "page"
+      ? { pagedown: () => goTo(current + 1), pageup: () => goTo(current - 1) }
+      : {}),
     "mod+f": () => searchInput.current?.focus(),
     "mod+=": () => zoomBy(ZOOM_STEP),
     "mod++": () => zoomBy(ZOOM_STEP),
@@ -257,13 +559,7 @@ export function ReaderPage({
   };
 
   const back = standalone ? null : (
-    <button
-      type="button"
-      className="link"
-      onClick={() => navigate(sectionPath(workspaceId, "library"))}
-    >
-      {T.backToLibrary}
-    </button>
+    <BackLink workspaceId={workspaceId} fallback="library" fallbackLabel={T.backToLibrary} />
   );
   if (info.state.status === "loading") {
     return (
@@ -292,12 +588,13 @@ export function ReaderPage({
     );
   }
 
-  const data = info.state.data;
-  const pageHits = (hits ?? []).flatMap((hit, index) =>
-    hit.page === current ? [{ hit, index }] : [],
-  );
-  const width = (size?.width ?? 595) * effective;
-  const height = (size?.height ?? 842) * effective;
+  const doc = info.state.data;
+  const hitsByPage = new Map<number, PageHit[]>();
+  (hits ?? []).forEach((hit, index) => {
+    const list = hitsByPage.get(hit.page) ?? [];
+    list.push({ rects: hit.rects, current: index === hitIndex });
+    hitsByPage.set(hit.page, list);
+  });
   const reading = time?.state?.source === "reading" && time.state.status === "running";
 
   return (
@@ -315,7 +612,7 @@ export function ReaderPage({
           </button>
         </span>
       </div>
-      <h1 id="reader-title">{data.title}</h1>
+      <h1 id="reader-title">{doc.title}</h1>
       <div className="reader-tools" role="toolbar" aria-label="Controles do leitor">
         <div className="group">
           <button
@@ -383,6 +680,16 @@ export function ReaderPage({
           >
             <Maximize2 size={16} aria-hidden="true" />
           </button>
+          <button
+            type="button"
+            className="btn ghost"
+            aria-label={T.readerScrollMode}
+            aria-pressed={mode === "scroll"}
+            title={T.readerScrollMode}
+            onClick={() => changeMode(mode === "scroll" ? "page" : "scroll")}
+          >
+            <Rows3 size={16} aria-hidden="true" />
+          </button>
         </div>
         <form className="group" role="search" onSubmit={search}>
           <input
@@ -426,9 +733,9 @@ export function ReaderPage({
           </span>
         )}
       </div>
-      {error && (
+      {(error ?? data.error) && (
         <div className="alert" role="alert">
-          {error}
+          {error ?? data.error}
         </div>
       )}
       <div className="reader-body">
@@ -446,50 +753,30 @@ export function ReaderPage({
           ))}
         </nav>
         <div className="reader-viewport" ref={viewport}>
-          <div className="reader-page" style={{ width, height }}>
-            {image && (
-              <img
-                src={image.dataUrl}
-                alt={T.readerPageImage(image.page)}
-                width={width}
-                height={height}
-                draggable={false}
-              />
-            )}
-            {pageHits.flatMap(({ hit, index }) =>
-              hit.rects.map((rect, rectIndex) => (
-                <div
-                  key={`${index}-${rectIndex}`}
-                  className={index === hitIndex ? "reader-hit current" : "reader-hit"}
-                  style={{
-                    left: rect.x * effective,
-                    top: rect.y * effective,
-                    width: rect.width * effective,
-                    height: rect.height * effective,
-                  }}
-                />
-              )),
-            )}
-            {cited?.map((rect, index) => (
-              <div
-                key={`cited-${index}`}
-                className="reader-hit cited"
-                role="img"
-                aria-label={T.readerCited}
-                style={{
-                  left: rect.x * effective,
-                  top: rect.y * effective,
-                  width: rect.width * effective,
-                  height: rect.height * effective,
-                }}
-              />
-            ))}
-            <div className="reader-text" aria-label="Texto da página">
-              {lines.map((line, index) => (
-                <LineText key={`${current}-${index}`} line={line} zoom={effective} />
-              ))}
-            </div>
-          </div>
+          {mode === "page" ? (
+            <PageSurface
+              number={current}
+              size={size ?? { width: 595, height: 842 }}
+              zoom={effective}
+              data={data}
+              hits={hitsByPage.get(current) ?? []}
+              cited={current === initialPage ? cited : null}
+            />
+          ) : (
+            <ScrollPages
+              workspaceId={workspaceId}
+              materialId={materialId}
+              pages={doc.pages}
+              zoom={effective}
+              scale={scale}
+              viewport={viewport}
+              request={scrollRequest}
+              hitsByPage={hitsByPage}
+              cited={cited}
+              citedPage={initialPage}
+              onVisiblePage={visiblePage}
+            />
+          )}
         </div>
       </div>
       <p className="muted" role="status">

@@ -667,3 +667,16 @@ mark {
 .timer-status {
   align-self: center;
 }
+.reader-scroll {
+  padding-top: 4px;
+}
+.reader-page.placeholder {
+  background: var(--panel);
+  box-shadow: none;
+  opacity: 0.6;
+}
+.reader-tools .btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+}

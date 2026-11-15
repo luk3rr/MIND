@@ -7,10 +7,12 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { installFakeMind } from "../test/fake-mind.js";
 import type { FakeMaterial, FakeState } from "../test/fake-mind.js";
 import { App } from "./App.js";
+
+beforeEach(() => window.localStorage.clear());
 
 const ws = { id: 1, name: "Estudos", createdAt: "2026-01-01T00:00:00.000Z" };
 const pdf: FakeMaterial = {
@@ -302,5 +304,110 @@ describe("zoom with Ctrl + wheel", () => {
     await waitFor(() => expect(screen.getByText("90%")).toBeInTheDocument());
     fireEvent.wheel(viewport, { deltaY: 5000, ctrlKey: true });
     await waitFor(() => expect(screen.getByText("50%")).toBeInTheDocument());
+  });
+});
+
+describe("continuous scroll mode", () => {
+  const modeButton = () => screen.getByRole("button", { name: "Rolagem contínua" });
+
+  it("starts page by page and switches to scrolling, remembering the choice", async () => {
+    open("/w/1/library/4/read");
+    await screen.findByRole("img", { name: "Página 1" });
+    expect(modeButton()).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("img", { name: "Página 2" })).not.toBeInTheDocument();
+    await userEvent.setup().click(modeButton());
+    expect(modeButton()).toHaveAttribute("aria-pressed", "true");
+    // The pages near the screen are drawn together; a far one is only a placeholder.
+    expect(await screen.findByRole("img", { name: "Página 2" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Página 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Página 3" })).not.toBeInTheDocument();
+    expect(document.querySelectorAll(".reader-page")).toHaveLength(3);
+    expect(window.localStorage.getItem("mind.reader.mode")).toBe("scroll");
+  });
+
+  it("opens in scrolling when that was the last choice and goes back to pages", async () => {
+    window.localStorage.setItem("mind.reader.mode", "scroll");
+    open("/w/1/library/4/read");
+    expect(await screen.findByRole("img", { name: "Página 2" })).toBeInTheDocument();
+    await userEvent.setup().click(modeButton());
+    expect(modeButton()).toHaveAttribute("aria-pressed", "false");
+    expect(document.querySelectorAll(".reader-page")).toHaveLength(1);
+    expect(window.localStorage.getItem("mind.reader.mode")).toBe("page");
+  });
+
+  it("scrolls to a page when it is chosen and follows the scroll bar", async () => {
+    window.localStorage.setItem("mind.reader.mode", "scroll");
+    open("/w/1/library/4/read");
+    await screen.findByRole("img", { name: "Página 2" });
+    const viewport = document.querySelector(".reader-viewport") as HTMLElement;
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Próxima página" }));
+    await user.click(screen.getByRole("button", { name: "Próxima página" }));
+    expect(viewport.scrollTop).toBeGreaterThan(2000);
+    expect(await screen.findByRole("img", { name: "Página 3" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Ir para a página")).toHaveValue("3");
+    // The person drags the scroll bar back to the top of the second page.
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    viewport.scrollTop = 1200;
+    fireEvent.scroll(viewport);
+    await waitFor(() => expect(screen.getByLabelText("Ir para a página")).toHaveValue("2"));
+    viewport.scrollTop = 0;
+    fireEvent.scroll(viewport);
+    await waitFor(() => expect(screen.getByLabelText("Ir para a página")).toHaveValue("1"));
+  });
+
+  it("leaves Page Up and Page Down to the scrolling, and keeps the arrows for pages", async () => {
+    window.localStorage.setItem("mind.reader.mode", "scroll");
+    open("/w/1/library/4/read");
+    await screen.findByRole("img", { name: "Página 2" });
+    expect(fireEvent.keyDown(document, { key: "PageDown" })).toBe(true);
+    expect(fireEvent.keyDown(document, { key: "ArrowRight" })).toBe(false);
+    await waitFor(() => expect(screen.getByLabelText("Ir para a página")).toHaveValue("2"));
+  });
+
+  it("highlights the search hits on the pages and jumps to them", async () => {
+    window.localStorage.setItem("mind.reader.mode", "scroll");
+    open("/w/1/library/4/read", {
+      reader: {
+        info: {
+          title: "apostila",
+          pageCount: 3,
+          pages: [595, 595, 595].map((width) => ({ width, height: 842 })),
+          lastPage: null,
+        },
+        lines: {},
+        hits: [
+          { page: 1, rects: [{ x: 60, y: 50, width: 40, height: 12 }] },
+          { page: 3, rects: [{ x: 60, y: 90, width: 40, height: 12 }] },
+        ],
+        cited: [],
+        saved: [],
+        failure: null,
+      },
+    });
+    const user = userEvent.setup();
+    await screen.findByRole("img", { name: "Página 2" });
+    await user.type(screen.getByRole("textbox", { name: "Buscar no PDF" }), "função{Enter}");
+    expect(await screen.findByText(/1 de 2 ocorrências/)).toBeInTheDocument();
+    expect(document.querySelectorAll(".reader-hit.current")).toHaveLength(1);
+    const status = screen.getByText(/1 de 2 ocorrências/).closest("span") as HTMLElement;
+    await user.click(within(status).getByRole("button", { name: "Próxima página" }));
+    await screen.findByRole("img", { name: "Página 3" });
+    expect(screen.getByText(/2 de 2 ocorrências/)).toBeInTheDocument();
+    expect(document.querySelectorAll(".reader-hit.current")).toHaveLength(1);
+  });
+
+  it("zooms with the buttons and keeps the pages sized for the new zoom", async () => {
+    window.localStorage.setItem("mind.reader.mode", "scroll");
+    open("/w/1/library/4/read");
+    await screen.findByRole("img", { name: "Página 1" });
+    const first = document.querySelector(".reader-page") as HTMLElement;
+    const before = parseFloat(first.style.width);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Aumentar zoom" }));
+    await waitFor(() =>
+      expect(
+        parseFloat((document.querySelector(".reader-page") as HTMLElement).style.width),
+      ).toBeGreaterThan(before),
+    );
   });
 });
