@@ -18,9 +18,7 @@ questões no estilo de prova e estude tudo com [repetição espaçada](https://s
   de onde veio; as questões ainda passam por uma segunda verificação feita por outro modelo.
 - **Estude offline.** Revisão, prática, estatísticas e biblioteca funcionam sem internet. Só geração,
   verificação e chat precisam dela.
-- **Consulte o original e acompanhe o seu tempo.** Abra o PDF original no próprio app (na janela
-  principal, em outra janela ou no leitor do sistema), vá direto à página citada por um card e veja
-  quanto tempo você estudou, com meta diária.
+- **Consulte o original e acompanhe o seu tempo.** Abra o PDF original no próprio app e vá direto à página citada por um card ou questão.
 - **Interface em português do Brasil** (os materiais podem estar em qualquer idioma).
 
 ## Instalação
