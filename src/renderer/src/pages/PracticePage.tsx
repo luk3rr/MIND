@@ -4,75 +4,155 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
-import { useHotkeys } from "../hooks.js";
-import { MathText } from "../MathText.js";
+import { FilterSelect, parseFilter } from "../components/FilterSelect.js";
+import { SeeInPdf } from "../components/SeeInPdf.js";
 import { StudyTabs } from "../components/StudyTabs.js";
+import { useHotkeys, useInvoke } from "../hooks.js";
+import { MathText } from "../MathText.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
-import { SeeInPdf } from "../components/SeeInPdf.js";
 
 type Next = OutputOf<"practice:next">;
+type Counts = Next["counts"];
+type Question = NonNullable<Next["question"]>;
 type Result = OutputOf<"practice:answer">;
 
-/** Answers approved questions one at a time, with the correction, comments and source. */
-export function PracticePage({ workspaceId }: { workspaceId: number }) {
-  const [next, setNext] = useState<Next | null>(null);
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [result, setResult] = useState<Result | null>(null);
-  const [redo, setRedo] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [seen, setSeen] = useState<number[]>([]);
-  const [cardMessage, setCardMessage] = useState<string | null>(null);
-  const shownAt = useRef(0);
-  useActivity("practice", next?.question ? { itemId: next.question.item.id } : {});
+/** A question of this session with what the person did on it, so they can leave and come back. */
+interface Entry {
+  question: Question;
+  chosen: string | null;
+  result: Result | null;
+  cardMessage: string | null;
+}
 
-  const load = (exclude: number[] = seen): void => {
-    void window.mind
-      .invoke("practice:next", { workspaceId, redo, ...(exclude.length > 0 ? { exclude } : {}) })
-      .then((response) => {
-        if (!response.ok) {
-          setError(response.error.message);
-          return;
-        }
-        setError(null);
-        setNext(response.data);
-        setChosen(null);
-        setResult(null);
-        setCardMessage(null);
-        shownAt.current = performance.now();
-      });
+/**
+ * Answers approved questions with the correction, comments and source. The session is a list of
+ * the questions already shown: **Skip** moves on without answering, **Previous** goes back to
+ * one (answered or not), and the skipped ones can be picked up again at the end.
+ */
+export function PracticePage({ workspaceId }: { workspaceId: number }) {
+  const facets = useInvoke("practice:facets", { workspaceId });
+  const [filterValue, setFilterValue] = useState("");
+  const filter = parseFilter(filterValue);
+  const [redo, setRedo] = useState(false);
+  const [deck, setDeck] = useState<Entry[]>([]);
+  // `index === deck.length` is the end of the queue.
+  const [index, setIndex] = useState(0);
+  const [counts, setCounts] = useState<Counts | null>(null);
+  const [exhausted, setExhausted] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const shownAt = useRef(0);
+  const generation = useRef(0);
+
+  const entry = deck[index];
+  const question = entry?.question;
+  useActivity("practice", question ? { itemId: question.item.id } : {});
+
+  /** Asks for the next question that is not in `shown`; null means the queue is over. */
+  const fetchNext = useCallback(
+    (shown: Entry[], from: number): void => {
+      const mine = generation.current;
+      const exclude = shown.map((candidate) => candidate.question.item.id);
+      void window.mind
+        .invoke("practice:next", {
+          workspaceId,
+          redo,
+          ...(filter ? { filter } : {}),
+          ...(exclude.length > 0 ? { exclude } : {}),
+        })
+        .then((response) => {
+          if (mine !== generation.current) return;
+          setLoaded(true);
+          if (!response.ok) {
+            setError(response.error.message);
+            return;
+          }
+          setError(null);
+          setCounts(response.data.counts);
+          if (response.data.question) {
+            setDeck([
+              ...shown,
+              { question: response.data.question, chosen: null, result: null, cardMessage: null },
+            ]);
+            setIndex(from);
+          } else {
+            setExhausted(true);
+            setIndex(shown.length);
+          }
+        });
+    },
+    // `filter` is derived from `filterValue`; the value is the dependency.
+    [workspaceId, redo, filterValue],
+  );
+
+  // A new filter or the redo option starts the session over.
+  useEffect(() => {
+    generation.current += 1;
+    setDeck([]);
+    setIndex(0);
+    setExhausted(false);
+    setLoaded(false);
+    fetchNext([], 0);
+  }, [fetchNext]);
+
+  // The time spent on a question counts from the moment it is shown again.
+  useEffect(() => {
+    shownAt.current = performance.now();
+  }, [index, question?.item.id]);
+
+  const update = (position: number, patch: Partial<Entry>): void => {
+    setDeck((current) =>
+      current.map((candidate, at) => (at === position ? { ...candidate, ...patch } : candidate)),
+    );
   };
 
-  useEffect(() => load([]), [workspaceId, redo]);
-
-  const question = next?.question;
-  const submit = (answer: string | null = chosen): void => {
-    if (!question || !answer || result) return;
+  const submit = (answer: string | null = entry?.chosen ?? null): void => {
+    if (!entry || !answer || entry.result) return;
+    const at = index;
     const seconds = Math.round(((performance.now() - shownAt.current) / 1000) * 10) / 10;
     void window.mind
-      .invoke("practice:answer", { workspaceId, itemId: question.item.id, answer, seconds })
+      .invoke("practice:answer", {
+        workspaceId,
+        itemId: entry.question.item.id,
+        answer,
+        seconds,
+      })
       .then((response) => {
         if (!response.ok) setError(response.error.message);
-        else setResult(response.data);
+        else update(at, { result: response.data });
       });
   };
 
-  const advance = (): void => {
-    if (!question) return;
-    const updated = [...seen, question.item.id];
-    setSeen(updated);
-    load(updated);
+  /** To the next question of the session, asking for a new one when there is none ahead. */
+  const forward = (): void => {
+    if (index < deck.length - 1) setIndex(index + 1);
+    else if (exhausted) setIndex(deck.length);
+    else fetchNext(deck, deck.length);
   };
+  const previous = (): void => {
+    if (index > 0) setIndex(index - 1);
+  };
+  const skipped = deck.filter((candidate) => candidate.result === null).length;
+  const firstSkipped = deck.findIndex((candidate) => candidate.result === null);
 
   const keys = question?.item.options.map((option) => option.key) ?? [];
+  const answered = entry?.result !== null && entry?.result !== undefined;
   useHotkeys(
-    Object.fromEntries([
-      ...keys.map((key, index) => [String(index + 1), () => !result && setChosen(key)] as const),
-      ["enter", () => (result ? advance() : submit())] as const,
-    ]),
-    question !== null && question !== undefined,
+    {
+      ...Object.fromEntries([
+        ...keys.map(
+          (key, position) =>
+            [String(position + 1), () => !answered && update(index, { chosen: key })] as const,
+        ),
+        ["enter", () => (answered ? forward() : submit())] as const,
+      ]),
+      arrowright: forward,
+      arrowleft: previous,
+    },
+    question !== undefined,
   );
 
   return (
@@ -81,13 +161,21 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
       <StudyTabs
         workspaceId={workspaceId}
         active="questions"
-        activeCount={next ? next.counts.unseen + next.counts.retry : undefined}
+        activeCount={counts ? counts.unseen + counts.retry : undefined}
       />
       <h2>{T.practiceTitle}</h2>
-      {next && (
+      {facets.state.status === "ready" && (
+        <FilterSelect
+          facets={facets.state.data}
+          value={filterValue}
+          onChange={setFilterValue}
+          kind="questions"
+        />
+      )}
+      {counts && (
         <p className="muted">
-          {T.practiceCounts(next.counts.unseen, next.counts.retry)} ·{" "}
-          {T.practiceAnsweredToday(next.counts.answeredToday, next.counts.correctToday)}
+          {T.practiceCounts(counts.unseen, counts.retry)} ·{" "}
+          {T.practiceAnsweredToday(counts.answeredToday, counts.correctToday)}
         </p>
       )}
       <label>
@@ -99,16 +187,33 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
           {error}
         </p>
       )}
-      {next && !question && (
-        <div className="card">
-          <p className="muted">{T.practiceNoQuestions}</p>
+      {loaded && !question && (
+        <div className="card stack">
+          <p className="muted">{deck.length === 0 ? T.practiceNoQuestions : T.practiceEnd}</p>
+          {skipped > 0 && (
+            <div className="row" style={{ alignItems: "center" }}>
+              <span className="muted">{T.practiceSkippedCount(skipped)}</span>
+              <button type="button" className="btn ghost" onClick={() => setIndex(firstSkipped)}>
+                {T.practiceReviewSkipped}
+              </button>
+            </div>
+          )}
+          {deck.length > 0 && (
+            <div>
+              <button type="button" className="btn ghost" onClick={() => setIndex(deck.length - 1)}>
+                {T.practicePrevious}
+              </button>
+            </div>
+          )}
         </div>
       )}
-      {question && (
+      {question && entry && (
         <div className="card stack">
           <p className="muted">
             {question.item.topic ?? ""}
-            {question.attempts > 0 ? ` · ${question.attempts} tentativa(s)` : ""}
+            {question.item.topic ? " · " : ""}
+            {T.practicePosition(index + 1, deck.length)}
+            {!answered && skipped > 1 ? ` · ${T.practiceSkippedCount(skipped)}` : ""}
           </p>
           <p>
             <strong>
@@ -116,7 +221,8 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
             </strong>
           </p>
           <div className="stack" role="radiogroup" aria-label={T.practiceTitle}>
-            {question.item.options.map((option, index) => {
+            {question.item.options.map((option, position) => {
+              const result = entry.result;
               const isAnswer = result?.correctKey === option.key;
               const isWrongChoice =
                 result !== null && result.answer === option.key && !result.correct;
@@ -125,38 +231,44 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                   key={option.key}
                   type="button"
                   role="radio"
-                  aria-checked={chosen === option.key}
+                  aria-checked={entry.chosen === option.key || result?.answer === option.key}
                   disabled={result !== null}
-                  className={`option${chosen === option.key ? " chosen" : ""}${isAnswer ? " right" : ""}${isWrongChoice ? " wrong" : ""}`}
-                  onClick={() => setChosen(option.key)}
+                  className={`option${entry.chosen === option.key ? " chosen" : ""}${isAnswer ? " right" : ""}${isWrongChoice ? " wrong" : ""}`}
+                  onClick={() => update(index, { chosen: option.key })}
                 >
                   <strong>{option.key}</strong> · <MathText text={option.text} />
-                  <span className="muted"> ({index + 1})</span>
+                  <span className="muted"> ({position + 1})</span>
                   {result && option.why && <span className="muted"> — {option.why}</span>}
                 </button>
               );
             })}
           </div>
-          {!result && (
-            <div>
+          {!entry.result && (
+            <div className="row" style={{ alignItems: "center" }}>
               <button
                 type="button"
                 className="btn"
-                disabled={chosen === null}
+                disabled={entry.chosen === null}
                 onClick={() => submit()}
               >
                 {T.practiceAnswer}
               </button>
+              <button type="button" className="btn ghost" onClick={previous} disabled={index === 0}>
+                {T.practicePrevious}
+              </button>
+              <button type="button" className="btn ghost" onClick={forward}>
+                {T.practiceSkip}
+              </button>
             </div>
           )}
-          {result && (
+          {entry.result && (
             <div role="status" className="stack">
-              <p className={result.correct ? "ok" : "alert"}>
-                {result.correct ? T.practiceCorrect : T.practiceWrong} {T.practiceRight}:{" "}
-                {result.correctKey}
+              <p className={entry.result.correct ? "ok" : "alert"}>
+                {entry.result.correct ? T.practiceCorrect : T.practiceWrong} {T.practiceRight}:{" "}
+                {entry.result.correctKey}
               </p>
               <p>
-                <MathText text={result.explanation} />
+                <MathText text={entry.result.explanation} />
               </p>
               <blockquote className="source">
                 <span className="muted">
@@ -173,7 +285,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                   </>
                 )}
               </blockquote>
-              {!result.correct && (
+              {!entry.result.correct && (
                 <div>
                   <button
                     type="button"
@@ -182,23 +294,31 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                       void window.mind
                         .invoke("errors:makeCard", { workspaceId, questionId: question.item.id })
                         .then((response) =>
-                          setCardMessage(
-                            response.ok
+                          update(index, {
+                            cardMessage: response.ok
                               ? response.data.created
                                 ? T.cardMade
                                 : T.cardExists
                               : response.error.message,
-                          ),
+                          }),
                         )
                     }
                   >
                     {T.makeCard}
                   </button>
-                  {cardMessage && <span className="ok"> {cardMessage}</span>}
+                  {entry.cardMessage && <span className="ok"> {entry.cardMessage}</span>}
                 </div>
               )}
-              <div>
-                <button type="button" className="btn" onClick={advance}>
+              <div className="row">
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={previous}
+                  disabled={index === 0}
+                >
+                  {T.practicePrevious}
+                </button>
+                <button type="button" className="btn" onClick={forward}>
                   {T.practiceNext}
                 </button>
               </div>

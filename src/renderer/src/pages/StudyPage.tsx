@@ -11,20 +11,10 @@ import { MathText } from "../MathText.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
+import { FilterSelect, parseFilter } from "../components/FilterSelect.js";
 import { StudyTabs } from "../components/StudyTabs.js";
 
 type Next = OutputOf<"study:next">;
-type Today = OutputOf<"study:today">;
-type Filter = { topicId?: number; materialId?: number; subtype?: string };
-
-/** `topic:3`, `material:2` or `subtype:qa`, or an empty string for "everything". */
-function parseFilter(value: string): Filter | undefined {
-  const [kind, id] = value.split(":");
-  if (!kind || !id) return undefined;
-  if (kind === "topic") return { topicId: Number(id) };
-  if (kind === "material") return { materialId: Number(id) };
-  return { subtype: id };
-}
 
 function Pieces({ pieces }: { pieces: { text: string; hit: boolean }[] }) {
   return (
@@ -39,56 +29,6 @@ function Pieces({ pieces }: { pieces: { text: string; hit: boolean }[] }) {
         ),
       )}
     </span>
-  );
-}
-
-function FilterSelect({
-  facets,
-  value,
-  onChange,
-}: {
-  facets: Today["facets"];
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div className="field">
-      <select
-        id="study-filter"
-        aria-label={T.studyFilter}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">{T.studyAll}</option>
-        {facets.topics.length > 0 && (
-          <optgroup label={T.studyTopic}>
-            {facets.topics.map((facet) => (
-              <option key={facet.key} value={`topic:${facet.key}`}>
-                {facet.label} ({facet.count})
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {facets.materials.length > 0 && (
-          <optgroup label={T.studyMaterial}>
-            {facets.materials.map((facet) => (
-              <option key={facet.key} value={`material:${facet.key}`}>
-                {facet.label} ({facet.count})
-              </option>
-            ))}
-          </optgroup>
-        )}
-        {facets.subtypes.length > 0 && (
-          <optgroup label={T.studyType}>
-            {facets.subtypes.map((facet) => (
-              <option key={facet.key} value={`subtype:${facet.key}`}>
-                {T.cardTypes[String(facet.key)] ?? facet.label} ({facet.count})
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
-    </div>
   );
 }
 

@@ -106,6 +106,13 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "practice:answer": () => {
       throw new Error("unused");
     },
+    "practice:facets": () => ({
+      topics: [],
+      materials: [],
+      subtypes: [],
+      cards: 0,
+      questions: 0,
+    }),
     "practice:counts": () => ({
       unseen: 0,
       retry: 0,

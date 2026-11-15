@@ -484,6 +484,18 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             questions: state.questions.length,
           },
         });
+      case "practice:facets":
+        return ok({
+          topics: [{ key: 1, label: "Biologia", count: state.questions.length }],
+          materials: [{ key: 1, label: "apostila", count: state.questions.length }],
+          subtypes: [...new Set(state.questions.map((q) => q.item.subtype))].map((key) => ({
+            key,
+            label: key,
+            count: state.questions.filter((q) => q.item.subtype === key).length,
+          })),
+          cards: state.studyQueue.length,
+          questions: state.questions.length,
+        });
       case "study:next":
         return ok({ card: state.studyQueue[0] ?? null, counts: studyCounts(state) });
       case "study:rate": {
@@ -515,7 +527,11 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       case "practice:next": {
         const input = payload as InputOf<"practice:next">;
         const question =
-          state.questions.find((q) => !(input.exclude ?? []).includes(q.item.id)) ?? null;
+          state.questions.find(
+            (q) =>
+              !(input.exclude ?? []).includes(q.item.id) &&
+              (input.filter?.subtype === undefined || q.item.subtype === input.filter.subtype),
+          ) ?? null;
         return ok({ question, counts: practiceCounts(state) });
       }
       case "practice:answer": {

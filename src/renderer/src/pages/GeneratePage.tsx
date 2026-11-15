@@ -19,6 +19,51 @@ export function runPath(workspaceId: number, runId: number): string {
   return `${sectionPath(workspaceId, "generate")}/${runId}`;
 }
 
+/** The reason of one discarded item, in Portuguese; the reviewer's own words follow its prefix. */
+function reasonText(reason: string): string {
+  if (reason.startsWith("unsupported:")) {
+    const why = reason.slice("unsupported:".length).trim();
+    return why ? `${T.discardReasonUnsupported}: ${why}` : T.discardReasonUnsupported;
+  }
+  return T.discardReasons[reason] ?? reason;
+}
+
+/** How many items a run produced and, when fewer than asked, why. */
+function RunItems({ run }: { run: Run }) {
+  const discarded =
+    run.discardedNoSource +
+    run.discardedInvalid +
+    run.discardedDuplicate +
+    run.discardedUnsupported;
+  // What neither became an item nor was discarded: the model simply returned fewer.
+  const shortfall = Math.max(run.requested - run.generated - discarded, 0);
+  const parts = [
+    run.discardedNoSource > 0 ? T.discardedNoSourceLabel(run.discardedNoSource) : null,
+    run.discardedInvalid > 0 ? T.discardedInvalidLabel(run.discardedInvalid) : null,
+    run.discardedDuplicate > 0 ? T.discardedDuplicateLabel(run.discardedDuplicate) : null,
+    run.discardedUnsupported > 0 ? T.discardedUnsupportedLabel(run.discardedUnsupported) : null,
+    shortfall > 0 && run.status === "done" ? T.runShortfall(shortfall) : null,
+  ].filter((part): part is string => part !== null);
+  return (
+    <>
+      {run.generated}/{run.requested}
+      {parts.length > 0 && <span className="muted"> · {parts.join(" · ")}</span>}
+      {run.discardLog.length > 0 && (
+        <details>
+          <summary>{T.runWhyIncomplete}</summary>
+          <ul className="muted" aria-label={T.runReasonsTitle}>
+            {run.discardLog.map((entry, index) => (
+              <li key={index}>
+                {reasonText(entry.reason)} — “{entry.front}”
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
+  );
+}
+
 function RunsTable({
   workspaceId,
   runs,
@@ -37,7 +82,7 @@ function RunsTable({
       <thead>
         <tr>
           <th>Data</th>
-          <th>{T.generateType}</th>
+          <th>{T.runType}</th>
           <th>{T.materialStatus}</th>
           <th>Itens</th>
           <th>{T.usd}</th>
@@ -70,13 +115,7 @@ function RunsTable({
               {run.errorDetail && <p className="muted">{run.errorDetail}</p>}
             </td>
             <td>
-              {run.generated}/{run.requested}
-              {run.discardedNoSource > 0 && (
-                <span className="muted">
-                  {" "}
-                  · {run.discardedNoSource} {T.discardedBySource}
-                </span>
-              )}
+              <RunItems run={run} />
             </td>
             <td>{run.costUsd.toFixed(4)}</td>
             <td>

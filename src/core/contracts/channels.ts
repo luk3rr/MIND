@@ -170,6 +170,14 @@ const facet = z.object({
   count: z.number().int(),
 });
 
+const studyFacets = z.object({
+  topics: z.array(facet),
+  materials: z.array(facet),
+  subtypes: z.array(facet),
+  cards: z.number().int(),
+  questions: z.number().int(),
+});
+
 const studyCounts = z.object({
   learning: z.number().int(),
   review: z.number().int(),
@@ -508,13 +516,7 @@ export const channels = {
     output: z.object({
       counts: studyCounts,
       settings: studySettings,
-      facets: z.object({
-        topics: z.array(facet),
-        materials: z.array(facet),
-        subtypes: z.array(facet),
-        cards: z.number().int(),
-        questions: z.number().int(),
-      }),
+      facets: studyFacets,
     }),
   },
   "study:next": {
@@ -606,6 +608,7 @@ export const channels = {
     input: z.object({ workspaceId, filter: studyFilter.optional() }).strict(),
     output: practiceCounts,
   },
+  "practice:facets": { input: z.object({ workspaceId }).strict(), output: studyFacets },
   "errors:list": {
     input: z.object({ workspaceId, topicId: z.number().int().positive().optional() }).strict(),
     output: z.object({

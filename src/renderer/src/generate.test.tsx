@@ -184,9 +184,69 @@ describe("Generate page", () => {
     expect(await screen.findByText("Gerando")).toBeVisible();
     expect(screen.getByRole("progressbar", { name: /40%/ })).toBeVisible();
     expect(screen.getByText("Concluída")).toBeVisible();
-    expect(screen.getAllByText(/2 descartados por falta de fonte/)).toHaveLength(2);
+    expect(screen.getAllByText(/2 sem fonte verificável/)).toHaveLength(2);
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     await waitFor(() => expect(fake.state.runs[0]?.status).toBe("cancelled"));
+  });
+
+  it("explains why a finished run has fewer items than asked", async () => {
+    open("/w/1/generate", {
+      runs: [
+        run({
+          id: 3,
+          kind: "question",
+          subtype: "calculation_4",
+          requested: 10,
+          generated: 3,
+          discardedNoSource: 1,
+          discardedInvalid: 2,
+          discardedDuplicate: 1,
+          discardedUnsupported: 1,
+          discardLog: [
+            { reason: "calc_mismatch", front: "Um capital de R$ 1.000,00 rende 10%…" },
+            { reason: "unsupported: gabarito errado", front: "Qual o montante?" },
+            { reason: "duplicate", front: "Outra pergunta" },
+            { reason: "quote_not_in_chunk", front: "Sem fonte" },
+            { reason: "algum_codigo_novo", front: "Desconhecido" },
+          ],
+        }),
+      ],
+    });
+    const cell = (await screen.findByText(/3\/10/)).closest("td") as HTMLElement;
+    expect(cell).toHaveTextContent(
+      "3/10 · 1 sem fonte verificável · 2 inválidos (formato ou conta) · 1 repetido · 1 reprovado pela revisão · o modelo devolveu 2 itens a menos",
+    );
+    const user = userEvent.setup();
+    await user.click(within(cell).getByText("Por que não completou?"));
+    const list = within(cell).getByRole("list", { name: "Itens descartados" });
+    expect(
+      within(list).getByText(/o gabarito não confere com a conta — “Um capital/),
+    ).toBeVisible();
+    expect(
+      within(list).getByText(/reprovado pela revisão: gabarito errado — “Qual o montante\?”/),
+    ).toBeVisible();
+    expect(within(list).getByText(/já existe um item igual/)).toBeVisible();
+    expect(within(list).getByText(/citação não encontrada no trecho/)).toBeVisible();
+    expect(within(list).getByText(/algum_codigo_novo/)).toBeVisible();
+  });
+
+  it("shows nothing extra for a complete run and no shortfall while it still runs", async () => {
+    open("/w/1/generate", {
+      runs: [
+        run({ id: 4, requested: 20, generated: 20, discardedNoSource: 0, discardLog: [] }),
+        run({
+          id: 5,
+          status: "running",
+          progress: 0.2,
+          requested: 10,
+          generated: 2,
+          discardedNoSource: 0,
+        }),
+      ],
+    });
+    await screen.findByText("20/20");
+    expect(screen.queryByText(/o modelo devolveu/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Por que não completou?")).not.toBeInTheDocument();
   });
 
   it("opens the review of a finished run", async () => {

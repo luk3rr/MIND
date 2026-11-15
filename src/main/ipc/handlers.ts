@@ -230,6 +230,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       core.practice(workspaceId).answer(itemId, answer, {
         ...(seconds !== undefined ? { seconds } : {}),
       }),
+    "practice:facets": ({ workspaceId }) => core.study(workspaceId).facets("question"),
     "practice:counts": ({ workspaceId, filter }) => core.practice(workspaceId).counts(filter),
     "errors:list": ({ workspaceId, topicId }) => {
       const notebook = core.notebook(workspaceId);
