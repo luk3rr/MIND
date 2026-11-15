@@ -49,12 +49,21 @@ test("creates the first workspace, shows the shell and walks through the section
     "Hoje",
     "Biblioteca",
     "Gerar",
+    "Itens",
     "Estudar",
     "Estatísticas",
     "Erros",
     "Chat",
   ]);
-  for (const section of ["Biblioteca", "Gerar", "Estudar", "Estatísticas", "Erros", "Chat"]) {
+  for (const section of [
+    "Biblioteca",
+    "Gerar",
+    "Itens",
+    "Estudar",
+    "Estatísticas",
+    "Erros",
+    "Chat",
+  ]) {
     await nav.getByRole("button", { name: section }).click();
     // The page title is the level 1 heading; other headings may contain the same word.
     await expect(page.getByRole("heading", { level: 1, name: section })).toBeVisible();

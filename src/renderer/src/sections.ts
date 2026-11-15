@@ -7,6 +7,7 @@
 import {
   ChartColumn,
   House,
+  ListChecks,
   Library,
   MessageSquare,
   Play,
@@ -20,6 +21,7 @@ export const SECTION_SLUGS = [
   "today",
   "library",
   "generate",
+  "items",
   "study",
   "stats",
   "errors",
@@ -39,6 +41,7 @@ export const SECTIONS: readonly Section[] = [
   { slug: "today", label: "Hoje", icon: House },
   { slug: "library", label: "Biblioteca", icon: Library },
   { slug: "generate", label: "Gerar", icon: Sparkles },
+  { slug: "items", label: "Itens", icon: ListChecks },
   { slug: "study", label: "Estudar", icon: Play },
   { slug: "stats", label: "Estatísticas", icon: ChartColumn },
   { slug: "errors", label: "Erros", icon: TriangleAlert },

@@ -50,6 +50,10 @@ export interface FakeState {
   chunks: FakeChunk[];
   runs: FakeRun[];
   items: FakeItem[];
+  /** Makes the next generation requests fail with this error on one field. */
+  generationError?: { field: string; message: string };
+  /** What the Items screen lists; the bulk actions change it. */
+  catalog?: OutputOf<"items:list">["items"];
   estimateUsd: number | null;
   /** The cards the study queue serves, in order; rating one removes it. */
   studyQueue: FakeStudyCard[];
@@ -71,6 +75,8 @@ export interface FakeState {
   /** Filters the screens remember, by local storage key. */
   rememberedFilters?: Record<string, string>;
   overview: FakeOverview;
+  /** What the per-material progress table shows. */
+  materialStats?: OutputOf<"stats:materials">["materials"];
   madeCards: number[];
   chat: FakeReply[];
   /** What the next question gets; the default answers with one valid citation. */
@@ -410,6 +416,13 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       }
       case "generation:start": {
         const input = payload as InputOf<"generation:start">;
+        if (state.generationError) {
+          return failure(
+            "VALIDATION_ERROR",
+            state.generationError.message,
+            state.generationError.field,
+          );
+        }
         if (input.quantity > 60) {
           return failure("VALIDATION_ERROR", "Peça de 1 a 60 cards.", "quantity");
         }
@@ -507,6 +520,30 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         state.questions = state.questions.filter((q) => q.item.id !== itemId);
         return ok({ discarded: true });
       }
+      case "items:list":
+        return ok({ items: [...(state.catalog ?? [])] });
+      case "items:bulk": {
+        const input = payload as InputOf<"items:bulk">;
+        const fits = (status: string): boolean =>
+          input.action === "topic" ||
+          (input.action === "approve" && status === "draft") ||
+          (input.action === "restore" && status === "discarded") ||
+          (input.action === "discard" && status !== "discarded");
+        let changed = 0;
+        state.catalog = (state.catalog ?? []).map((entry) => {
+          if (!input.ids.includes(entry.id) || !fits(entry.status)) return entry;
+          changed += 1;
+          if (input.action === "topic") {
+            const name = input.topic?.trim() || null;
+            return { ...entry, topic: name, topicId: name === null ? null : 99 };
+          }
+          const status = { approve: "approved", discard: "discarded", restore: "approved" }[
+            input.action
+          ];
+          return { ...entry, status };
+        });
+        return ok({ changed, skipped: input.ids.length - changed });
+      }
       case "review:restore": {
         const { itemId } = payload as InputOf<"review:restore">;
         const found = state.items.find((i) => i.id === itemId);
@@ -540,6 +577,8 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             front: input.front.trim(),
             back: input.back.trim(),
             topic: input.topic,
+            ...(input.options !== undefined ? { options: input.options } : {}),
+            ...(input.answer !== undefined ? { answer: input.answer } : {}),
             edited: true,
           };
           return edited;
@@ -706,6 +745,8 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         state.overview.topics = state.overview.topics.filter((t) => t.topicId !== input.topicId);
         return ok({});
       }
+      case "stats:materials":
+        return ok({ materials: state.materialStats ?? [] });
       case "stats:overview":
         return ok(state.overview);
       case "chat:history":

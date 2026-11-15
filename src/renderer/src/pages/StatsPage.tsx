@@ -20,11 +20,13 @@ import {
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { ChartBlock, TOOLTIP, shortDay } from "../components/ChartBlock.js";
 import { TimeStats } from "../components/TimeStats.js";
+import { MaterialProgress } from "../components/MaterialProgress.js";
 import { WeakTopics } from "../components/WeakTopics.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
 import { Dialog } from "../components/Dialog.js";
 import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
+import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 
@@ -104,6 +106,7 @@ const TOPICS_PER_PAGE = 10;
 
 export function StatsPage({ workspaceId }: { workspaceId: number }) {
   const { state, reload } = useInvoke("stats:overview", { workspaceId });
+  const { navigate } = useRouter();
   const [action, setAction] = useState<Action>(null);
   const [mergeTarget, setMergeTarget] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +115,15 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
     TOPICS_PER_PAGE,
     (stat) => stat.name ?? T.statsNoTopic,
   );
+  /** Opens the Items screen already filtered by this topic ("none" for items without one). */
+  const seeItems = (topicFilter: string): void => {
+    try {
+      window.localStorage.setItem(`mind.filter.${workspaceId}.items-topic`, topicFilter);
+    } catch {
+      // The Items screen just opens unfiltered.
+    }
+    navigate(sectionPath(workspaceId, "items"));
+  };
   const close = (): void => {
     setAction(null);
     setError(null);
@@ -228,6 +240,8 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
 
           <TimeStats workspaceId={workspaceId} />
 
+          <MaterialProgress workspaceId={workspaceId} />
+
           <WeakTopics workspaceId={workspaceId} topics={state.data.weakest} />
 
           <div className="card">
@@ -237,6 +251,8 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
               <thead>
                 <tr>
                   <th scope="col">{T.studyTopic}</th>
+                  <th scope="col">{T.statsCards}</th>
+                  <th scope="col">{T.statsQuestions}</th>
                   <th scope="col">{T.statsEvents}</th>
                   <th scope="col">{T.statsAccuracy}</th>
                   <th scope="col" />
@@ -246,6 +262,8 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
                 {topics.pageItems.map((stat: TopicStat) => (
                   <tr key={stat.topicId ?? "none"}>
                     <td>{stat.name ?? T.statsNoTopic}</td>
+                    <td>{stat.cards}</td>
+                    <td>{stat.questions}</td>
                     <td>{stat.events}</td>
                     <td>
                       {percent(stat.accuracy)}
@@ -254,49 +272,61 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
                       )}
                     </td>
                     <td>
-                      {stat.topicId !== null && stat.name !== null && (
-                        <span className="row">
-                          <button
-                            type="button"
-                            className="btn ghost"
-                            aria-label={`${T.topicRename} ${stat.name}`}
-                            onClick={() =>
-                              setAction({
-                                kind: "rename",
-                                topic: { id: stat.topicId as number, name: stat.name as string },
-                              })
-                            }
-                          >
-                            {T.topicRename}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn ghost"
-                            aria-label={`${T.topicMerge} ${stat.name}`}
-                            onClick={() =>
-                              setAction({
-                                kind: "merge",
-                                topic: { id: stat.topicId as number, name: stat.name as string },
-                              })
-                            }
-                          >
-                            {T.topicMerge}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn ghost"
-                            aria-label={`${T.topicDelete} ${stat.name}`}
-                            onClick={() =>
-                              setAction({
-                                kind: "delete",
-                                topic: { id: stat.topicId as number, name: stat.name as string },
-                              })
-                            }
-                          >
-                            {T.topicDelete}
-                          </button>
-                        </span>
-                      )}
+                      <span className="row">
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          aria-label={`${T.statsSeeItems} ${stat.name ?? T.statsNoTopic}`}
+                          onClick={() =>
+                            seeItems(stat.topicId === null ? "none" : String(stat.topicId))
+                          }
+                        >
+                          {T.statsSeeItems}
+                        </button>
+                        {stat.topicId !== null && stat.name !== null && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn ghost"
+                              aria-label={`${T.topicRename} ${stat.name}`}
+                              onClick={() =>
+                                setAction({
+                                  kind: "rename",
+                                  topic: { id: stat.topicId as number, name: stat.name as string },
+                                })
+                              }
+                            >
+                              {T.topicRename}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn ghost"
+                              aria-label={`${T.topicMerge} ${stat.name}`}
+                              onClick={() =>
+                                setAction({
+                                  kind: "merge",
+                                  topic: { id: stat.topicId as number, name: stat.name as string },
+                                })
+                              }
+                            >
+                              {T.topicMerge}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn ghost"
+                              aria-label={`${T.topicDelete} ${stat.name}`}
+                              onClick={() =>
+                                setAction({
+                                  kind: "delete",
+                                  topic: { id: stat.topicId as number, name: stat.name as string },
+                                })
+                              }
+                            >
+                              {T.topicDelete}
+                            </button>
+                          </>
+                        )}
+                      </span>
                     </td>
                   </tr>
                 ))}

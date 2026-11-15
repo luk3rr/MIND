@@ -180,8 +180,11 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "review:approve": ({ workspaceId, ids }) => core.review(workspaceId).review(ids, []),
     "review:discard": ({ workspaceId, ids }) => core.review(workspaceId).review([], ids),
     "review:approveAll": ({ workspaceId, runId }) => core.review(workspaceId).approveAll(runId),
-    "review:edit": ({ workspaceId, itemId, front, back, topic }) =>
-      core.review(workspaceId).edit(itemId, front, back, topic),
+    "review:edit": ({ workspaceId, itemId, front, back, topic, options, answer }) =>
+      core.review(workspaceId).edit(itemId, front, back, topic, {
+        ...(options !== undefined ? { options } : {}),
+        ...(answer !== undefined ? { answer } : {}),
+      }),
     "review:discardApproved": ({ workspaceId, itemId }) => ({
       discarded: core.review(workspaceId).discardApproved(itemId),
     }),
@@ -269,6 +272,12 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       core.topics(workspaceId).delete(topicId);
       return {};
     },
+    "items:list": ({ workspaceId }) => ({ items: core.review(workspaceId).catalog() }),
+    "items:bulk": ({ workspaceId, ids, action, topic }) =>
+      core.review(workspaceId).bulk(ids, action, topic ?? null),
+    "stats:materials": ({ workspaceId }) => ({
+      materials: core.stats(workspaceId).materialStats(),
+    }),
     "stats:overview": ({ workspaceId }) => {
       const stats = core.stats(workspaceId);
       return {

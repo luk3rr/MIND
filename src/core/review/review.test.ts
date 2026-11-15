@@ -173,4 +173,87 @@ describe("ReviewService", () => {
     expect(review.count({ runId: run.id, status: "draft" })).toBe(0);
     expect(review.approveAll(run.id)).toEqual({ approved: 0, discarded: 0, skipped: 0 });
   });
+
+  it("lists every item of the workspace with its material and topic (catalog)", async () => {
+    const { run, review } = await generated(4);
+    const catalog = review.catalog();
+    expect(catalog).toHaveLength(4);
+    expect(catalog[0]).toMatchObject({
+      kind: "card",
+      status: "draft",
+      material: "Biologia",
+      materialId: rig?.materialId,
+    });
+    expect(catalog[0]?.front.length).toBeGreaterThan(0);
+    review.edit(catalog[0]?.id as number, "Frente", "Verso", "Plantas");
+    expect(review.catalog()[0]).toMatchObject({ topic: "Plantas", edited: true });
+    expect(run.id).toBeGreaterThan(0);
+  });
+
+  it("gives a topic, discards, restores and approves many items, skipping what does not fit", async () => {
+    const { run, review } = await generated(5);
+    const ids = review.list({ runId: run.id }).map((entry) => entry.id);
+    expect(review.bulk(ids.slice(0, 3), "approve")).toEqual({ changed: 3, skipped: 0 });
+    expect(review.bulk(ids, "approve")).toEqual({ changed: 2, skipped: 3 });
+    expect(review.bulk(ids, "topic", "  Fotossíntese  ")).toEqual({ changed: 5, skipped: 0 });
+    expect(new Set(review.catalog().map((entry) => entry.topic))).toEqual(
+      new Set(["Fotossíntese"]),
+    );
+    expect(review.bulk([ids[0] as number, 9999], "topic", null)).toEqual({
+      changed: 1,
+      skipped: 1,
+    });
+    expect(review.catalog()[0]?.topic).toBeNull();
+    expect(review.bulk(ids.slice(0, 2), "discard")).toEqual({ changed: 2, skipped: 0 });
+    expect(review.count({ status: "discarded" })).toBe(2);
+    expect(review.bulk(ids.slice(0, 3), "restore")).toEqual({ changed: 2, skipped: 1 });
+    expect(review.count({ status: "approved" })).toBe(5);
+  });
+
+  it("discards drafts in bulk and counts them in the run", async () => {
+    const { run, review, generation } = await generated(3);
+    const ids = review.list({ runId: run.id }).map((entry) => entry.id);
+    expect(review.bulk(ids, "discard")).toEqual({ changed: 3, skipped: 0 });
+    expect(generation.get(run.id)).toMatchObject({ discardedReview: 3 });
+    expect(review.bulk(ids, "restore")).toEqual({ changed: 3, skipped: 0 });
+    expect(generation.get(run.id)).toMatchObject({ discardedReview: 0 });
+  });
+
+  it("edits the options and the right answer of a question, keeping the rules", async () => {
+    rig = generationRig();
+    const generation = rig.core.generation(rig.workspaceId);
+    const run = generation.start({
+      materialId: rig.materialId,
+      subtype: "multiple_choice_4",
+      quantity: 1,
+      kind: "question",
+    });
+    await rig.core.queue.wait(rig.workspaceId, run.jobId as number);
+    const review = rig.core.review(rig.workspaceId);
+    const question = review.list({ runId: run.id })[0];
+    const options = question?.options ?? [];
+    expect(options).toHaveLength(4);
+    const id = question?.id as number;
+    const changed = options.map((o, i) =>
+      i === 1 ? { ...o, text: "Texto novo", why: "Porque sim." } : o,
+    );
+    const other = options[2]?.key as string;
+    const saved = review.edit(id, question?.front ?? "x", question?.back ?? "y", null, {
+      options: changed,
+      answer: other,
+    });
+    expect(saved.edited).toBe(true);
+    expect(saved.answer).toBe(other);
+    expect(saved.options[1]).toMatchObject({ text: "Texto novo", why: "Porque sim." });
+    const edit = (choices: Parameters<typeof review.edit>[4]) =>
+      review.edit(id, "enunciado", "comentário", null, choices);
+    expect(() =>
+      edit({ options: changed.map((o, i) => (i === 0 ? { ...o, text: " " } : o)) }),
+    ).toThrowError(/vazio/);
+    expect(() => edit({ options: changed.map((o) => ({ ...o, text: "igual" })) })).toThrowError(
+      /iguais/,
+    );
+    expect(() => edit({ options: changed.slice(0, 3) })).toThrowError(/mesmas letras/);
+    expect(() => edit({ answer: "Z" })).toThrowError(/correta/);
+  });
 });

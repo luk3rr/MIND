@@ -21,6 +21,8 @@ export interface PagedList<T> {
   total: number;
   /** How many match the search. */
   matches: number;
+  /** Every item that matches the search, across all pages. */
+  matched: T[];
   query: string;
   setQuery: (query: string) => void;
   page: number;
@@ -66,6 +68,7 @@ export function usePagedList<T>(
     pageItems: found.slice((current - 1) * pageSize, current * pageSize),
     total: items.length,
     matches: found.length,
+    matched: found,
     query,
     setQuery: (next) => {
       setQueryState(next);

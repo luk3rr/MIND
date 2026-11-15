@@ -288,7 +288,18 @@ export function GeneratePage({
   const showError = (error: ErrorInfo): void => {
     const byField = Object.fromEntries((error.fields ?? []).map((f) => [f.field, f.message]));
     setErrors(byField);
-    setFormError(Object.keys(byField).length === 0 ? error.message : null);
+    const shown = [
+      "pageFrom",
+      "pageTo",
+      "quantity",
+      "instructions",
+      "variations",
+      "materialId",
+      "topicId",
+    ];
+    setFormError(
+      Object.keys(byField).every((field) => !shown.includes(field)) ? error.message : null,
+    );
   };
 
   const key = JSON.stringify([
@@ -381,6 +392,11 @@ export function GeneratePage({
                 {T.trainBanner} <strong>{topicNames.get(trainTopic)}</strong>
               </p>
               <p className="muted">{T.trainHint}</p>
+              {errors["topicId"] && (
+                <p className="field-error" role="alert">
+                  {errors["topicId"]}
+                </p>
+              )}
               <button
                 type="button"
                 className="btn ghost"

@@ -60,6 +60,23 @@ function failedChunkIds(connection: WorkspaceConnection, topicId: number): numbe
   return [...score.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([id]) => id);
 }
 
+/** Source chunks of any item the topic has (discarded ones too), when nothing else points to text. */
+function ownChunkIds(connection: WorkspaceConnection, topicId: number): number[] {
+  return connection.db
+    .selectDistinct({ chunkId: item.chunkId })
+    .from(item)
+    .where(
+      and(
+        eq(item.topicId, topicId),
+        ne(item.status, "discarded"),
+        sql`${item.chunkId} is not null`,
+      ),
+    )
+    .orderBy(asc(item.chunkId))
+    .all()
+    .flatMap((row) => (row.chunkId === null ? [] : [row.chunkId]));
+}
+
 function existingTexts(connection: WorkspaceConnection, topicId: number): string[] {
   const rows = connection.db
     .select({ payload: item.payloadJson })
@@ -79,7 +96,7 @@ function existingTexts(connection: WorkspaceConnection, topicId: number): string
   return texts;
 }
 
-/** Failed source chunks first, then the best BM25 matches for the topic name. */
+/** Failed source chunks first, then the best BM25 matches for the topic name, then its own items' chunks. */
 export function trainingMaterial(
   connection: WorkspaceConnection,
   topicId: number,
@@ -91,6 +108,10 @@ export function trainingMaterial(
   const avoid = existingTexts(connection, topicId);
   for (const hit of new Bm25Retriever(connection).search(found.name, { limit: SEARCH_LIMIT })) {
     if (!ordered.includes(hit.chunkId)) ordered.push(hit.chunkId);
+  }
+  // A topic given by hand rarely has its name in the text: its own items still say where to look.
+  for (const id of ownChunkIds(connection, topicId)) {
+    if (!ordered.includes(id)) ordered.push(id);
   }
   const wanted = ordered.slice(0, MAX_CHUNKS);
   const rows = new Map(

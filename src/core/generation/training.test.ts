@@ -87,6 +87,33 @@ describe("trainingMaterial", () => {
     expect(ids).toEqual([rig.chunkIds[1], rig.chunkIds[2]]);
   });
 
+  it("falls back to the chunks of the topic's own items when nothing was missed and the name finds nothing", () => {
+    rig = generationRig();
+    const { db } = rig.core.registry.open(rig.workspaceId).connection;
+    const topicId = db.insert(topic).values({ name: "Xyzzy" }).returning({ id: topic.id }).get().id;
+    const run = db
+      .insert(generationRun)
+      .values({ kind: "card", subtype: "qa", model: "m", requested: 1 })
+      .returning({ id: generationRun.id })
+      .get().id;
+    db.insert(item)
+      .values({
+        runId: run,
+        kind: "card",
+        subtype: "qa",
+        status: "approved",
+        topicId,
+        chunkId: rig.chunkIds[0] as number,
+        payloadJson: JSON.stringify({ front: "Card?", back: "R" }),
+      })
+      .run();
+    const ids = trainingMaterial(
+      rig.core.registry.open(rig.workspaceId).connection,
+      topicId,
+    ).chunks.map((c) => c.id);
+    expect(ids).toEqual([rig.chunkIds[0]]);
+  });
+
   it("rejects an unknown topic", () => {
     rig = generationRig();
     expect(() =>

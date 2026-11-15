@@ -7,7 +7,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
+import { useInvoke } from "../hooks.js";
 import { T } from "../strings.js";
+import { SearchCombobox } from "./SearchCombobox.js";
 import { Dialog } from "./Dialog.js";
 
 type Item = OutputOf<"review:list">["items"][number];
@@ -27,7 +29,13 @@ export function EditItemDialog({
   const [front, setFront] = useState(item.front);
   const [back, setBack] = useState(item.back);
   const [topic, setTopic] = useState(item.topic ?? "");
+  const [options, setOptions] = useState(item.options);
+  const [answer, setAnswer] = useState(item.answer ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const topics = useInvoke("topics:list", { workspaceId });
+  const isQuestion = item.kind === "question";
+  // True/false only has a verdict to choose; the other questions have texts to rewrite as well.
+  const rewritable = isQuestion && item.subtype !== "certo_errado";
 
   const save = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -37,6 +45,7 @@ export function EditItemDialog({
       front,
       back,
       topic: topic.trim() || null,
+      ...(isQuestion && options.length > 0 ? { answer, ...(rewritable ? { options } : {}) } : {}),
     });
     if (!result.ok) {
       setErrors(Object.fromEntries((result.error.fields ?? []).map((f) => [f.field, f.message])));
@@ -47,7 +56,7 @@ export function EditItemDialog({
   };
 
   return (
-    <Dialog title={T.edit} onClose={onClose}>
+    <Dialog title={T.edit} onClose={onClose} wide>
       <form onSubmit={(event) => void save(event)} className="stack">
         <div className="field">
           <label htmlFor="edit-front">
@@ -65,6 +74,63 @@ export function EditItemDialog({
             </p>
           )}
         </div>
+        {isQuestion && options.length > 0 && (
+          <fieldset className="field edit-options">
+            <legend>{T.editOptions}</legend>
+            {options.map((option, index) => (
+              <div key={option.key} className="stack">
+                <div className="row">
+                  <input
+                    type="radio"
+                    name="edit-answer"
+                    value={option.key}
+                    checked={answer === option.key}
+                    aria-label={T.editCorrect(option.key)}
+                    onChange={() => setAnswer(option.key)}
+                    style={{ width: "auto" }}
+                  />
+                  <strong>{option.key}</strong>
+                  {rewritable ? (
+                    <input
+                      aria-label={T.editOptionText(option.key)}
+                      value={option.text}
+                      onChange={(event) =>
+                        setOptions((all) =>
+                          all.map((o, i) => (i === index ? { ...o, text: event.target.value } : o)),
+                        )
+                      }
+                    />
+                  ) : (
+                    <span>{option.text}</span>
+                  )}
+                </div>
+                {rewritable && (
+                  <textarea
+                    rows={2}
+                    aria-label={T.editOptionWhy(option.key)}
+                    placeholder={T.editOptionWhyPlaceholder}
+                    value={option.why}
+                    onChange={(event) =>
+                      setOptions((all) =>
+                        all.map((o, i) => (i === index ? { ...o, why: event.target.value } : o)),
+                      )
+                    }
+                  />
+                )}
+                {errors[`option:${option.key}`] && (
+                  <p className="field-error" role="alert">
+                    {errors[`option:${option.key}`]}
+                  </p>
+                )}
+              </div>
+            ))}
+            {(errors["answer"] || errors["options"]) && (
+              <p className="field-error" role="alert">
+                {errors["answer"] ?? errors["options"]}
+              </p>
+            )}
+          </fieldset>
+        )}
         <div className="field">
           <label htmlFor="edit-back">{item.kind === "question" ? T.editComment : T.editBack}</label>
           <textarea
@@ -81,7 +147,23 @@ export function EditItemDialog({
         </div>
         <div className="field">
           <label htmlFor="edit-topic">{T.editTopic}</label>
-          <input id="edit-topic" value={topic} onChange={(event) => setTopic(event.target.value)} />
+          <SearchCombobox
+            inputId="edit-topic"
+            label={T.editTopic}
+            placeholder={T.editTopicPlaceholder}
+            options={
+              topics.state.status === "ready"
+                ? topics.state.data.topics.map((t) => ({
+                    key: t.id,
+                    label: t.name,
+                    count: t.cards + t.questions,
+                  }))
+                : []
+            }
+            text={topic}
+            onText={setTopic}
+          />
+          <p className="muted">{T.editTopicHint}</p>
         </div>
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onClose}>

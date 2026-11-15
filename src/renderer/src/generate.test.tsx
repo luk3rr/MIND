@@ -94,6 +94,74 @@ function open(route: string, initial: Partial<FakeState> = {}) {
   return fake;
 }
 
+describe("Editing the topic of an item", () => {
+  it("offers the existing topics and still accepts a new one", async () => {
+    const fake = open("/w/1/generate/1", {
+      runs: [run()],
+      items: [item(1)],
+      topicList: [{ id: 7, name: "Elasticidades", cards: 3, questions: 1 }],
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Editar" }));
+    const dialog = screen.getByRole("dialog", { name: "Editar" });
+    const box = within(dialog).getByRole("combobox", { name: "Tópico" });
+    await user.clear(box);
+    await user.type(box, "elast");
+    await user.click(await within(dialog).findByRole("option", { name: /Elasticidades/ }));
+    expect(box).toHaveValue("Elasticidades");
+    await user.clear(box);
+    await user.type(box, "Tópico inédito");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() =>
+      expect(fake.invoke).toHaveBeenCalledWith(
+        "review:edit",
+        expect.objectContaining({ topic: "Tópico inédito" }),
+      ),
+    );
+  });
+});
+
+describe("Editing a multiple-choice question", () => {
+  it("rewrites the options and moves the right answer", async () => {
+    const fake = open("/w/1/generate/1", {
+      runs: [run()],
+      items: [
+        item(1, {
+          kind: "question",
+          subtype: "multiple_choice",
+          front: "Qual é a capital?",
+          options: [
+            { key: "A", text: "Rio", why: "Não é." },
+            { key: "B", text: "Brasília", why: "É a capital." },
+          ],
+          answer: "B",
+        }),
+      ],
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Editar" }));
+    const dialog = screen.getByRole("dialog", { name: "Editar" });
+    expect(within(dialog).getByRole("radio", { name: "Alternativa B é a correta" })).toBeChecked();
+    const text = within(dialog).getByRole("textbox", { name: "Texto da alternativa A" });
+    await user.clear(text);
+    await user.type(text, "Salvador");
+    await user.click(within(dialog).getByRole("radio", { name: "Alternativa A é a correta" }));
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() =>
+      expect(fake.invoke).toHaveBeenCalledWith(
+        "review:edit",
+        expect.objectContaining({
+          answer: "A",
+          options: [
+            { key: "A", text: "Salvador", why: "Não é." },
+            { key: "B", text: "Brasília", why: "É a capital." },
+          ],
+        }),
+      ),
+    );
+  });
+});
+
 describe("Generate page", () => {
   it("asks to import a material when none is indexed", async () => {
     open("/w/1/generate", { materials: [{ ...material, status: "importing" }] });

@@ -223,6 +223,8 @@ const topicInfo = z.object({
 const topicStat = z.object({
   topicId: z.number().int().nullable(),
   name: z.string().nullable(),
+  cards: z.number().int(),
+  questions: z.number().int(),
   cardReviews: z.number().int(),
   cardPasses: z.number().int(),
   questionAttempts: z.number().int(),
@@ -524,9 +526,54 @@ export const channels = {
         front: z.string().max(5000),
         back: z.string().max(5000),
         topic: z.string().max(200).nullable(),
+        /** Questions only: the rewritten options (same letters) and the right answer. */
+        options: z
+          .array(
+            z.object({
+              key: z.string().max(2),
+              text: z.string().max(2000),
+              why: z.string().max(2000),
+            }),
+          )
+          .max(10)
+          .optional(),
+        answer: z.string().max(2).optional(),
       })
       .strict(),
     output: itemInfo,
+  },
+  "items:list": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({
+      items: z.array(
+        z.object({
+          id: z.number().int(),
+          kind: z.string(),
+          subtype: z.string(),
+          front: z.string(),
+          back: z.string(),
+          status: z.string(),
+          topicId: z.number().int().nullable(),
+          topic: z.string().nullable(),
+          materialId: z.number().int().nullable(),
+          material: z.string().nullable(),
+          edited: z.boolean(),
+          createdAt: z.string(),
+        }),
+      ),
+    }),
+  },
+  "items:bulk": {
+    input: z
+      .object({
+        workspaceId,
+        ids: z.array(z.number().int().positive()).min(1).max(5000),
+        action: z.enum(["topic", "discard", "restore", "approve"]),
+        /** The topic to give ("topic" action); null or empty removes it. */
+        topic: z.string().max(200).nullable().optional(),
+      })
+      .strict(),
+    output: z.object({ changed: z.number().int(), skipped: z.number().int() }),
   },
   "review:discardApproved": {
     input: z.object({ workspaceId, itemId: z.number().int().positive() }).strict(),
@@ -686,6 +733,32 @@ export const channels = {
   "topics:delete": {
     input: z.object({ workspaceId, topicId: z.number().int().positive() }).strict(),
     output: z.object({}).strict(),
+  },
+  "stats:materials": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({
+      materials: z.array(
+        z.object({
+          materialId: z.number().int(),
+          title: z.string(),
+          created: z.number().int(),
+          cards: z.number().int(),
+          questions: z.number().int(),
+          toReview: z.number().int(),
+          approved: z.number().int(),
+          discarded: z.number().int(),
+          studied: z.number().int(),
+          unseen: z.number().int(),
+          due: z.number().int(),
+          events: z.number().int(),
+          accuracy: z.number().nullable(),
+          smallSample: z.boolean(),
+          focus: z.enum(["due", "weak", "unseen", "review"]).nullable(),
+          priority: z.number(),
+          suggested: z.boolean(),
+        }),
+      ),
+    }),
   },
   "stats:overview": {
     input: z.object({ workspaceId }).strict(),

@@ -43,6 +43,8 @@ const material: FakeMaterial = {
 const weak = {
   topicId: 2,
   name: "Genética",
+  cards: 0,
+  questions: 0,
   cardReviews: 5,
   cardPasses: 1,
   questionAttempts: 0,
@@ -96,6 +98,21 @@ describe("training routes", () => {
   });
 });
 
+describe("Training on a topic", () => {
+  it("tells why nothing was generated instead of failing silently", async () => {
+    open("/w/1/generate?topic=2", {
+      topicList: topics,
+      generationError: { field: "topicId", message: "Importe material que fale deste tópico." },
+    });
+    const user = userEvent.setup();
+    await screen.findByText("Treino do tópico");
+    await user.click(screen.getByRole("button", { name: "Gerar cards" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Importe material que fale deste tópico.",
+    );
+  });
+});
+
 describe("Weak points (FR-17)", () => {
   it("lists the weakest topics on Today and opens Generate pre-filled", async () => {
     open("/w/1/today", {
@@ -104,7 +121,7 @@ describe("Weak points (FR-17)", () => {
       summary: { materials: 1, cards: 3, questions: 0 },
     });
     const user = userEvent.setup();
-    expect(await screen.findByRole("heading", { name: "Pontos fracos" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Tópicos para reforçar" })).toBeVisible();
     expect(screen.getByText(/20% de acerto em 5 eventos/)).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Treinar Genética" }));
     expect(await screen.findByText("Treino do tópico")).toBeVisible();
@@ -112,14 +129,14 @@ describe("Weak points (FR-17)", () => {
 
   it("shows the same list on Statistics", async () => {
     open("/w/1/stats", { overview: withWeak(), topicList: topics });
-    expect(await screen.findByRole("heading", { name: "Pontos fracos" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Tópicos para reforçar" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Treinar Genética" })).toBeVisible();
   });
 
   it("hides the section when no topic is eligible", async () => {
     open("/w/1/today", { summary: { materials: 1, cards: 3, questions: 0 } });
     await screen.findByText(/Estudar agora/);
-    expect(screen.queryByRole("heading", { name: "Pontos fracos" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Tópicos para reforçar" })).toBeNull();
   });
 });
 

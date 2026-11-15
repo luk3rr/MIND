@@ -55,6 +55,8 @@ const topic = (
 ) => ({
   topicId: id,
   name,
+  cards: 0,
+  questions: 0,
   cardReviews: events,
   cardPasses: events,
   questionAttempts: 0,
@@ -116,7 +118,7 @@ describe("Stats page: many topics", () => {
     );
     open("/w/1/stats", { overview: { ...overview(), topics: many }, topicList: [] });
     const user = userEvent.setup();
-    const table = await screen.findByRole("table", { name: "Acerto por tópico" });
+    const table = await screen.findByRole("table", { name: "Tópicos" });
     expect(within(table).getAllByRole("row")).toHaveLength(11);
     const card = table.closest(".card") as HTMLElement;
     expect(within(card).getByRole("status")).toHaveTextContent("1–10 de 23");
@@ -126,6 +128,56 @@ describe("Stats page: many topics", () => {
     await user.type(within(card).getByRole("searchbox", { name: "Buscar tópicos" }), "tópico 1");
     // 10, 11, ..., 19 and 01..: "tópico 1" matches 10 to 19.
     expect(within(card).getAllByRole("row")).toHaveLength(11);
+  });
+});
+
+const progress = (id: number, title: string, extra: object = {}) => ({
+  materialId: id,
+  title,
+  created: 10,
+  cards: 8,
+  questions: 2,
+  toReview: 1,
+  approved: 8,
+  discarded: 1,
+  studied: 5,
+  unseen: 3,
+  due: 0,
+  events: 12,
+  accuracy: 0.8,
+  smallSample: false,
+  focus: null,
+  priority: 0,
+  suggested: false,
+  ...extra,
+});
+
+describe("Stats page: progress per material", () => {
+  it("shows the counts, suggests a material and studies it filtered", async () => {
+    const fake = open("/w/1/stats", {
+      overview: overview(),
+      topicList: topics,
+      materialStats: [
+        progress(2, "Fisiologia", { focus: "weak", accuracy: 0.4, priority: 30, suggested: true }),
+        progress(3, "Anatomia"),
+      ],
+    });
+    const user = userEvent.setup();
+    const table = await screen.findByRole("table", { name: "Progresso por material" });
+    const suggestion = screen.getByText("Sugerido:", { exact: false });
+    expect(suggestion.closest("p")).toHaveTextContent("Fisiologia · acerto baixo (40%)");
+    const rows = within(table).getAllByRole("row");
+    expect(rows).toHaveLength(3);
+    expect(within(rows[1] as HTMLElement).getAllByRole("cell")[1]).toHaveTextContent("10");
+    expect(within(rows[2] as HTMLElement).getByText("80%")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Estudar Fisiologia" }));
+    await waitFor(() =>
+      expect(fake.invoke).toHaveBeenCalledWith(
+        "study:next",
+        expect.objectContaining({ filter: { materialId: 2 } }),
+      ),
+    );
+    expect(fake.invoke).toHaveBeenCalledWith("stats:materials", { workspaceId: 1 });
   });
 });
 
@@ -151,7 +203,7 @@ describe("Stats page (FR-16)", () => {
 
   it("shows accuracy by topic and flags small samples", async () => {
     open("/w/1/stats", { overview: overview(), topicList: topics });
-    const table = await screen.findByRole("table", { name: "Acerto por tópico" });
+    const table = await screen.findByRole("table", { name: "Tópicos" });
     expect(within(table).getByRole("row", { name: /Células.*70%/ })).toBeVisible();
     const small = within(table).getByRole("row", { name: /Genética/ });
     expect(small).toHaveTextContent("25%");
@@ -222,9 +274,14 @@ describe("Stats page (FR-16)", () => {
     const data = overview();
     data.topics = [{ ...topic(1, "x", 0.5, 6), topicId: null, name: null }];
     open("/w/1/stats", { overview: data });
-    const table = await screen.findByRole("table", { name: "Acerto por tópico" });
+    const table = await screen.findByRole("table", { name: "Tópicos" });
     expect(within(table).getByText("Sem tópico")).toBeVisible();
-    expect(within(table).queryByRole("button")).toBeNull();
+    // No rename, merge or delete; the only way on is to see the items that have no topic.
+    expect(
+      within(table)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["Ver itens"]);
   });
 });
 

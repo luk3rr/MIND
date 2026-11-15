@@ -12,6 +12,7 @@ import { MaterialPreviewPage } from "./pages/MaterialPreviewPage.js";
 import { ReaderPage } from "./pages/ReaderPage.js";
 import { ReviewPage } from "./pages/ReviewPage.js";
 import { ChatPage } from "./pages/ChatPage.js";
+import { ItemsPage } from "./pages/ItemsPage.js";
 import { ErrorsPage } from "./pages/ErrorsPage.js";
 import { PracticePage } from "./pages/PracticePage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
@@ -96,6 +97,7 @@ function Screen() {
         {route.section === "generate" && route.detailId !== undefined && (
           <ReviewPage workspaceId={route.workspaceId} runId={route.detailId} />
         )}
+        {route.section === "items" && <ItemsPage workspaceId={route.workspaceId} />}
         {route.section === "study" && !route.practice && (
           <StudyPage workspaceId={route.workspaceId} />
         )}

@@ -156,6 +156,9 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       throw new Error("unused");
     },
     "topics:delete": () => ({}),
+    "items:list": () => ({ items: [] }),
+    "items:bulk": () => ({ changed: 0, skipped: 0 }),
+    "stats:materials": () => ({ materials: [] }),
     "stats:overview": () => {
       throw new Error("unused");
     },

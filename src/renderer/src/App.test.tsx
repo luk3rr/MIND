@@ -47,7 +47,7 @@ describe("App", () => {
     expect(state.route).toBe("/w/1/today");
   });
 
-  it("shows the sidebar with the eight sections and marks the active one", async () => {
+  it("shows the sidebar with the nine sections and marks the active one", async () => {
     installFakeMind({ workspaces: [ws(1, "Estudos")] });
     await ready();
     const nav = await screen.findByRole("navigation", { name: "Principal" });
@@ -58,6 +58,7 @@ describe("App", () => {
       "Hoje",
       "Biblioteca",
       "Gerar",
+      "Itens",
       "Estudar",
       "Estatísticas",
       "Erros",

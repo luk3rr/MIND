@@ -13,10 +13,13 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 export function Dialog({
   title,
   onClose,
+  wide = false,
   children,
 }: {
   title: string;
   onClose: () => void;
+  /** For dialogs with long forms. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   const titleId = useId();
@@ -56,7 +59,7 @@ export function Dialog({
     >
       <div
         ref={container}
-        className="dialog"
+        className={wide ? "dialog wide" : "dialog"}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

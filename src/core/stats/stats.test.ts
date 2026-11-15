@@ -7,7 +7,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { item, reviewLog, attempt, topic } from "../db/workspace-schema.js";
+import {
+  attempt,
+  cardState,
+  generationRun,
+  item,
+  material,
+  reviewLog,
+  topic,
+} from "../db/workspace-schema.js";
 import { MIN_EVENTS, streaks } from "./service.js";
 import { BRT_OFFSET, NOON, TODAY, World, day } from "../test/world.js";
 
@@ -41,6 +49,16 @@ describe("StatsService topic accuracy", () => {
     expect(stat?.events).toBeGreaterThanOrEqual(MIN_EVENTS);
   });
 
+  it("counts the approved cards and questions of each topic, drafts left out", () => {
+    const w = setup();
+    const cells = w.topic("Células");
+    w.item("card", cells);
+    w.item("card", cells);
+    w.item("question", cells);
+    w.item("question", cells, { status: "draft" });
+    expect(stats(w).topicStats()[0]).toMatchObject({ name: "Células", cards: 2, questions: 1 });
+  });
+
   it("flags small samples, keeps idle topics and puts items without a topic last", () => {
     const w = setup();
     w.reviews(w.item("card", w.topic("Poucos")), [3]);
@@ -51,7 +69,12 @@ describe("StatsService topic accuracy", () => {
     const byName = Object.fromEntries(all.map((s) => [String(s.name), s]));
     expect(byName["Poucos"]?.smallSample).toBe(true);
     expect([byName["Parado"]?.events, byName["Parado"]?.accuracy]).toEqual([0, null]);
-    expect(byName["Sem itens"]).toBeUndefined();
+    expect(byName["Sem itens"]).toMatchObject({
+      cards: 0,
+      questions: 0,
+      events: 0,
+      accuracy: null,
+    });
     expect(byName["null"]).toMatchObject({ cardReviews: 2, topicId: null });
     expect(all.at(-1)?.name).toBeNull();
   });
@@ -60,7 +83,10 @@ describe("StatsService topic accuracy", () => {
     const w = setup();
     const t = w.topic("Rascunhos");
     for (const status of ["draft", "discarded"]) w.reviews(w.item("card", t, { status }), [3, 3]);
-    expect(stats(w).topicStats()).toEqual([]);
+    // The topic is still listed, but nothing of the drafts or discarded items counts.
+    expect(stats(w).topicStats()).toMatchObject([
+      { name: "Rascunhos", cards: 0, events: 0, accuracy: null },
+    ]);
   });
 
   it("lists the weakest topics, needing enough events and ordered by accuracy", () => {
@@ -74,9 +100,9 @@ describe("StatsService topic accuracy", () => {
     }
     w.reviews(w.item("card", w.topic("Pouco")), [1]);
     const s = stats(w);
-    expect(s.weakestTopics().map((t) => t.name)).toEqual(["Fraco", "Médio", "Forte"]);
+    expect(s.weakestTopics().map((t) => t.name)).toEqual(["Fraco", "Médio"]);
     expect(s.weakestTopics(1).map((t) => t.name)).toEqual(["Fraco"]);
-    expect(s.weakestTopics(5, 1)).toHaveLength(4);
+    expect(s.weakestTopics(5, 1)).toHaveLength(3);
   });
 });
 
@@ -192,7 +218,11 @@ describe("golden values from the Python implementation", () => {
         smallSample: t.smallSample,
       })),
     ).toEqual(golden.topicStats);
-    expect(s.weakestTopics(5, 2).map((t) => t.name)).toEqual(golden.weakest);
+    // The app only lists topics under the weak line; the Python ranking listed them all.
+    const accuracy = new Map(s.topicStats().map((t) => [t.name, t.accuracy]));
+    expect(s.weakestTopics(5, 2).map((t) => t.name)).toEqual(
+      golden.weakest.filter((name) => (accuracy.get(name) ?? 1) < 0.7),
+    );
     expect(s.retention(30, NOW).days.map((d) => [d.day, d.reviews, d.passes])).toEqual(
       golden.retention,
     );
@@ -241,5 +271,94 @@ describe("performance (NFR-3)", () => {
     s.activity(30, NOW);
     s.summary(NOW);
     expect(performance.now() - started).toBeLessThan(300);
+  });
+});
+
+describe("StatsService material progress", () => {
+  const addMaterial = (w: World, title: string): number =>
+    w.db
+      .insert(material)
+      .values({ title, kind: "pdf", filename: `${title}.pdf`, storedPath: "p" })
+      .returning({ id: material.id })
+      .get().id;
+  const addItem = (
+    w: World,
+    materialId: number,
+    kind: "card" | "question",
+    status: string,
+  ): number => {
+    const runId = w.db
+      .insert(generationRun)
+      .values({ kind, subtype: "qa", model: "m", requested: 1, materialId })
+      .returning({ id: generationRun.id })
+      .get().id;
+    return w.db
+      .insert(item)
+      .values({ runId, kind, subtype: "qa", payloadJson: "{}", status })
+      .returning({ id: item.id })
+      .get().id;
+  };
+
+  it("counts what was made, reviewed and studied per material and suggests the weakest", () => {
+    const w = setup();
+    const strong = addMaterial(w, "Anatomia");
+    const weak = addMaterial(w, "Fisiologia");
+    const idle = addMaterial(w, "Vazio");
+    w.reviews(addItem(w, strong, "card", "approved"), [3, 3, 3, 3, 3]);
+    addItem(w, strong, "question", "approved");
+    addItem(w, strong, "card", "draft");
+    addItem(w, strong, "card", "discarded");
+    w.attempts(addItem(w, weak, "question", "approved"), [false, false, false, true, false, false]);
+    const byTitle = Object.fromEntries(
+      stats(w)
+        .materialStats(NOW)
+        .map((m) => [m.title, m]),
+    );
+    expect(byTitle["Anatomia"]).toMatchObject({
+      created: 3,
+      cards: 2,
+      questions: 1,
+      toReview: 1,
+      approved: 2,
+      discarded: 1,
+      studied: 1,
+      unseen: 1,
+      accuracy: 1,
+    });
+    expect(byTitle["Fisiologia"]).toMatchObject({ studied: 1, unseen: 0, focus: "weak" });
+    expect(byTitle["Fisiologia"]?.accuracy).toBeCloseTo(1 / 6);
+    expect(byTitle["Vazio"]).toMatchObject({ created: 0, focus: null, suggested: false });
+    expect(idle).toBeGreaterThan(0);
+    const order = stats(w)
+      .materialStats(NOW)
+      .map((m) => [m.title, m.suggested]);
+    expect(order[0]).toEqual(["Fisiologia", true]);
+    expect(order.filter(([, s]) => s)).toHaveLength(1);
+  });
+
+  it("counts due cards and suggests reviewing when nothing is approved yet", () => {
+    const w = setup();
+    const due = addMaterial(w, "Com vencidos");
+    const drafts = addMaterial(w, "So rascunhos");
+    const card = addItem(w, due, "card", "approved");
+    w.reviews(card, [3]);
+    w.db
+      .insert(cardState)
+      .values({ itemId: card, fsrsJson: "{}", due: "2026-11-01T00:00:00.000Z", state: 2, reps: 1 })
+      .run();
+    addItem(w, drafts, "card", "draft");
+    const [first, second] = stats(w).materialStats(NOW);
+    expect(first).toMatchObject({ title: "Com vencidos", due: 1, focus: "due", suggested: true });
+    expect(second).toMatchObject({ title: "So rascunhos", focus: "review", suggested: false });
+  });
+
+  it("suggests nothing when there is nothing to do", () => {
+    const w = setup();
+    addMaterial(w, "Vazio");
+    expect(
+      stats(w)
+        .materialStats(NOW)
+        .some((m) => m.suggested),
+    ).toBe(false);
   });
 });

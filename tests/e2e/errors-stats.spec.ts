@@ -129,7 +129,7 @@ test("shows real charts, the goal and topic management on the statistics screen 
   await page.getByLabel("Cards por dia").fill("25");
   await page.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("2 / 25")).toBeVisible();
-  const topics = page.getByRole("table", { name: "Acerto por tópico" });
+  const topics = page.getByRole("table", { name: "Tópicos" });
   await expect(topics.getByRole("row")).not.toHaveCount(1);
 });
 
@@ -147,7 +147,7 @@ test("trains on a weak topic without choosing a material (FR-17)", async () => {
     );
   }
   await page.getByRole("button", { name: "Hoje", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Pontos fracos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tópicos para reforçar" })).toBeVisible();
   await page.getByRole("button", { name: /^Treinar / }).click();
   await expect(page.getByRole("note")).toContainText("Treino do tópico");
   await expect(page.getByLabel("Material")).toHaveCount(0);

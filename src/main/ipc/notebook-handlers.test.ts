@@ -97,7 +97,7 @@ describe("errors, topics and stats channels", () => {
   it("serves the statistics overview (FR-16)", async () => {
     const w = (world = new World());
     const topic = w.topic("Células");
-    w.reviews(w.item("card", topic), [3, 3, 1, 3, 3], "2026-11-14", 2);
+    w.reviews(w.item("card", topic), [3, 1, 1, 3, 3], "2026-11-14", 2);
     w.attempts(w.item("question", topic), [true, false]);
     const result = await dispatcher(w)("stats:overview", { workspaceId: w.workspaceId });
     expect(result).toMatchObject({
