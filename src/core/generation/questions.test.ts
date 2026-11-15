@@ -339,3 +339,138 @@ describe("question runs", () => {
     expect(estimate.promptChars).toBeGreaterThan(2000);
   });
 });
+
+const calc4 = (overrides: Partial<QuestionOut> = {}): QuestionOut => ({
+  subtype: "multiple_choice",
+  statement:
+    "Um capital de R$ 10.000,00 rende 5% ao ano a juros compostos por 3 anos. Qual o montante?",
+  options: [
+    { key: "A", text: "R$ 11.576,25", why: "Aplica a fórmula.", value: 11576.25 },
+    { key: "B", text: "R$ 11.500,00", why: "Juros simples.", value: 11500 },
+    { key: "C", text: "R$ 11.025,00", why: "Só dois anos.", value: 11025 },
+    { key: "D", text: "R$ 10.500,00", why: "Só um ano.", value: 10500 },
+  ],
+  answer: "A",
+  explanation: "M = C(1+i)^n.",
+  topic: "Juros compostos",
+  calculation: { expression: "10000*(1+0.05)^3", decimals: 2, unit: "R$" },
+  source: { chunk_id: 1, quote: "converte a energia da luz em energia química" },
+  ...overrides,
+});
+
+describe("calculation questions", () => {
+  it("accepts a question whose arithmetic the app confirms", () => {
+    expect(questionProblem(calc4(), "calculation_4")).toBeNull();
+  });
+
+  it.each([
+    [calc4({ calculation: null }), "calc_missing"],
+    [calc4({ calculation: { expression: "10000*", decimals: 2 } }), "calc_expression"],
+    [calc4({ answer: "B" }), "calc_mismatch"],
+    [
+      calc4({ options: calc4().options.map((o) => (o.key === "A" ? { ...o, value: 11500 } : o)) }),
+      "calc_duplicate_values",
+    ],
+    [
+      calc4({
+        options: calc4().options.map((o) => (o.key === "A" ? { ...o, value: undefined } : o)),
+      }),
+      "calc_missing_value",
+    ],
+  ] as const)("flags %#", (question, problem) => {
+    expect(questionProblem(question as QuestionOut, "calculation_4")).toBe(problem);
+  });
+
+  it("still applies the rules of a multiple choice question", () => {
+    expect(questionProblem(calc4({ options: calc4().options.slice(0, 3) }), "calculation_4")).toBe(
+      "wrong_option_count",
+    );
+    expect(questionProblem(calc4(), "calculation_5")).toBe("wrong_option_count");
+    expect(questionProblem(calc4(), "multiple_choice_4")).toBeNull();
+  });
+
+  it("stores the confirmed expression and adds the verified computation to the explanation", () => {
+    const payload = payloadFor(calc4());
+    expect(payload.calculation).toEqual({
+      expression: "10000*(1+0.05)^3",
+      decimals: 2,
+      unit: "R$",
+      result: 11576.25,
+    });
+    expect(payload.explanation).toContain(
+      "Conta conferida pelo app: 10000*(1+0.05)^3 = 11.576,25 R$",
+    );
+    expect(payload.options.every((o) => !("value" in o))).toBe(true);
+    expect(payloadFor(mc4()).calculation).toBeUndefined();
+  });
+
+  it("asks for calculation questions with their own instructions and reviewer", () => {
+    const messages = buildQuestionMessages("calculation_4", 2, golden.chunks, []);
+    expect(messages[0]?.content).toContain("calculation questions");
+    expect(messages[1]?.content).toContain('Question type "calculation" with exactly 4 options');
+    expect(buildJudgeMessages(golden.judge_items, true)[0]?.content).toContain(
+      "arithmetic is verified separately",
+    );
+    expect(buildJudgeMessages(golden.judge_items)[0]?.content).not.toContain("arithmetic");
+  });
+});
+
+describe("calculation runs (offline provider)", () => {
+  it("generates calculation questions the app has verified, and drops one whose number is wrong", async () => {
+    const provider = new FakeProvider({ promptTokens: 5, completionTokens: 5, costUsd: 0.01 });
+    const wrong = calc4({
+      statement: "Outra pergunta de cálculo com capital diferente?",
+      options: calc4().options.map((o) =>
+        o.key === "A" ? { ...o, value: 11600, text: "R$ 11.600,00" } : o,
+      ),
+    });
+    provider.script("QuestionBatch", { questions: [calc4(), wrong] });
+    provider.script("JudgeBatch", {
+      verdicts: [{ index: 0, supported: true, reason: "" }],
+    });
+    rig = generationRig({ provider });
+    const workspace = rig.core.registry.open(rig.workspaceId);
+    const run = workspace.connection.db
+      .insert(generationRun)
+      .values({ kind: "question", subtype: "calculation_4", model: "m", requested: 5 })
+      .returning()
+      .get();
+    const generator = new QuestionGenerator(
+      workspace.connection.db,
+      workspace.connection.sqlite,
+      provider,
+    );
+    const outcome = await generator.generateBatch({
+      runId: run.id,
+      profile: "calculation_4",
+      count: 2,
+      chunks: selectChunks(workspace.connection.db, rig.materialId),
+      model: "m",
+      judgeModel: "j",
+      remaining: () => 5,
+    });
+    expect(outcome).toMatchObject({ accepted: 1, invalid: 1 });
+    expect(outcome.log[0]?.reason).toBe("calc_mismatch");
+    const [stored] = workspace.connection.db.select().from(item).all();
+    expect(stored?.subtype).toBe("multiple_choice");
+    expect(JSON.parse(stored?.payloadJson ?? "{}").calculation.result).toBe(11576.25);
+  });
+
+  it("runs end to end with the scripted provider through the generation service", async () => {
+    rig = generationRig();
+    const generation = rig.core.generation(rig.workspaceId);
+    const started = generation.start({
+      materialId: rig.materialId,
+      subtype: "calculation_5",
+      quantity: 3,
+      kind: "question",
+    });
+    await rig.core.queue.wait(rig.workspaceId, started.jobId as number);
+    const items = rig.core.review(rig.workspaceId).list({ runId: started.id });
+    expect(items).toHaveLength(3);
+    expect(
+      items.every((entry) => entry.subtype === "multiple_choice" && entry.options.length === 5),
+    ).toBe(true);
+    expect(items.every((entry) => entry.back.includes("Conta conferida pelo app"))).toBe(true);
+  });
+});

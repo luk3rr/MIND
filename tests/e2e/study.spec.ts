@@ -170,3 +170,24 @@ test("practices generated questions and records the attempts (FR-9, FR-14)", asy
     data: { unseen: 1, retry: 1, answeredToday: 2, correctToday: 1 },
   });
 });
+
+test("generates calculation questions whose arithmetic the app confirmed (offline)", async () => {
+  current = await launch(profile(), { MIND_E2E_FAKE_LLM: "1" });
+  await prepare(current);
+  const { page } = current;
+  await generate(page, "question", "calculation_5", 2);
+  const runs = await page.evaluate(() => window.mind.invoke("generation:list", { workspaceId: 1 }));
+  const runId = Math.max(...(runs.ok ? runs.data.runs.map((run) => run.id) : [0]));
+  const listed = await page.evaluate(
+    (id) => window.mind.invoke("review:list", { workspaceId: 1, runId: id, status: "approved" }),
+    runId,
+  );
+  expect(listed.ok).toBe(true);
+  const calculations = (listed.ok ? listed.data.items : []).filter((entry) =>
+    entry.back.includes("Conta conferida pelo app"),
+  );
+  expect(calculations).toHaveLength(2);
+  expect(calculations.every((entry) => entry.options.length === 5)).toBe(true);
+  expect(calculations[0]?.back).toContain(" R$");
+  expect(calculations[0]?.back).toContain(",");
+});

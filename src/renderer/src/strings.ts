@@ -206,6 +206,8 @@ export const T = {
     certo_errado: "Certo ou errado",
     multiple_choice_4: "Múltipla escolha (4)",
     multiple_choice_5: "Múltipla escolha (5)",
+    calculation_4: "Cálculo (4 alternativas)",
+    calculation_5: "Cálculo (5 alternativas)",
   } as Record<string, string>,
   editStatement: "Enunciado",
   editComment: "Comentário",

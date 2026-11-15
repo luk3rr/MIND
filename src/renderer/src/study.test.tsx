@@ -271,7 +271,13 @@ describe("Generate page for questions", () => {
       within(profile)
         .getAllByRole("option")
         .map((o) => o.textContent),
-    ).toEqual(["Certo ou errado", "Múltipla escolha (4)", "Múltipla escolha (5)"]);
+    ).toEqual([
+      "Certo ou errado",
+      "Múltipla escolha (4)",
+      "Múltipla escolha (5)",
+      "Cálculo (4 alternativas)",
+      "Cálculo (5 alternativas)",
+    ]);
     await user.selectOptions(profile, "multiple_choice_4");
     await user.click(screen.getByRole("button", { name: "Gerar questões" }));
     expect(await screen.findByText("Na fila")).toBeVisible();

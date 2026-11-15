@@ -139,6 +139,8 @@ export function GeneratePage({
     | "certo_errado"
     | "multiple_choice_4"
     | "multiple_choice_5"
+    | "calculation_4"
+    | "calculation_5"
   >(
     (["qa", "cloze", "compare", "true_false"] as const).find((v) => v === training?.subtype) ??
       "qa",

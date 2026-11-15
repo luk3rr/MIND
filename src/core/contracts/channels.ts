@@ -82,6 +82,8 @@ const generationRequest = z
       "certo_errado",
       "multiple_choice_4",
       "multiple_choice_5",
+      "calculation_4",
+      "calculation_5",
     ]),
     quantity: z.number().int().min(1).max(200),
     kind: z.enum(["card", "question"]),

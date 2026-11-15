@@ -9,6 +9,7 @@ import { item, topic } from "../db/workspace-schema.js";
 import type { WorkspaceDb } from "../jobs/store.js";
 import type { Provider } from "../llm/provider.js";
 import { normalize, SourceChecker } from "../verification/source-checker.js";
+import { checkCalculation, formatNumber } from "./calc.js";
 import { cleanTopic, emptyOutcome, note } from "./cards.js";
 import type { BatchOutcome } from "./cards.js";
 import { Judge } from "./judge.js";
@@ -43,20 +44,38 @@ export function questionProblem(question: QuestionOut, profile: string): string 
   if (options.some((o) => !o.text.trim() || !o.why.trim())) return "empty_option";
   if (new Set(options.map((o) => normalize(o.text).text)).size !== options.length)
     return "duplicate_options";
-  return options.some((o) => o.key === question.answer) ? null : "bad_answer";
+  if (!options.some((o) => o.key === question.answer)) return "bad_answer";
+  if (wanted.calculation)
+    return checkCalculation(question.calculation, options, question.answer).problem;
+  return null;
 }
 
+/** The payload that is stored; a calculation question keeps the expression the app confirmed. */
 export function payloadFor(question: QuestionOut): QuestionPayload {
   const options =
     question.subtype === "certo_errado"
       ? CERTO_ERRADO_OPTIONS
       : question.options.map((o) => ({ key: o.key, text: o.text.trim(), why: o.why.trim() }));
-  return {
+  const payload: QuestionPayload = {
     statement: question.statement.trim(),
     options,
     answer: question.answer,
     explanation: question.explanation.trim(),
   };
+  const calculation = question.calculation;
+  const computed = calculation
+    ? checkCalculation(calculation, question.options, question.answer).computed
+    : null;
+  if (calculation && computed !== null) {
+    payload.calculation = {
+      expression: calculation.expression.trim(),
+      decimals: calculation.decimals,
+      unit: calculation.unit?.trim() || null,
+      result: Number(computed.toFixed(calculation.decimals)),
+    };
+    payload.explanation += `\n\nConta conferida pelo app: ${calculation.expression.trim()} = ${formatNumber(computed, calculation.decimals)}${calculation.unit?.trim() ? ` ${calculation.unit.trim()}` : ""}`;
+  }
+  return payload;
 }
 
 interface Candidate {
@@ -116,6 +135,7 @@ export class QuestionGenerator {
           answer: c.question.answer,
         })),
         request.judgeModel,
+        PROFILES[request.profile]?.calculation === true,
       );
       outcome.costUsd += verdict.costUsd;
       const kept: Candidate[] = [];

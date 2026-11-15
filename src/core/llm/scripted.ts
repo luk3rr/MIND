@@ -57,12 +57,43 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
     const prompt = messages.at(-1)?.content ?? "";
     const count = Number(/Create exactly (\d+) questions/.exec(prompt)?.[1] ?? 1);
     const choices = /exactly (\d) options/.exec(prompt)?.[1];
+    const calculation = prompt.includes('Question type "calculation"');
     const excerpts = parseExcerpts(prompt);
     const questions = Array.from({ length: count }, (_, index) => {
       const excerpt = excerpts[index % Math.max(excerpts.length, 1)] ?? { id: 0, text: "" };
       const quote = excerpt.text.slice(0, 60);
       const subject = excerpt.text.split(/\s+/).slice(0, 4).join(" ");
       const source = { chunk_id: excerpt.id, quote };
+      if (calculation) {
+        // A compound-interest problem whose numbers change with the question number.
+        const capital = 1000 * (index + 1);
+        const years = 2 + (index % 3);
+        const result = capital * 1.1 ** years;
+        const total = Number(choices ?? 4);
+        const keys = "ABCDE".slice(0, total).split("");
+        const values = keys.map((_, slot) => (slot === 0 ? result : result * (1 + slot * 0.07)));
+        const brl = (value: number): string =>
+          `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return {
+          subtype: "multiple_choice",
+          statement: `Um capital de R$ ${capital.toLocaleString("pt-BR")},00 rende 10% ao ano a juros compostos por ${years} anos (${index + 1}). Qual o montante?`,
+          options: keys.map((key, slot) => ({
+            key,
+            text: brl(values[slot] as number),
+            why: slot === 0 ? "Aplica a fórmula do trecho." : "Resultado de um erro de cálculo.",
+            value: Math.round((values[slot] as number) * 100) / 100,
+          })),
+          answer: "A",
+          explanation: `Montante = capital × (1 + taxa)^tempo, conforme o trecho ${excerpt.id}.`,
+          topic: "Juros compostos",
+          calculation: {
+            expression: `${capital}*(1+0.1)^${years}`,
+            decimals: 2,
+            unit: "R$",
+          },
+          source,
+        };
+      }
       if (!choices) {
         return {
           subtype: "certo_errado",

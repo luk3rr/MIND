@@ -20,10 +20,14 @@ export class Judge {
   constructor(private readonly provider: Provider) {}
 
   /** One verdict per item. A missing, repeated or out-of-range verdict counts against it. */
-  async judge(items: readonly JudgeItem[], model: string): Promise<JudgeResult> {
+  async judge(
+    items: readonly JudgeItem[],
+    model: string,
+    calculation = false,
+  ): Promise<JudgeResult> {
     if (items.length === 0) return { supported: [], reasons: [], costUsd: 0 };
     const { value, usage } = await this.provider.complete(
-      buildJudgeMessages(items),
+      buildJudgeMessages(items, calculation),
       judgeBatchSchema,
       {
         model,
