@@ -52,3 +52,38 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ github.token }}
+
+  windows:
+    # The release is created by the .deb job, so the installer is attached to the same one.
+    needs: deb
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Resolve the tag
+        id: tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          TAG="${RELEASE_TAG:-${GITHUB_REF_NAME}}"
+          echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
+      - run: pnpm install --frozen-lockfile
+      - name: Build the Windows installer
+        run: pnpm package:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mind-windows-installer
+          path: dist/MIND-Setup.exe
+      - name: Attach the installer to the GitHub Release
+        if: startsWith(steps.tag.outputs.TAG, 'v')
+        shell: bash
+        run: gh release upload "${{ steps.tag.outputs.TAG }}" dist/MIND-Setup.exe --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

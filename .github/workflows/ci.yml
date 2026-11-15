@@ -75,3 +75,29 @@ jobs:
         with:
           name: mind-deb
           path: dist/*.deb
+
+  package-windows:
+    runs-on: windows-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build the Windows installer
+        run: pnpm package:win
+      - name: Smoke tests against the unpacked Windows app
+        # The first Windows runs are informative: a failure here does not block the installer.
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $env:MIND_E2E_EXECUTABLE = (Resolve-Path "dist/win-unpacked/mind.exe").Path
+          pnpm exec playwright test tests/e2e/time.spec.ts tests/e2e/reader.spec.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mind-windows-installer
+          path: dist/MIND-Setup.exe

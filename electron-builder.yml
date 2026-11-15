@@ -14,16 +14,14 @@ directories:
 files:
   - out/**/*
   - package.json
-  # Keep only what the app needs at runtime: no native sources and no other platforms' binaries.
+  # Keep only what the app needs at runtime: no native sources and no browser runtime. The
+  # binaries of the other platforms are left out per target (see `linux.files` and `win.files`).
   - "!node_modules/better-sqlite3/{src,deps}/**"
-  - "!node_modules/better-sqlite3/prebuilds/{win32-*,darwin-*,linuxmusl-*,linux-arm64}.node"
-  - "!node_modules/better-sqlite3/lib/{win32-*,darwin-*,linuxmusl-*,linux-arm64}.js"
-  # Semantic search runs the model with onnxruntime-node; the browser runtime and the binaries
-  # of other platforms and architectures stay out of the package.
   - "!node_modules/onnxruntime-web/**"
-  - "!node_modules/onnxruntime-node/bin/napi-v3/{darwin,win32}/**"
-  - "!node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/**"
-  - "!node_modules/@img/*{musl,arm,arm64,darwin,win32,s390x,ppc64,riscv64}*/**"
+
+# better-sqlite3, onnxruntime-node and sharp ship N-API binaries for every platform, so nothing
+# is compiled at packaging time (which would also fail when packaging for another platform).
+npmRebuild: false
 
 asar: true
 # The native SQLite binding cannot be loaded from inside the asar archive.
@@ -40,6 +38,13 @@ asarUnpack:
   - node_modules/@img/**
 
 linux:
+  files:
+    - "!node_modules/better-sqlite3/prebuilds/{win32-*,darwin-*,linuxmusl-*,linux-arm64}.node"
+    - "!node_modules/better-sqlite3/lib/{win32-*,darwin-*,linuxmusl-*,linux-arm64}.js"
+    # Semantic search runs the model with onnxruntime-node; other platforms and architectures stay out.
+    - "!node_modules/onnxruntime-node/bin/napi-v3/{darwin,win32}/**"
+    - "!node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/**"
+    - "!node_modules/@img/*{musl,arm,arm64,darwin,win32,s390x,ppc64,riscv64}*/**"
   target:
     - target: deb
       arch:
@@ -66,3 +71,30 @@ deb:
   packageCategory: education
   fpm:
     - build/copyright=/usr/share/doc/mind/copyright
+
+win:
+  files:
+    - "!node_modules/better-sqlite3/prebuilds/{linux-*,linuxmusl-*,darwin-*,win32-arm64}.node"
+    - "!node_modules/better-sqlite3/lib/{linux-*,linuxmusl-*,darwin-*}.js"
+    - "!node_modules/onnxruntime-node/bin/napi-v3/{darwin,linux}/**"
+    - "!node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/**"
+    - "!node_modules/@img/*{musl,arm,arm64,darwin,linux,s390x,ppc64,riscv64}*/**"
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # A PNG of at least 256x256 is converted to the Windows icon at build time.
+  icon: build/icons/512x512.png
+
+nsis:
+  # A per-user installer: no administrator rights, with the usual wizard and shortcuts.
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: MIND
+  # Uninstalling never removes the user's data (workspaces, settings, key).
+  deleteAppDataOnUninstall: false
+  # A fixed name, so releases/latest/download/MIND-Setup.exe always points to the newest one.
+  artifactName: MIND-Setup.${ext}

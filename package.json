@@ -20,6 +20,7 @@
     "e2e": "electron-vite build && playwright test",
     "db:generate": "drizzle-kit generate --config drizzle.app.config.ts && drizzle-kit generate --config drizzle.workspace.config.ts",
     "package": "umask 022 && electron-vite build && electron-builder --linux deb --publish never",
+    "package:win": "electron-vite build && electron-builder --win nsis --publish never",
     "package:dir": "umask 022 && electron-vite build && electron-builder --linux --dir",
     "sm1": "tsx scripts/sm1.ts"
   },
