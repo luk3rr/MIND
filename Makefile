@@ -7,7 +7,7 @@ PNPM := corepack pnpm
 
 LOG := $(HOME)/.config/mind/logs/mind.log
 
-.PHONY: help install dev dev-debug logs check test e2e package verify-deb install-deb clean
+.PHONY: help install dev dev-debug logs check fmt test e2e package verify-deb install-deb clean
 
 help: ## Show the available commands
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[35m%-12s\033[0m %s\n", $$1, $$2}'
@@ -26,6 +26,9 @@ logs: ## Follow the app log (~/.config/mind/logs/mind.log), also written when op
 
 check: ## Lint, formatting, types and unit tests with coverage
 	$(PNPM) lint && $(PNPM) format:check && $(PNPM) typecheck && $(PNPM) test --coverage
+
+fmt: ## Format all files with Prettier (what check only verifies)
+	$(PNPM) format
 
 test: ## Unit tests only
 	$(PNPM) test
