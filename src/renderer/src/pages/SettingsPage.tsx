@@ -12,6 +12,10 @@ import { StudySettingsForm } from "../components/StudySettingsForm.js";
 import { TimeSettingsForm } from "../components/TimeSettingsForm.js";
 import { UpdateSettings } from "../components/UpdateSettings.js";
 import { T } from "../strings.js";
+import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
+
+/** How many calls of the month one page shows. */
+const CALLS_PER_PAGE = 15;
 
 function CostPanel({ month }: { month: string }) {
   const [yearText = "", monthText = ""] = month.split("-");
@@ -19,6 +23,12 @@ function CostPanel({ month }: { month: string }) {
     year: Number(yearText),
     month: Number(monthText),
   });
+  const lines = usePagedList(
+    state.status === "ready" ? state.data.lines : [],
+    CALLS_PER_PAGE,
+    (line) => `${line.at} ${line.model} ${line.purpose}`,
+    month,
+  );
   return (
     <section className="card stack" aria-labelledby="cost-title">
       <h2 id="cost-title">{T.costLines}</h2>
@@ -26,26 +36,30 @@ function CostPanel({ month }: { month: string }) {
         <p className="muted">{T.costNone}</p>
       )}
       {state.status === "ready" && state.data.lines.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Modelo</th>
-              <th>Uso</th>
-              <th>{T.usd}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state.data.lines.map((line) => (
-              <tr key={`${line.at}-${line.model}-${line.purpose}`}>
-                <td>{line.at.slice(0, 16).replace("T", " ")}</td>
-                <td>{line.model}</td>
-                <td>{line.purpose}</td>
-                <td>{line.costUsd.toFixed(4)}</td>
+        <>
+          <ListSearch list={lines} label={T.listSearchCalls} />
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Modelo</th>
+                <th>Uso</th>
+                <th>{T.usd}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {lines.pageItems.map((line) => (
+                <tr key={`${line.at}-${line.model}-${line.purpose}`}>
+                  <td>{line.at.slice(0, 16).replace("T", " ")}</td>
+                  <td>{line.model}</td>
+                  <td>{line.purpose}</td>
+                  <td>{line.costUsd.toFixed(4)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pager list={lines} />
+        </>
       )}
     </section>
   );

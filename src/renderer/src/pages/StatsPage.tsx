@@ -26,6 +26,7 @@ import { Dialog } from "../components/Dialog.js";
 import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
 import { T } from "../strings.js";
+import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 
 type Overview = OutputOf<"stats:overview">;
 type TopicStat = Overview["topics"][number];
@@ -98,11 +99,19 @@ type Action =
   | null;
 
 /** Goal, streak, retention, activity and accuracy per topic, with topic management. */
+/** How many topics of the statistics table one page shows. */
+const TOPICS_PER_PAGE = 10;
+
 export function StatsPage({ workspaceId }: { workspaceId: number }) {
   const { state, reload } = useInvoke("stats:overview", { workspaceId });
   const [action, setAction] = useState<Action>(null);
   const [mergeTarget, setMergeTarget] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const topics = usePagedList(
+    state.status === "ready" ? state.data.topics : [],
+    TOPICS_PER_PAGE,
+    (stat) => stat.name ?? T.statsNoTopic,
+  );
   const close = (): void => {
     setAction(null);
     setError(null);
@@ -223,6 +232,7 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
 
           <div className="card">
             <h2>{T.statsTopics}</h2>
+            <ListSearch list={topics} label={T.listSearchTopics} />
             <table aria-label={T.statsTopics}>
               <thead>
                 <tr>
@@ -233,7 +243,7 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
                 </tr>
               </thead>
               <tbody>
-                {state.data.topics.map((stat: TopicStat) => (
+                {topics.pageItems.map((stat: TopicStat) => (
                   <tr key={stat.topicId ?? "none"}>
                     <td>{stat.name ?? T.statsNoTopic}</td>
                     <td>{stat.events}</td>
@@ -292,6 +302,7 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
                 ))}
               </tbody>
             </table>
+            <Pager list={topics} />
           </div>
 
           {action?.kind === "goal" && (

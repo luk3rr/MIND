@@ -945,3 +945,23 @@ tr.needs-review .btn .pill {
   align-items: center;
   min-height: 28px;
 }
+
+.list-search input {
+  box-sizing: border-box;
+  width: min(360px, 100%);
+  height: 40px;
+  padding: 9px 12px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}

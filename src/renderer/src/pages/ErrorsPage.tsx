@@ -9,8 +9,12 @@ import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
+import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 
 /** Everything the user got wrong, with a button that turns a missed question into a card. */
+/** How many entries of the error notebook one page shows. */
+const ERRORS_PER_PAGE = 10;
+
 export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
   const [topicId, setTopicId] = useState<number | undefined>(undefined);
   const { state, reload } = useInvoke("errors:list", {
@@ -20,6 +24,12 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
   const retries = useInvoke("practice:counts", { workspaceId });
   const { navigate } = useRouter();
   const retryCount = retries.state.status === "ready" ? retries.state.data.retry : 0;
+  const list = usePagedList(
+    state.status === "ready" ? state.data.entries : [],
+    ERRORS_PER_PAGE,
+    (entry) => `${entry.front} ${entry.topic ?? ""} ${entry.sourceTitle}`,
+    topicId,
+  );
 
   return (
     <section aria-labelledby="errors-title">
@@ -63,8 +73,9 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
               <p className="muted">{T.errorsEmpty}</p>
             </div>
           )}
+          <ListSearch list={list} label={T.listSearchErrors} />
           <ul className="stack" style={{ listStyle: "none", padding: 0 }}>
-            {state.data.entries.map((entry) => (
+            {list.pageItems.map((entry) => (
               <li key={entry.itemId} className="card">
                 <p style={{ whiteSpace: "pre-wrap" }}>
                   <strong>{entry.front}</strong>
@@ -80,6 +91,7 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
               </li>
             ))}
           </ul>
+          <Pager list={list} />
           <div className="card stack">
             <p className="muted">{T.errorsActionsHint}</p>
             <div className="row">

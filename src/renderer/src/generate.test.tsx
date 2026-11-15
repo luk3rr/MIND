@@ -352,6 +352,35 @@ describe("Generate page: review state of each run", () => {
   });
 });
 
+describe("Generate page: many runs", () => {
+  it("shows ten runs per page, reaches the old ones and searches them", async () => {
+    const runs = Array.from({ length: 25 }, (_, index) =>
+      run({
+        id: 25 - index,
+        createdAt: `2026-03-${String(25 - index).padStart(2, "0")}T10:00:00.000Z`,
+        kind: index % 5 === 0 ? "question" : "card",
+        subtype: index % 5 === 0 ? "certo_errado" : "qa",
+      }),
+    );
+    open("/w/1/generate", { runs });
+    const user = userEvent.setup();
+    const table = await screen.findByRole("table");
+    expect(within(table).getAllByRole("row")).toHaveLength(11);
+    expect(screen.getByRole("status")).toHaveTextContent("1–10 de 25");
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    expect(screen.getByRole("status")).toHaveTextContent("21–25 de 25");
+    expect(screen.getByText("2026-03-01 10:00")).toBeVisible();
+    await user.type(screen.getByRole("searchbox", { name: "Buscar nas gerações" }), "certo");
+    // Five runs are questions: they fit one page, so the pager goes away.
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(6);
+    expect(screen.queryByRole("navigation", { name: "Paginação" })).toBeNull();
+    await user.clear(screen.getByRole("searchbox", { name: "Buscar nas gerações" }));
+    await user.type(screen.getByRole("searchbox", { name: "Buscar nas gerações" }), "2026-03-07");
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(2);
+  });
+});
+
 describe("Generate page: runs table", () => {
   it("shows the material, the pages and the kind of each run", async () => {
     open("/w/1/generate", {
@@ -371,6 +400,32 @@ describe("Generate page: runs table", () => {
     expect(rows[1]).toHaveTextContent("Questões");
     expect(rows[1]).toHaveTextContent("Certo ou errado");
     expect(rows[2]).toHaveTextContent("a partir da pág. 7");
+  });
+});
+
+describe("Review page: many items", () => {
+  it("shows ten items per page and searches their text", async () => {
+    const items = Array.from({ length: 23 }, (_, index) =>
+      item(index + 1, {
+        front: `Pergunta ${index + 1}?`,
+        topic: index < 3 ? "Células" : "Genética",
+      }),
+    );
+    open("/w/1/generate/1", { runs: [run()], items });
+    const user = userEvent.setup();
+    await screen.findByText("Pergunta 1?");
+    expect(screen.getAllByRole("article")).toHaveLength(10);
+    expect(screen.getByRole("status")).toHaveTextContent("1–10 de 23");
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+    await user.type(screen.getByRole("searchbox", { name: "Buscar nos itens" }), "células");
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+    // Changing the tab clears the search: coming back shows every draft again.
+    await user.click(screen.getByRole("tab", { name: /Aprovados/ }));
+    await user.click(screen.getByRole("tab", { name: /Rascunhos/ }));
+    expect(screen.getByRole("searchbox", { name: "Buscar nos itens" })).toHaveValue("");
+    expect(screen.getAllByRole("article")).toHaveLength(10);
   });
 });
 

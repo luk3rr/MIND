@@ -609,7 +609,8 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           }
           state.overview.summary.goal = input.dailyGoal;
         }
-        if (input.learningSteps !== undefined && !/^(\d+[mhd]\s*)*$/.test(input.learningSteps)) {
+        const steps = input.learningSteps?.trim().split(/\s+/).filter(Boolean) ?? [];
+        if (steps.some((step) => !/^\d+[mhd]$/.test(step))) {
           return failure(
             "VALIDATION_ERROR",
             'Use passos como "1m 10m" (m = minutos, h = horas, d = dias), no máximo 5.',

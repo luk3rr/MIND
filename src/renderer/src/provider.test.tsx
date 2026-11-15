@@ -251,6 +251,41 @@ describe("Settings page", () => {
     expect(screen.getByText("a/gen", { selector: "td" })).toBeVisible();
   });
 
+  it("pages and searches the calls of the month", async () => {
+    const lines = Array.from({ length: 40 }, (_, index) => ({
+      at: `2026-03-${String((index % 28) + 1).padStart(2, "0")}T10:00:00.000Z`,
+      provider: "openrouter",
+      model: index % 2 === 0 ? "a/gen" : "b/judge",
+      purpose: index % 2 === 0 ? "generation" : "judge",
+      promptTokens: 10,
+      completionTokens: 5,
+      costUsd: 0.001 * (index + 1),
+    }));
+    await open("/w/1/settings", {
+      ...base,
+      apiKey: "k",
+      keySource: "stored",
+      consentGiven: true,
+      lines,
+    });
+    const user = userEvent.setup();
+    const section = (await screen.findByRole("heading", { name: "Chamadas do mês" })).closest(
+      "section",
+    ) as HTMLElement;
+    // The heading shows before the calls load: wait for the pager, which needs them.
+    expect(await within(section).findByRole("status")).toHaveTextContent("1–15 de 40");
+    expect(within(section).getAllByRole("row")).toHaveLength(16);
+    await user.click(within(section).getByRole("button", { name: "Próxima" }));
+    await user.click(within(section).getByRole("button", { name: "Próxima" }));
+    expect(within(section).getByRole("status")).toHaveTextContent("31–40 de 40");
+    await user.type(
+      within(section).getByRole("searchbox", { name: "Buscar nas chamadas" }),
+      "judge",
+    );
+    expect(within(section).getAllByRole("row")).toHaveLength(16);
+    expect(within(section).getByRole("status")).toHaveTextContent("1–15 de 20");
+  });
+
   it("says when there were no calls this month", async () => {
     await open("/w/1/settings", { ...base, apiKey: "k", keySource: "stored", consentGiven: true });
     expect(await screen.findByText("Nenhuma chamada neste mês.")).toBeVisible();

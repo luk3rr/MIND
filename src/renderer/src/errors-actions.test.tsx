@@ -31,6 +31,28 @@ function open(initial: Partial<FakeState> = {}) {
   return fake;
 }
 
+describe("Errors notebook: many entries", () => {
+  it("pages and searches the entries", async () => {
+    const entries = Array.from({ length: 14 }, (_, index) => ({
+      ...entry,
+      itemId: index + 1,
+      front: `Pergunta ${index + 1}?`,
+      topic: index % 2 === 0 ? "Macroeconomia" : "Microeconomia",
+    }));
+    open({ errorEntries: entries });
+    const user = userEvent.setup();
+    expect(await screen.findByText("Pergunta 1?")).toBeVisible();
+    const shown = () => screen.getAllByText(/^Pergunta \d+\?$/);
+    expect(shown()).toHaveLength(10);
+    expect(screen.getByRole("status")).toHaveTextContent("1–10 de 14");
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    expect(shown()).toHaveLength(4);
+    await user.type(screen.getByRole("searchbox", { name: "Buscar nos erros" }), "micro");
+    expect(shown()).toHaveLength(7);
+    expect(screen.queryByRole("navigation", { name: "Paginação" })).toBeNull();
+  });
+});
+
 describe("Errors notebook actions", () => {
   it("offers to redo the wrong questions and to study the notebook cards", async () => {
     open({ errorEntries: [entry], practiceRetry: 2 });

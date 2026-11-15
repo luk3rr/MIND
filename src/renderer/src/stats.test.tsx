@@ -109,6 +109,26 @@ const topics = [
   { id: 2, name: "Genética", cards: 1, questions: 0 },
 ];
 
+describe("Stats page: many topics", () => {
+  it("pages and searches the topic table", async () => {
+    const many = Array.from({ length: 23 }, (_, index) =>
+      topic(index + 1, `Tópico ${String(index + 1).padStart(2, "0")}`, 0.5, 5),
+    );
+    open("/w/1/stats", { overview: { ...overview(), topics: many }, topicList: [] });
+    const user = userEvent.setup();
+    const table = await screen.findByRole("table", { name: "Acerto por tópico" });
+    expect(within(table).getAllByRole("row")).toHaveLength(11);
+    const card = table.closest(".card") as HTMLElement;
+    expect(within(card).getByRole("status")).toHaveTextContent("1–10 de 23");
+    await user.click(within(card).getByRole("button", { name: "Próxima" }));
+    await user.click(within(card).getByRole("button", { name: "Próxima" }));
+    expect(within(card).getByText("Tópico 23")).toBeVisible();
+    await user.type(within(card).getByRole("searchbox", { name: "Buscar tópicos" }), "tópico 1");
+    // 10, 11, ..., 19 and 01..: "tópico 1" matches 10 to 19.
+    expect(within(card).getAllByRole("row")).toHaveLength(11);
+  });
+});
+
 describe("Stats page (FR-16)", () => {
   it("shows the summary, the streaks and the goal", async () => {
     open("/w/1/stats", { overview: overview(), topicList: topics });

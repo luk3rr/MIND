@@ -13,16 +13,34 @@ import { clozePlain } from "../math.js";
 import { BackLink } from "../components/BackLink.js";
 import { T } from "../strings.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
+import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 import { ItemActions } from "../components/ItemActions.js";
 
 type Item = OutputOf<"review:list">["items"][number];
 type Status = "draft" | "approved" | "discarded";
+
+/** How many items of a run one page of the review shows (each one is a tall card). */
+const ITEMS_PER_PAGE = 10;
 
 /** Review of one generation run: each item next to the quote that supports it. */
 export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId: number }) {
   const [status, setStatus] = useState<Status>("draft");
   const { state, reload } = useInvoke("review:list", { workspaceId, runId, status });
   const [editing, setEditing] = useState<Item | null>(null);
+  const list = usePagedList(
+    state.status === "ready" ? state.data.items : [],
+    ITEMS_PER_PAGE,
+    (entry) =>
+      [
+        entry.front,
+        entry.back,
+        entry.topic ?? "",
+        entry.quote,
+        entry.sourceTitle,
+        ...entry.options.map((option) => option.text),
+      ].join(" "),
+    status,
+  );
 
   const act = (channel: "review:approve" | "review:discard", id: number): void => {
     void window.mind.invoke(channel, { workspaceId, ids: [id] }).then(reload);
@@ -72,8 +90,9 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
             )}
           </div>
           {state.data.items.length === 0 && <p className="muted">{T.nothingHere}</p>}
+          <ListSearch list={list} label={T.listSearchItems} />
           <div className="stack">
-            {state.data.items.map((item) => (
+            {list.pageItems.map((item) => (
               <article key={item.id} className="card">
                 <p className="muted">
                   {item.kind === "question"
@@ -172,6 +191,7 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
               </article>
             ))}
           </div>
+          <Pager list={list} />
         </>
       )}
       {editing && (

@@ -12,6 +12,7 @@ import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
 import { materialPath, useRouter, readerPath } from "../router.js";
 import { T } from "../strings.js";
+import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 
 type Material = OutputOf<"material:list">["materials"][number];
@@ -50,6 +51,9 @@ function StatusCell({ material }: { material: Material }) {
 }
 
 /** The library: import files, follow the progress, search the text and open a preview. */
+/** How many materials one page of the library shows. */
+const MATERIALS_PER_PAGE = 10;
+
 export function LibraryPage({ workspaceId }: { workspaceId: number }) {
   const { navigate } = useRouter();
   const { state, reload } = useInvoke("material:list", { workspaceId });
@@ -62,6 +66,11 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<OutputOf<"material:search">["hits"] | null>(null);
 
+  const list = usePagedList(
+    state.status === "ready" ? state.data.materials : [],
+    MATERIALS_PER_PAGE,
+    (material) => `${material.title} ${material.kind} ${material.filename}`,
+  );
   const anyActive =
     state.status === "ready" && state.data.materials.some((m) => ACTIVE.has(m.status));
   useEffect(() => {
@@ -198,6 +207,7 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
       )}
       {state.status === "ready" && state.data.materials.length > 0 && (
         <div className="card">
+          <ListSearch list={list} label={T.listSearchMaterials} />
           <table>
             <thead>
               <tr>
@@ -210,7 +220,7 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
               </tr>
             </thead>
             <tbody>
-              {state.data.materials.map((material) => (
+              {list.pageItems.map((material) => (
                 <tr key={material.id}>
                   <td>
                     <button
@@ -283,6 +293,7 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
               ))}
             </tbody>
           </table>
+          <Pager list={list} />
         </div>
       )}
       {askUrl && (

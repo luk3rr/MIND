@@ -12,6 +12,7 @@ import { sectionPath, useRouter } from "../router.js";
 import type { Route } from "../router.js";
 import { T } from "../strings.js";
 import { SearchCombobox } from "../components/SearchCombobox.js";
+import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 
 type Run = OutputOf<"generation:list">["runs"][number];
 const ACTIVE = new Set(["queued", "running"]);
@@ -73,6 +74,9 @@ function RunItems({ run }: { run: Run }) {
   );
 }
 
+/** How many generations one page of the table shows. */
+const RUNS_PER_PAGE = 10;
+
 /** A finished run with drafts that no one has approved or discarded yet. */
 function needsReview(run: Run): boolean {
   return !ACTIVE.has(run.status) && run.pending > 0;
@@ -111,90 +115,105 @@ function RunsTable({
   onChange: () => void;
 }) {
   const { navigate } = useRouter();
+  const list = usePagedList(runs, RUNS_PER_PAGE, (run) =>
+    [
+      run.createdAt,
+      run.materialId !== null ? materials.get(run.materialId) : null,
+      run.topicId !== null ? topics.get(run.topicId) : null,
+      run.kind === "question" ? T.kindQuestions : T.kindCards,
+      T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype,
+      T.runStatus[run.status] ?? run.status,
+      pagesText(run),
+    ].join(" "),
+  );
   if (runs.length === 0) return <p className="muted">{T.runsNone}</p>;
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>{T.runMaterial}</th>
-          <th>{T.runType}</th>
-          <th>{T.materialStatus}</th>
-          <th>Itens</th>
-          <th>{T.usd}</th>
-          <th />
-        </tr>
-      </thead>
-      <tbody>
-        {runs.map((run) => (
-          <tr key={run.id} className={needsReview(run) ? "needs-review" : undefined}>
-            <td>{run.createdAt.slice(0, 16).replace("T", " ")}</td>
-            <td>
-              {run.topicId !== null && run.materialId === null ? (
-                <>
-                  {T.trainRun}: {topics.get(run.topicId) ?? run.topicId}
-                </>
-              ) : (
-                <>
-                  {run.materialId !== null
-                    ? (materials.get(run.materialId) ?? T.runMaterialGone)
-                    : T.runMaterialGone}
-                  <br />
-                  <span className="muted">{pagesText(run)}</span>
-                </>
-              )}
-            </td>
-            <td>
-              {run.kind === "question" ? T.kindQuestions : T.kindCards}
-              <br />
-              <span className="muted">
-                {T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype}
-              </span>
-            </td>
-            <td>
-              <span className="pill">{T.runStatus[run.status] ?? run.status}</span>
-              {run.progress !== null && (
-                <progress
-                  className="goal-bar"
-                  max={1}
-                  value={run.progress}
-                  aria-label={`${T.materialStatus}: ${Math.round(run.progress * 100)}%`}
-                />
-              )}
-              {run.errorDetail && <p className="muted">{run.errorDetail}</p>}
-            </td>
-            <td>
-              <RunItems run={run} />
-            </td>
-            <td>{run.costUsd.toFixed(4)}</td>
-            <td>
-              {ACTIVE.has(run.status) ? (
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={() => {
-                    void window.mind
-                      .invoke("generation:cancel", { workspaceId, runId: run.id })
-                      .then(onChange);
-                  }}
-                >
-                  {T.cancelRun}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={needsReview(run) ? "btn" : "btn ghost"}
-                  onClick={() => navigate(runPath(workspaceId, run.id))}
-                >
-                  {run.pending === 0 && run.generated > 0 ? T.reviewed : T.review}
-                  {needsReview(run) && <span className="pill"> {run.pending}</span>}
-                </button>
-              )}
-            </td>
+    <>
+      <ListSearch list={list} label={T.listSearchRuns} />
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>{T.runMaterial}</th>
+            <th>{T.runType}</th>
+            <th>{T.materialStatus}</th>
+            <th>Itens</th>
+            <th>{T.usd}</th>
+            <th />
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {list.pageItems.map((run) => (
+            <tr key={run.id} className={needsReview(run) ? "needs-review" : undefined}>
+              <td>{run.createdAt.slice(0, 16).replace("T", " ")}</td>
+              <td>
+                {run.topicId !== null && run.materialId === null ? (
+                  <>
+                    {T.trainRun}: {topics.get(run.topicId) ?? run.topicId}
+                  </>
+                ) : (
+                  <>
+                    {run.materialId !== null
+                      ? (materials.get(run.materialId) ?? T.runMaterialGone)
+                      : T.runMaterialGone}
+                    <br />
+                    <span className="muted">{pagesText(run)}</span>
+                  </>
+                )}
+              </td>
+              <td>
+                {run.kind === "question" ? T.kindQuestions : T.kindCards}
+                <br />
+                <span className="muted">
+                  {T.cardTypes[run.subtype] ?? T.profiles[run.subtype] ?? run.subtype}
+                </span>
+              </td>
+              <td>
+                <span className="pill">{T.runStatus[run.status] ?? run.status}</span>
+                {run.progress !== null && (
+                  <progress
+                    className="goal-bar"
+                    max={1}
+                    value={run.progress}
+                    aria-label={`${T.materialStatus}: ${Math.round(run.progress * 100)}%`}
+                  />
+                )}
+                {run.errorDetail && <p className="muted">{run.errorDetail}</p>}
+              </td>
+              <td>
+                <RunItems run={run} />
+              </td>
+              <td>{run.costUsd.toFixed(4)}</td>
+              <td>
+                {ACTIVE.has(run.status) ? (
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => {
+                      void window.mind
+                        .invoke("generation:cancel", { workspaceId, runId: run.id })
+                        .then(onChange);
+                    }}
+                  >
+                    {T.cancelRun}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={needsReview(run) ? "btn" : "btn ghost"}
+                    onClick={() => navigate(runPath(workspaceId, run.id))}
+                  >
+                    {run.pending === 0 && run.generated > 0 ? T.reviewed : T.review}
+                    {needsReview(run) && <span className="pill"> {run.pending}</span>}
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Pager list={list} />
+    </>
   );
 }
 

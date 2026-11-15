@@ -42,6 +42,27 @@ function openLibrary(initial: Partial<FakeState> = {}) {
   return fake;
 }
 
+describe("library with many materials", () => {
+  it("pages the table and filters it by title", async () => {
+    const materials = Array.from({ length: 13 }, (_, index) =>
+      material({
+        id: index + 1,
+        title: index % 3 === 0 ? `Resumo ${index + 1}` : `Apostila ${index + 1}`,
+        filename: `arquivo-${index + 1}.pdf`,
+      }),
+    );
+    openLibrary({ materials });
+    const user = userEvent.setup();
+    const table = await screen.findByRole("table");
+    expect(within(table).getAllByRole("row")).toHaveLength(11);
+    expect(screen.getByRole("status")).toHaveTextContent("1–10 de 13");
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(4);
+    await user.type(screen.getByRole("searchbox", { name: "Filtrar materiais" }), "resumo");
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(6);
+  });
+});
+
 describe("library routes", () => {
   it("parses a material preview with an optional chunk", () => {
     expect(parseRoute("/w/1/library/5")).toEqual({
