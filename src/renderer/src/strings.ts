@@ -223,6 +223,13 @@ export const T = {
   generateNoMaterial: "Importe e aguarde a indexação de um material na Biblioteca.",
   generatePageFrom: "Da página",
   generatePageTo: "Até a página",
+  generatePageFromPlaceholder: "início",
+  generatePageToPlaceholder: "fim",
+  generatePagesHint: (pageCount: number | null) =>
+    pageCount === null
+      ? "Opcional: deixe em branco para usar o material inteiro. Digite só números."
+      : `Opcional: deixe em branco para usar o material inteiro. Digite só números, de 1 a ${pageCount}.`,
+  generateQuantityHint: (max: number) => `Só números, de 1 a ${max}.`,
   generateType: "Tipo de card",
   runType: "Tipo",
   generateQuantity: "Quantidade",

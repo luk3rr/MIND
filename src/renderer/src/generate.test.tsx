@@ -171,6 +171,60 @@ describe("Generate page", () => {
     );
   });
 
+  it("says the page range is optional and takes only numbers, and so does the quantity", async () => {
+    const { invoke } = open("/w/1/generate");
+    const user = userEvent.setup();
+    expect(
+      await screen.findByText(
+        "Opcional: deixe em branco para usar o material inteiro. Digite só números, de 1 a 10.",
+      ),
+    ).toBeVisible();
+    const from = screen.getByLabelText("Da página");
+    const to = screen.getByLabelText("Até a página");
+    const quantity = screen.getByLabelText("Quantidade");
+    expect(from).toHaveAttribute("placeholder", "início");
+    expect(to).toHaveAttribute("placeholder", "10");
+    expect(from).toHaveAccessibleDescription(/deixe em branco/);
+    expect(quantity).toHaveAccessibleDescription("Só números, de 1 a 60.");
+
+    await user.type(from, "a1b-2 e+");
+    expect(from).toHaveValue("12");
+    await user.click(to);
+    await user.paste("  7 páginas!");
+    expect(to).toHaveValue("7");
+    await user.clear(quantity);
+    await user.type(quantity, "1x5.0");
+    expect(quantity).toHaveValue("150");
+    await user.type(quantity, "9");
+    expect(quantity).toHaveValue("150");
+
+    await user.clear(quantity);
+    await user.type(quantity, "12");
+    await user.click(screen.getByRole("button", { name: "Gerar cards" }));
+    await screen.findByText("Na fila");
+    expect(invoke).toHaveBeenCalledWith(
+      "generation:start",
+      expect.objectContaining({ pageFrom: 12, pageTo: 7, quantity: 12 }),
+    );
+  });
+
+  it("leaves the page range out of the request when it is blank, and the hint follows the kind", async () => {
+    const { invoke } = open("/w/1/generate");
+    const user = userEvent.setup();
+    await screen.findByLabelText("Da página");
+    await user.selectOptions(screen.getByLabelText("O que gerar"), "question");
+    expect(screen.getByLabelText("Quantidade")).toHaveAccessibleDescription(
+      "Só números, de 1 a 30.",
+    );
+    await user.click(screen.getByRole("button", { name: "Gerar questões" }));
+    await waitFor(() =>
+      expect(invoke.mock.calls.some(([channel]) => channel === "generation:start")).toBe(true),
+    );
+    const call = invoke.mock.calls.find(([channel]) => channel === "generation:start");
+    expect(call?.[1]).not.toHaveProperty("pageFrom");
+    expect(call?.[1]).not.toHaveProperty("pageTo");
+  });
+
   it("says when the cost cannot be estimated", async () => {
     open("/w/1/generate", { estimateUsd: null });
     expect(await screen.findByText(/Custo estimado indisponível/)).toBeVisible();

@@ -19,6 +19,14 @@ export function runPath(workspaceId: number, runId: number): string {
   return `${sectionPath(workspaceId, "generate")}/${runId}`;
 }
 
+/** Keeps only the digits, so a number field cannot hold letters, signs or spaces. */
+function digits(value: string, max: number): string {
+  return value.replace(/\D/g, "").slice(0, max);
+}
+
+/** The most items one run may ask for, as the core allows. */
+const MAX_ITEMS = { card: 60, question: 30 } as const;
+
 /** The reason of one discarded item, in Portuguese; the reviewer's own words follow its prefix. */
 function reasonText(reason: string): string {
   if (reason.startsWith("unsupported:")) {
@@ -341,8 +349,12 @@ export function GeneratePage({
                 <input
                   id="gen-from"
                   inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={5}
+                  placeholder={T.generatePageFromPlaceholder}
+                  aria-describedby="gen-pages-hint"
                   value={pageFrom}
-                  onChange={(event) => setPageFrom(event.target.value)}
+                  onChange={(event) => setPageFrom(digits(event.target.value, 5))}
                 />
                 {errors["pageFrom"] && (
                   <p className="field-error" role="alert">
@@ -355,8 +367,15 @@ export function GeneratePage({
                 <input
                   id="gen-to"
                   inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={5}
+                  placeholder={
+                    indexed.find((entry) => entry.id === selected)?.pageCount?.toString() ??
+                    T.generatePageToPlaceholder
+                  }
+                  aria-describedby="gen-pages-hint"
                   value={pageTo}
-                  onChange={(event) => setPageTo(event.target.value)}
+                  onChange={(event) => setPageTo(digits(event.target.value, 5))}
                 />
                 {errors["pageTo"] && (
                   <p className="field-error" role="alert">
@@ -365,6 +384,13 @@ export function GeneratePage({
                 )}
               </div>
             </div>
+          )}
+          {trainTopic === null && (
+            <p id="gen-pages-hint" className="muted">
+              {T.generatePagesHint(
+                indexed.find((entry) => entry.id === selected)?.pageCount ?? null,
+              )}
+            </p>
           )}
           <div className="row">
             <div className="field">
@@ -403,9 +429,15 @@ export function GeneratePage({
               <input
                 id="gen-quantity"
                 inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={3}
+                aria-describedby="gen-quantity-hint"
                 value={quantity}
-                onChange={(event) => setQuantity(event.target.value)}
+                onChange={(event) => setQuantity(digits(event.target.value, 3))}
               />
+              <p id="gen-quantity-hint" className="muted">
+                {T.generateQuantityHint(MAX_ITEMS[kind])}
+              </p>
               {errors["quantity"] && (
                 <p className="field-error" role="alert">
                   {errors["quantity"]}
