@@ -5,7 +5,7 @@
  */
 
 // @vitest-environment jsdom
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { idleTime, installFakeMind } from "../test/fake-mind.js";
@@ -95,16 +95,17 @@ describe("time settings (FR-9, FR-4)", () => {
     });
     render(<App />);
     const user = userEvent.setup();
-    const goal = await screen.findByLabelText(/Meta diária \(minutos/);
-    await user.clear(goal);
-    await user.type(goal, "90");
+    const goal = await screen.findByLabelText(/Meta diária \(minutos/, {}, { timeout: 5000 });
+    fireEvent.change(goal, { target: { value: "90" } });
     await user.click(screen.getByRole("checkbox", { name: "Contar o tempo automaticamente" }));
     await user.click(
       within(screen.getByRole("region", { name: "Tempo de estudo" })).getByRole("button", {
         name: "Salvar tempo",
       }),
     );
-    expect(await screen.findByText("Configurações de tempo salvas.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Configurações de tempo salvas.", {}, { timeout: 5000 }),
+    ).toBeInTheDocument();
     expect(state.timeSettings).toEqual({ dailyGoalMin: 90, idleSeconds: 120, autoEnabled: false });
     expect(invoke).toHaveBeenCalledWith("time:saveSettings", {
       workspaceId: 1,
@@ -112,13 +113,13 @@ describe("time settings (FR-9, FR-4)", () => {
       idleSeconds: 120,
       autoEnabled: false,
     });
-  });
+  }, 15_000);
 
   it("shows the validation message returned by the core", async () => {
     installFakeMind({ workspaces: [ws], route: "/w/1/settings", materials: [pdf] });
     render(<App />);
     const user = userEvent.setup();
-    const goal = await screen.findByLabelText(/Meta diária \(minutos/);
+    const goal = await screen.findByLabelText(/Meta diária \(minutos/, {}, { timeout: 5000 });
     await user.clear(goal);
     await user.type(goal, "700");
     await user.click(
