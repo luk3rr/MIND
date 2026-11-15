@@ -195,8 +195,9 @@ describe("ErrorNotebook.entries", () => {
       .values({
         itemId: made.itemId,
         rating: 1,
-        reviewedAt: "2026-11-15T15:00:00.000Z",
-        day: "2026-11-15",
+        // Far ahead of the attempt above (made at the real current time), so it is the newest.
+        reviewedAt: "2999-01-01T00:00:00.000Z",
+        day: "2999-01-01",
       })
       .run();
     w.item("card", null, { payload: { front: "Sem tópico?", back: "R" } });
