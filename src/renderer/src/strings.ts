@@ -453,4 +453,8 @@ export const T = {
   updateFound: (version: string) => `Há uma nova versão: ${version}.`,
   updateFailed: "Não foi possível verificar agora. Confira a conexão e tente de novo.",
   updateLastChecked: (when: string) => `Última verificação: ${when}`,
+  errorsActionsHint:
+    "Os cards do caderno entram na sua fila de estudo. As questões que você errou voltam na aba Questões, para você tentar de novo.",
+  errorsRedoQuestions: (count: number) => `Refazer questões que errei (${count})`,
+  errorsStudyCards: "Estudar os cards do caderno",
 } as const;

@@ -77,6 +77,8 @@ export interface FakeState {
     /** When set, every reader call fails with this error. */
     failure: ErrorInfo | null;
   };
+  /** How many questions answered wrongly are waiting to be redone. */
+  practiceRetry: number;
   /** Windows and system viewers the user asked for, newest last. */
   opened: { kind: "window" | "system" | "release"; materialId: number; page?: number }[];
   update: OutputOf<"update:state">;
@@ -140,7 +142,7 @@ function studyCounts(state: FakeState) {
 function practiceCounts(state: FakeState) {
   return {
     unseen: state.questions.length,
-    retry: 0,
+    retry: state.practiceRetry,
     answeredToday: state.answeredToday,
     correctToday: 0,
     toPractice: state.questions.length,
@@ -213,6 +215,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       failure: null,
     },
     opened: [],
+    practiceRetry: 0,
     update: { enabled: true, current: "0.2.0", available: null, checkedAt: null },
     updateFound: null,
     updateFails: false,

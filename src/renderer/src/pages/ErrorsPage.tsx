@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { useInvoke } from "../hooks.js";
+import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 
@@ -16,14 +17,19 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
     workspaceId,
     ...(topicId !== undefined ? { topicId } : {}),
   });
-  const [message, setMessage] = useState<string | null>(null);
+  const retries = useInvoke("practice:counts", { workspaceId });
+  const { navigate } = useRouter();
+  const retryCount = retries.state.status === "ready" ? retries.state.data.retry : 0;
 
   return (
     <section aria-labelledby="errors-title">
       <h1 id="errors-title">{T.errorsTitle}</h1>
       {state.status === "error" && (
         <div className="alert" role="alert">
-          {T.loadError} {state.error.message}
+          {T.loadError} {state.error.message}{" "}
+          <button type="button" className="btn ghost" onClick={reload}>
+            {T.retry}
+          </button>
         </div>
       )}
       {state.status === "ready" && (
@@ -52,11 +58,6 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
               ))}
             </select>
           </div>
-          {message && (
-            <p role="status" className="ok">
-              {message}
-            </p>
-          )}
           {state.data.entries.length === 0 && (
             <div className="card">
               <p className="muted">{T.errorsEmpty}</p>
@@ -79,16 +80,27 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
               </li>
             ))}
           </ul>
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={() => {
-              setMessage(null);
-              reload();
-            }}
-          >
-            {T.retry}
-          </button>
+          <div className="card stack">
+            <p className="muted">{T.errorsActionsHint}</p>
+            <div className="row">
+              <button
+                type="button"
+                className="btn"
+                disabled={retryCount === 0}
+                onClick={() => navigate(`${sectionPath(workspaceId, "study")}/practice`)}
+              >
+                {T.errorsRedoQuestions(retryCount)}
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={state.data.entries.length === 0}
+                onClick={() => navigate(sectionPath(workspaceId, "study"))}
+              >
+                {T.errorsStudyCards}
+              </button>
+            </div>
+          </div>
         </>
       )}
     </section>
