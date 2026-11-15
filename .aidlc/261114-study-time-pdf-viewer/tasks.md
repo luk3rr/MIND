@@ -51,7 +51,7 @@ Cada tarefa: ≤ ~1 h, estado final observável, FR/US servido e teste. Marque `
 - [x] T1.5 Cartão "Tempo de estudo" em Hoje: tempo de hoje, botões, seletor de tópico; textos em `strings.ts`. [FR-7, US-1; test: today.test.tsx]
 - [x] T1.6 Cronômetro na barra de status com pausar/encerrar, estados com texto, acessível. [FR-8, US-5, NFR-6; test: statusbar.test.tsx]
 - [x] T1.7 Garantir que logs não incluem conteúdo/nome de arquivo e que o tempo não vai ao LLM. [NFR-5; test: privacy-log.test.ts ampliado]
-- [ ] T1.8 Verificação da Unit e commit `feat(time): add manual study timer`.
+- [x] T1.8 Verificação da Unit e commit `feat(time): add manual study timer`.
 
 
 **Resumo da UNIT-1 (2026-11-14).** Verificação: `pnpm lint` 0 · `pnpm format:check` 0 · `pnpm typecheck` 0 · `pnpm test --coverage`: 69 arquivos, 629 testes, todos passam; cobertura: instruções 94,43% · ramos 86,24% · funções 93,61% · linhas 95,63% (baseline 614 testes, 95,52%).
@@ -60,15 +60,22 @@ Cada tarefa: ≤ ~1 h, estado final observável, FR/US servido e teste. Marque `
 - Como rodar: `export PATH=$HOME/.local/share/pnpm/bin:$PATH; pnpm dev`, abrir Hoje e iniciar o cronômetro.
 - Desvios: (1) os testes ficaram em `time.test.ts`, `time-handlers.test.ts` e `time.test.tsx` (nomes um pouco diferentes dos planejados); (2) T1.7 foi coberto por teste de que o serviço não escreve em `console`, já que ele não registra nada; (3) o tempo ao vivo é calculado no cliente (sem chamadas por segundo); (4) a barra de meta de Hoje fica para a UNIT-3.
 
-### UNIT-2 — Contagem automática  `Status: pending`
+### UNIT-2 — Contagem automática  `Status: verified (2026-11-14)`
 
-- [ ] T2.1 `TimeService.activity/blur`: abre intervalo na primeira atividade, fecha na última se passar a ociosidade, retoma, uma sessão ativa (manual absorve o auto). [FR-3, FR-4, FR-5, US-2, US-3; test: time.test.ts com relógio simulado]
-- [ ] T2.2 Atribuição: `itemId`→tópico do item, `materialId`→material, manual→tópico escolhido. [FR-13; test: time.test.ts]
-- [ ] T2.3 Canais `time:activity` e `time:blur` com limite de 1 ping/5 s e validação. [FR-3; test: time-handlers.test.ts]
-- [ ] T2.4 Hook `useActivity(source, context)` com teclado, mouse, rolagem e foco/blur da janela. [FR-3, FR-4; test: activity.test.tsx]
-- [ ] T2.5 Ligar o hook em Estudar, Praticar e na prévia de texto. [FR-3, US-2; test: study.test.tsx, training.test.tsx, library.test.tsx]
-- [ ] T2.6 Teste de precisão: sequência simulada de 1 h com pausas confere ±1 min. [NFR-1; test: time-precision.test.ts]
-- [ ] T2.7 Verificação, `pnpm e2e` do Bolt ainda não (fim do Bolt 1 na U3), commit `feat(time): count study time automatically`.
+- [x] T2.1 `TimeService.activity/blur`: abre intervalo na primeira atividade, fecha na última se passar a ociosidade, retoma, uma sessão ativa (manual absorve o auto). [FR-3, FR-4, FR-5, US-2, US-3; test: time.test.ts com relógio simulado]
+- [x] T2.2 Atribuição: `itemId`→tópico do item, `materialId`→material, manual→tópico escolhido. [FR-13; test: time.test.ts]
+- [x] T2.3 Canais `time:activity` e `time:blur` com limite de 1 ping/5 s e validação. [FR-3; test: time-handlers.test.ts]
+- [x] T2.4 Hook `useActivity(source, context)` com teclado, mouse, rolagem e foco/blur da janela. [FR-3, FR-4; test: activity.test.tsx]
+- [x] T2.5 Ligar o hook em Estudar, Praticar e na prévia de texto. [FR-3, US-2; test: study.test.tsx, training.test.tsx, library.test.tsx]
+- [x] T2.6 Teste de precisão: sequência simulada de 1 h com pausas confere ±1 min. [NFR-1; test: time-precision.test.ts]
+- [x] T2.7 Verificação, `pnpm e2e` do Bolt ainda não (fim do Bolt 1 na U3), commit `feat(time): count study time automatically`.
+
+
+**Resumo da UNIT-2 (2026-11-14).** Verificação: lint 0 · format 0 · typecheck 0 · `pnpm test --coverage`: 71 arquivos, 648 testes, todos passam; instruções 94,59% · ramos 86,47% · funções 93,71% · linhas 95,77%.
+
+- Arquivos: `src/core/time/service.ts` (`activity`, `blur`, `tick`, ociosidade, atribuição), `contracts/{channels,channel-names}.ts` (+`time:activity`, `time:blur`), `main/ipc/handlers.ts`, `renderer/src/time.tsx` (`useActivity`, `ping`, `blur`), `pages/{StudyPage,PracticePage,MaterialPreviewPage}.tsx`, testes `time.test.ts`, `time-precision.test.ts`, `time-handlers.test.ts`, `activity.test.tsx`, `fake-mind.ts`.
+- Como rodar: `pnpm dev`; abrir Estudar e interagir; Hoje mostra o tempo "cartões".
+- Desvios: (1) o limite de 1 ping/5 s é aplicado pelo hook do renderer, não pelo canal (o núcleo aceita todo ping para manter a última interação exata); (2) o interruptor "Contar automaticamente" na UI fica na UNIT-3 (Configurações); o serviço já respeita `time.autoEnabled`; (3) o teste de precisão de 1 h (NFR-1) usa relógio simulado e erro ≤ 60 s.
 
 ### UNIT-3 — Meta, estatísticas e backup  `Status: pending`
 

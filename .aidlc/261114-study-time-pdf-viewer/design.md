@@ -485,6 +485,28 @@ sequenceDiagram
 
 **UI.** `useTimeState(workspaceId)` busca `time:state`, escuta `time:changed` e calcula o tempo ao vivo no cliente (estado + diferença do relógio local) sem novas chamadas por segundo. Cartão em Hoje e rodapé usam o hook. Ao trocar de workspace o `Shell` pausa a sessão do anterior (FR-6).
 
+### UNIT-2 — Functional design
+
+**Regras.** `activity(source, contexto)` abre, mantém ou troca o intervalo automático; o fim de um intervalo automático é a **última interação**, não o momento em que a ociosidade foi percebida. Um `tick` a cada 5 s (e qualquer chamada de `state`/`activity`) aplica o limite de ociosidade (padrão 120 s, `time.idleSeconds`, 30 a 600) e grava o intervalo a cada 30 s. `blur` pausa; o próximo ping retoma na mesma sessão. Uma sessão automática pausada por mais de 10 min termina e a próxima atividade abre outra. O cronômetro manual absorve os pings (conta uma vez) e, pausado à mão, ignora-os. Tópico vem do item (cartões e prática), material vem da leitura; ids inexistentes viram nulos.
+
+```mermaid
+stateDiagram-v2
+  [*] --> idle
+  idle --> running: activity (nova sessão)
+  running --> running: activity (mesma origem) / troca de origem ou contexto
+  running --> paused_idle: sem interação além do limite (fim na última interação)
+  running --> paused_blur: blur ou saída do workspace
+  paused_idle --> running: activity
+  paused_blur --> running: activity
+  paused_idle --> idle: pausa > 10 min
+  paused_blur --> idle: pausa > 10 min
+  running --> idle: stop
+```
+
+**Limite de taxa.** O hook `useActivity` reporta ao abrir/mudar o contexto e no máximo a cada 5 s com interação (teclado, ponteiro, rolagem, foco); o núcleo aceita todo ping (barato, só memória) em vez de ignorá-los, para não atrasar `lastActivity`. Ping no `blur` da janela e no foco.
+
+**Interface.** `time:activity` e `time:blur` (aditivos). O interruptor "Contar automaticamente" e o limite de ociosidade já são lidos de `meta`; a tela de Configurações que os grava entra na UNIT-3.
+
 ## 3.2–3.4 NFR e infraestrutura (todas as Units)
 
 - **3.2 NFR requirements:** os NFR de 2.3 valem como estão; por Unit, cada Definition of Done cita os que a Unit possui (2.7).

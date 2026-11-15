@@ -707,6 +707,18 @@ export const channels = {
   "time:pause": { input: z.object({ workspaceId }).strict(), output: timeState },
   "time:resume": { input: z.object({ workspaceId }).strict(), output: timeState },
   "time:stop": { input: z.object({ workspaceId }).strict(), output: timeState },
+  "time:activity": {
+    input: z
+      .object({
+        workspaceId,
+        source: z.enum(["cards", "practice", "reading"]),
+        itemId: z.number().int().positive().optional(),
+        materialId: z.number().int().positive().optional(),
+      })
+      .strict(),
+    output: z.object({}).strict(),
+  },
+  "time:blur": { input: z.object({ workspaceId }).strict(), output: z.object({}).strict() },
   "workspace:delete": {
     input: z.object({ id: workspaceId }).strict(),
     output: z.object({}).strict(),

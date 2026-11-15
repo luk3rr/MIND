@@ -32,6 +32,8 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "time:stop": () => {
       throw new Error("unused");
     },
+    "time:activity": () => ({}),
+    "time:blur": () => ({}),
     "today:summary": () => ({ materials: 0, cards: 0, questions: 0 }),
     "material:list": () => ({ materials: [] }),
     "material:import": () => ({ materials: [], errors: [] }),

@@ -10,6 +10,7 @@ import { useHotkeys, useInvoke } from "../hooks.js";
 import { MathText } from "../MathText.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
+import { useActivity } from "../time.js";
 
 type Next = OutputOf<"study:next">;
 type Today = OutputOf<"study:today">;
@@ -100,6 +101,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const shownAt = useRef(0);
+  useActivity("cards", next?.card ? { itemId: next.card.itemId } : {});
 
   const load = (): void => {
     void window.mind

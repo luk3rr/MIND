@@ -7,7 +7,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCore } from "../core.js";
 import type { Core } from "../core.js";
-import { studySession, topic } from "../db/workspace-schema.js";
+import {
+  generationRun,
+  item,
+  material,
+  meta,
+  studySession,
+  topic,
+} from "../db/workspace-schema.js";
 import { fixedClock, tempDir } from "../test/helpers.js";
 
 let core: Core | undefined;
@@ -142,10 +149,186 @@ describe("manual study timer (FR-1, FR-2, FR-6, FR-12)", () => {
     spy.mockRestore();
   });
 
-  it("reads the daily goal from the workspace settings", async () => {
+  it("reads the daily goal from the workspace settings", () => {
     const { time, db } = rig();
-    const { meta } = await import("../db/workspace-schema.js");
     db.insert(meta).values({ key: "time.dailyGoalMin", value: "0" }).run();
     expect(time.goalMinutes()).toBe(0);
+  });
+});
+
+function seedItem(db: ReturnType<typeof rig>["db"], topicId: number | null): number {
+  const runId = db
+    .insert(generationRun)
+    .values({ kind: "card", subtype: "qa", model: "m", requested: 1 })
+    .returning({ id: generationRun.id })
+    .get().id;
+  return db
+    .insert(item)
+    .values({ runId, kind: "card", subtype: "qa", payloadJson: "{}", topicId })
+    .returning({ id: item.id })
+    .get().id;
+}
+
+describe("automatic counting (FR-3, FR-4, FR-5, FR-13)", () => {
+  it("opens an interval on activity and keeps it while the user interacts", () => {
+    const { time, clock, db } = rig();
+    time.activity("cards");
+    clock.advance(30_000);
+    time.activity("cards");
+    clock.advance(30_000);
+    expect(time.state()).toMatchObject({
+      status: "running",
+      mode: "auto",
+      source: "cards",
+      activeSeconds: 60,
+      todaySeconds: 60,
+      bySource: { cards: 60, practice: 0, reading: 0, manual: 0 },
+    });
+    expect(db.select().from(studySession).all()).toHaveLength(1);
+  });
+
+  it("ends the interval at the last interaction, not after the idle limit (FR-4)", () => {
+    const { time, clock, db } = rig();
+    time.activity("cards");
+    clock.advance(100_000);
+    time.activity("cards");
+    clock.advance(130_000);
+    expect(time.state()).toMatchObject({
+      status: "paused",
+      pausedReason: "idle",
+      activeSeconds: 100,
+      todaySeconds: 100,
+    });
+    expect(db.select().from(studySession).get()?.seconds).toBe(100);
+    time.activity("cards");
+    clock.advance(20_000);
+    expect(time.state()).toMatchObject({
+      status: "running",
+      activeSeconds: 120,
+      todaySeconds: 120,
+    });
+  });
+
+  it("pauses when the window loses focus and resumes on the next interaction", () => {
+    const { time, clock } = rig();
+    time.activity("reading");
+    clock.advance(40_000);
+    time.blur();
+    expect(time.state()).toMatchObject({
+      status: "paused",
+      pausedReason: "blur",
+      activeSeconds: 40,
+    });
+    clock.advance(60_000);
+    time.activity("reading");
+    clock.advance(10_000);
+    expect(time.state()).toMatchObject({ status: "running", activeSeconds: 50, todaySeconds: 50 });
+  });
+
+  it("detects the idle limit by itself on the timer tick", () => {
+    const { time, clock, events, workspaceId } = rig();
+    time.activity("practice");
+    clock.advance(200_000);
+    time.tick();
+    expect(time.state().status).toBe("paused");
+    expect(events.filter((id) => id === workspaceId).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("moves to another interval when the source changes and labels the topic of the item (FR-13)", () => {
+    const { time, clock, db } = rig();
+    const topicId = db
+      .insert(topic)
+      .values({ name: "Álgebra" })
+      .returning({ id: topic.id })
+      .get().id;
+    const itemId = seedItem(db, topicId);
+    time.activity("cards", { itemId });
+    clock.advance(10_000);
+    time.activity("practice", { itemId });
+    clock.advance(10_000);
+    time.activity("reading", { materialId: 999 });
+    clock.advance(10_000);
+    time.stop();
+    const rows = db.select().from(studySession).all();
+    expect(rows.map((row) => [row.source, row.seconds, row.topicId, row.materialId])).toEqual([
+      ["cards", 10, topicId, null],
+      ["practice", 10, topicId, null],
+      ["reading", 10, null, null],
+    ]);
+  });
+
+  it("attributes reading to the material and never to a topic", () => {
+    const { time, clock, db } = rig();
+    const materialId = db
+      .insert(material)
+      .values({ title: "t", kind: "pdf", filename: "f.pdf", storedPath: "p" })
+      .returning({ id: material.id })
+      .get().id;
+    time.activity("reading", { materialId });
+    clock.advance(5_000);
+    time.stop();
+    expect(db.select().from(studySession).get()).toMatchObject({ materialId, topicId: null });
+  });
+
+  it("counts once when the manual timer runs and ignores activity while it is paused by hand (FR-5)", () => {
+    const { time, clock, db } = rig();
+    time.start();
+    clock.advance(10_000);
+    time.activity("cards");
+    clock.advance(10_000);
+    time.pause();
+    clock.advance(10_000);
+    time.activity("cards");
+    clock.advance(10_000);
+    expect(time.state()).toMatchObject({ status: "paused", mode: "manual", todaySeconds: 20 });
+    time.stop();
+    const rows = db.select().from(studySession).all();
+    expect(rows.reduce((sum, row) => sum + row.seconds, 0)).toBe(20);
+    expect(rows.every((row) => row.source === "manual")).toBe(true);
+  });
+
+  it("does not count when automatic counting is turned off", () => {
+    const { time, clock, db } = rig();
+    db.insert(meta).values({ key: "time.autoEnabled", value: "0" }).run();
+    time.activity("cards");
+    clock.advance(10_000);
+    expect(time.state()).toMatchObject({ status: "idle", todaySeconds: 0 });
+  });
+
+  it("honors a custom idle limit and starts a new session after a long pause", () => {
+    const { time, clock, db } = rig();
+    db.insert(meta).values({ key: "time.idleSeconds", value: "30" }).run();
+    expect(time.idleSeconds()).toBe(30);
+    time.activity("cards");
+    clock.advance(40_000);
+    expect(time.state()).toMatchObject({ status: "paused", activeSeconds: 0 });
+    clock.advance(11 * 60_000);
+    expect(time.state().status).toBe("idle");
+    time.activity("cards");
+    expect(time.state()).toMatchObject({ status: "running", activeSeconds: 0 });
+  });
+
+  it("pausing an automatic session reports it as paused by focus and resume continues it", () => {
+    const { time, clock } = rig();
+    time.activity("cards");
+    clock.advance(10_000);
+    expect(time.pause()).toMatchObject({
+      status: "paused",
+      pausedReason: "blur",
+      activeSeconds: 10,
+    });
+    expect(time.resume()).toMatchObject({ status: "running", source: "cards" });
+    clock.advance(5_000);
+    expect(time.stop().todaySeconds).toBe(15);
+  });
+
+  it("closes an automatic interval at its last interaction on shutdown", () => {
+    const { time, clock, db } = rig();
+    time.activity("cards");
+    clock.advance(20_000);
+    time.activity("cards");
+    clock.advance(50_000);
+    time.shutdown();
+    expect(db.select().from(studySession).get()?.seconds).toBe(20);
   });
 });

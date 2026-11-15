@@ -672,6 +672,9 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           state.time = { ...state.time, status: "running", pausedReason: null };
         }
         return ok(state.time);
+      case "time:activity":
+      case "time:blur":
+        return ok({});
       case "time:stop":
         state.time = idleTime({
           todaySeconds: state.time.todaySeconds,

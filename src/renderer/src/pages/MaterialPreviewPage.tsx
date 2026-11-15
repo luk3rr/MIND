@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
+import { useActivity } from "../time.js";
 
 /** A paginated preview of the chunks of one material, highlighting an optional chunk. */
 export function MaterialPreviewPage({
@@ -20,6 +21,7 @@ export function MaterialPreviewPage({
   chunkId?: number;
 }) {
   const { navigate } = useRouter();
+  useActivity("reading", { materialId });
   const [offset, setOffset] = useState<number | undefined>(undefined);
   const request = {
     workspaceId,

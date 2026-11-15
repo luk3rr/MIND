@@ -10,6 +10,7 @@ import { useHotkeys } from "../hooks.js";
 import { MathText } from "../MathText.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
+import { useActivity } from "../time.js";
 
 type Next = OutputOf<"practice:next">;
 type Result = OutputOf<"practice:answer">;
@@ -25,6 +26,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
   const [seen, setSeen] = useState<number[]>([]);
   const [cardMessage, setCardMessage] = useState<string | null>(null);
   const shownAt = useRef(0);
+  useActivity("practice", next?.question ? { itemId: next.question.item.id } : {});
 
   const load = (exclude: number[] = seen): void => {
     void window.mind

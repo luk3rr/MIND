@@ -65,6 +65,8 @@ export const CHANNEL_NAMES = [
   "time:pause",
   "time:resume",
   "time:stop",
+  "time:activity",
+  "time:blur",
 ] as const;
 
 /** Names of the events pushed from the main process to the window. */

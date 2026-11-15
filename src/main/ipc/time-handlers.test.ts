@@ -77,3 +77,31 @@ describe("time channels", () => {
     expect(await dispatch("workspace:delete", { id: workspaceId })).toEqual({ ok: true, data: {} });
   });
 });
+
+describe("time activity channels", () => {
+  it("counts activity and pauses on blur through the validated channels (FR-3, FR-4)", async () => {
+    const clock = fixedClock("2026-03-10T15:00:00.000Z");
+    core = createCore({ dataDir: tempDir(), env: {}, clock, tzOffset: () => 0 });
+    const workspaceId = core.registry.create("Tempo").id;
+    const dispatch = createRouter(
+      createHandlers(core, { lastRoute: null }, { pickFiles: () => Promise.resolve([]) }),
+      { error: () => undefined },
+    );
+    expect(await dispatch("time:activity", { workspaceId, source: "reading" })).toEqual({
+      ok: true,
+      data: {},
+    });
+    clock.advance(15_000);
+    expect(await dispatch("time:state", { workspaceId })).toMatchObject({
+      data: { status: "running", mode: "auto", source: "reading", activeSeconds: 15 },
+    });
+    expect(await dispatch("time:blur", { workspaceId })).toEqual({ ok: true, data: {} });
+    expect(await dispatch("time:state", { workspaceId })).toMatchObject({
+      data: { status: "paused", pausedReason: "blur" },
+    });
+    expect(await dispatch("time:activity", { workspaceId, source: "manual" })).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+  });
+});

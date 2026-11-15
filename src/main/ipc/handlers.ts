@@ -305,6 +305,17 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "time:pause": ({ workspaceId }) => core.time(workspaceId).pause(),
     "time:resume": ({ workspaceId }) => core.time(workspaceId).resume(),
     "time:stop": ({ workspaceId }) => core.time(workspaceId).stop(),
+    "time:activity": ({ workspaceId, source, itemId, materialId }) => {
+      core.time(workspaceId).activity(source, {
+        ...(itemId !== undefined ? { itemId } : {}),
+        ...(materialId !== undefined ? { materialId } : {}),
+      });
+      return {};
+    },
+    "time:blur": ({ workspaceId }) => {
+      core.time(workspaceId).blur();
+      return {};
+    },
     "workspace:delete": ({ id }) => {
       core.releaseTime(id);
       core.registry.delete(id);
