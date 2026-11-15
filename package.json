@@ -61,8 +61,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "electron",
-      "esbuild",
-      "better-sqlite3"
+      "esbuild"
     ]
   },
   "main": "./out/main/index.js",
