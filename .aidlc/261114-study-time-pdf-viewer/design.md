@@ -507,6 +507,25 @@ stateDiagram-v2
 
 **Interface.** `time:activity` e `time:blur` (aditivos). O interruptor "Contar automaticamente" e o limite de ociosidade já são lidos de `meta`; a tela de Configurações que os grava entra na UNIT-3.
 
+### UNIT-3 — Functional design
+
+**Regras.** Meta, limite de ociosidade e interruptor automático ficam em `meta` por workspace (`time.dailyGoalMin` 0..600, `time.idleSeconds` 30..600, `time.autoEnabled`); `saveSettings` valida tudo antes de gravar e devolve `VALIDATION_ERROR` com os campos. As estatísticas cobrem os últimos 7 ou 30 dias de estudo (hoje incluso), fazem `flush` antes para contar o intervalo aberto, e devolvem total, média por dia (total ÷ dias do período), melhor dia, tempo por dia e origem, por tópico (inclui "sem tópico") e por material. O histórico lista os 10 intervalos mais recentes; só intervalos fechados podem ser excluídos (`SESSION_NOT_FOUND` se não existir). O backup já leva o banco inteiro; importar um `.zip` anterior à migração `0003` aplica a migração na abertura.
+
+```mermaid
+sequenceDiagram
+  participant UI as Estatísticas
+  participant H as handlers
+  participant T as TimeService
+  UI->>H: time:stats {days: 7|30}
+  H->>T: flush() e stats(days)
+  T-->>UI: totais, byDay, byTopic, byMaterial
+  UI->>H: time:deleteSession {id}
+  H->>T: deleteSession(id)
+  T-->>UI: {} (e time:changed)
+```
+
+**UI.** A barra de meta fica no cartão "Tempo de estudo" de Hoje (meta 0 vira o link "Definir meta"); a seção "Tempo de estudo" de Configurações edita as três opções; **Estatísticas** ganha a seção "Tempo de estudo" (seletor de período, cartões de resumo, gráfico empilhado com tabela equivalente, tabelas por tópico e material e lista de intervalos recentes). Desvio do mockup R3: seção na mesma página em vez de aba, para não reorganizar a tela existente.
+
 ## 3.2–3.4 NFR e infraestrutura (todas as Units)
 
 - **3.2 NFR requirements:** os NFR de 2.3 valem como estão; por Unit, cada Definition of Done cita os que a Unit possui (2.7).

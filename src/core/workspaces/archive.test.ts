@@ -25,6 +25,7 @@ import {
   chunk,
   item,
   material,
+  studySession,
   topic,
   generationRun,
 } from "../db/workspace-schema.js";
@@ -245,6 +246,48 @@ describe("exportWorkspace and importWorkspace (FR-22)", () => {
       .connection.sqlite.prepare("SELECT name FROM sqlite_master WHERE name = 'chunk_fts'")
       .all();
     expect(tables).toHaveLength(1);
+  });
+
+  it("takes the study sessions along in a backup and a restore (FR-11)", async () => {
+    const registry = newRegistry();
+    const source = populated(registry);
+    const { db } = registry.open(source).connection;
+    db.insert(studySession)
+      .values({
+        startedAt: "2026-03-10T10:00:00.000Z",
+        endedAt: "2026-03-10T10:10:00.000Z",
+        seconds: 600,
+        source: "manual",
+        day: "2026-03-10",
+      })
+      .run();
+    const archive = await exportWorkspace(registry, source, join(tempDir(), "b.zip"));
+    const copy = await importWorkspace(registry, archive);
+    const restored = registry.open(copy.id).connection.db.select().from(studySession).all();
+    expect(restored).toHaveLength(1);
+    expect(restored[0]).toMatchObject({ seconds: 600, source: "manual", day: "2026-03-10" });
+  });
+
+  it("imports a backup made before the study sessions existed and adds the table (FR-11)", async () => {
+    const registry = newRegistry();
+    const dir = tempDir();
+    const old = join(dir, "workspace.db");
+    const sqlite = new Database(old);
+    applyMigrations(sqlite, workspaceMigrations.slice(0, 3));
+    sqlite.close();
+    const older = await writeZip(join(dir, "before-time.zip"), [
+      [
+        "manifest.json",
+        JSON.stringify({
+          format: FORMAT,
+          format_version: 1,
+          schema_revision: workspaceMigrations[2]?.id,
+        }),
+      ],
+      ["workspace.db", readFileSync(old)],
+    ]);
+    const copy = await importWorkspace(registry, older);
+    expect(registry.open(copy.id).connection.db.select().from(studySession).all()).toEqual([]);
   });
 
   it.each(["other/file.txt", "workspace.db.bak", "manifest.json.old"])(

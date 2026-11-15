@@ -105,3 +105,47 @@ describe("time activity channels", () => {
     });
   });
 });
+
+describe("time settings, stats and history channels", () => {
+  it("saves settings, reads stats and manages the history (FR-9, FR-10, FR-14)", async () => {
+    const clock = fixedClock("2026-03-10T15:00:00.000Z");
+    core = createCore({ dataDir: tempDir(), env: {}, clock, tzOffset: () => 0 });
+    const workspaceId = core.registry.create("Tempo").id;
+    const dispatch = createRouter(
+      createHandlers(core, { lastRoute: null }, { pickFiles: () => Promise.resolve([]) }),
+      { error: () => undefined },
+    );
+    expect(await dispatch("time:saveSettings", { workspaceId, dailyGoalMin: 45 })).toEqual({
+      ok: true,
+      data: { dailyGoalMin: 45, idleSeconds: 120, autoEnabled: true },
+    });
+    expect(await dispatch("time:getSettings", { workspaceId })).toMatchObject({
+      data: { dailyGoalMin: 45 },
+    });
+    expect(await dispatch("time:saveSettings", { workspaceId, idleSeconds: 5 })).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR", fields: [{ field: "idleSeconds" }] },
+    });
+    await dispatch("time:start", { workspaceId });
+    clock.advance(30_000);
+    await dispatch("time:stop", { workspaceId });
+    expect(await dispatch("time:stats", { workspaceId, days: 7 })).toMatchObject({
+      ok: true,
+      data: { totalSeconds: 30, bestDay: { day: "2026-03-10", seconds: 30 } },
+    });
+    expect(await dispatch("time:stats", { workspaceId, days: 14 })).toMatchObject({ ok: false });
+    const list = (await dispatch("time:sessions", { workspaceId })) as {
+      data: { sessions: { id: number }[] };
+    };
+    expect(list.data.sessions).toHaveLength(1);
+    const id = list.data.sessions[0]?.id ?? 0;
+    expect(await dispatch("time:deleteSession", { workspaceId, id })).toEqual({
+      ok: true,
+      data: {},
+    });
+    expect(await dispatch("time:deleteSession", { workspaceId, id })).toMatchObject({
+      ok: false,
+      error: { code: "SESSION_NOT_FOUND" },
+    });
+  });
+});

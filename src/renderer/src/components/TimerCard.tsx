@@ -7,12 +7,14 @@
 import { Pause, Play, Square } from "lucide-react";
 import { useState } from "react";
 import { useInvoke } from "../hooks.js";
+import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { formatClock, useTime } from "../time.js";
 
 /** Study time of today with the manual timer controls (shown on the Today screen). */
 export function TimerCard({ workspaceId }: { workspaceId: number }) {
   const time = useTime();
+  const { navigate } = useRouter();
   const topics = useInvoke("topics:list", { workspaceId });
   const [topicId, setTopicId] = useState<number | undefined>(undefined);
   if (!time?.state) return null;
@@ -41,6 +43,31 @@ export function TimerCard({ workspaceId }: { workspaceId: number }) {
         </b>
         <span className="muted">{T.timeToday}</span>
       </div>
+      {state.goalMinutes > 0 ? (
+        <div>
+          <progress
+            className="goal-bar"
+            style={{ width: "100%" }}
+            max={state.goalMinutes * 60}
+            value={Math.min(time.todaySeconds, state.goalMinutes * 60)}
+            aria-label={T.timeGoalOf(state.goalMinutes)}
+          />
+          <p className="muted">
+            {T.timeGoalOf(state.goalMinutes)} ·{" "}
+            {time.todaySeconds >= state.goalMinutes * 60
+              ? T.timeGoalReached
+              : `${Math.floor((time.todaySeconds / (state.goalMinutes * 60)) * 100)}%`}
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="link"
+          onClick={() => navigate(sectionPath(workspaceId, "settings"))}
+        >
+          {T.timeGoalSet}
+        </button>
+      )}
       <p className="muted">{time.todaySeconds === 0 ? T.timeNone : T.timeBreakdown(parts)}</p>
       <div className="row" style={{ alignItems: "center" }}>
         {state.status === "idle" && (

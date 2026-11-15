@@ -20,6 +20,15 @@ export function formatClock(seconds: number): string {
   return `${hours}:${pad(minutes)}:${pad(rest)}`;
 }
 
+/** `1 h 05 min` or `42 min` or `30 s` for a number of seconds. */
+export function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  if (total < 60) return `${total} s`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  return hours > 0 ? `${hours} h ${String(minutes).padStart(2, "0")} min` : `${minutes} min`;
+}
+
 export interface TimeApi {
   state: TimeState | null;
   /** Seconds of the current session, including the time since the last refresh. */

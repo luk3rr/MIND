@@ -66,6 +66,9 @@ export interface FakeState {
   importResult: OutputOf<"material:import">;
   searchHits: OutputOf<"material:search">["hits"];
   time: FakeTime;
+  timeSettings: OutputOf<"time:getSettings">;
+  timeStats: OutputOf<"time:stats">;
+  timeSessions: OutputOf<"time:sessions">["sessions"];
   provider: {
     apiKey: string | null;
     keySource: "environment" | "stored" | null;
@@ -172,6 +175,16 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     importResult: { materials: [], errors: [] },
     searchHits: [],
     time: idleTime(),
+    timeSettings: { dailyGoalMin: 60, idleSeconds: 120, autoEnabled: true },
+    timeStats: {
+      totalSeconds: 0,
+      avgPerDaySeconds: 0,
+      bestDay: null,
+      byDay: [],
+      byTopic: [],
+      byMaterial: [],
+    },
+    timeSessions: [],
     provider: {
       apiKey: "sk-or-already",
       keySource: "stored",
@@ -672,6 +685,30 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           state.time = { ...state.time, status: "running", pausedReason: null };
         }
         return ok(state.time);
+      case "time:getSettings":
+        return ok(state.timeSettings);
+      case "time:saveSettings": {
+        const input = payload as InputOf<"time:saveSettings">;
+        if (input.dailyGoalMin !== undefined && input.dailyGoalMin > 600) {
+          return failure("VALIDATION_ERROR", "Configuração de tempo inválida.", "dailyGoalMin");
+        }
+        state.timeSettings = {
+          dailyGoalMin: input.dailyGoalMin ?? state.timeSettings.dailyGoalMin,
+          idleSeconds: input.idleSeconds ?? state.timeSettings.idleSeconds,
+          autoEnabled: input.autoEnabled ?? state.timeSettings.autoEnabled,
+        };
+        state.time = { ...state.time, goalMinutes: state.timeSettings.dailyGoalMin };
+        return ok(state.timeSettings);
+      }
+      case "time:stats":
+        return ok(state.timeStats);
+      case "time:sessions":
+        return ok({ sessions: state.timeSessions });
+      case "time:deleteSession": {
+        const { id } = payload as InputOf<"time:deleteSession">;
+        state.timeSessions = state.timeSessions.filter((row) => row.id !== id);
+        return ok({});
+      }
       case "time:activity":
       case "time:blur":
         return ok({});

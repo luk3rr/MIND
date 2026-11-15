@@ -272,6 +272,48 @@ const timeState = z.object({
   }),
 });
 
+const timeSettings = z.object({
+  dailyGoalMin: z.number().int().min(0).max(600),
+  idleSeconds: z.number().int().min(30).max(600),
+  autoEnabled: z.boolean(),
+});
+
+const sessionInfo = z.object({
+  id: z.number().int(),
+  startedAt: z.string(),
+  endedAt: z.string(),
+  seconds: z.number().int(),
+  source: timeSource,
+  day: z.string(),
+  topicName: z.string().nullable(),
+  materialTitle: z.string().nullable(),
+});
+
+const timeStats = z.object({
+  totalSeconds: z.number().int(),
+  avgPerDaySeconds: z.number().int(),
+  bestDay: z.object({ day: z.string(), seconds: z.number().int() }).nullable(),
+  byDay: z.array(
+    z.object({
+      day: z.string(),
+      cards: z.number().int(),
+      practice: z.number().int(),
+      reading: z.number().int(),
+      manual: z.number().int(),
+    }),
+  ),
+  byTopic: z.array(
+    z.object({
+      topicId: z.number().int().nullable(),
+      name: z.string().nullable(),
+      seconds: z.number().int(),
+    }),
+  ),
+  byMaterial: z.array(
+    z.object({ materialId: z.number().int(), title: z.string(), seconds: z.number().int() }),
+  ),
+});
+
 export const channels = {
   "window:getState": {
     input: z.object({}).strict(),
@@ -719,6 +761,30 @@ export const channels = {
     output: z.object({}).strict(),
   },
   "time:blur": { input: z.object({ workspaceId }).strict(), output: z.object({}).strict() },
+  "time:getSettings": { input: z.object({ workspaceId }).strict(), output: timeSettings },
+  "time:saveSettings": {
+    input: z
+      .object({
+        workspaceId,
+        dailyGoalMin: z.number().int().optional(),
+        idleSeconds: z.number().int().optional(),
+        autoEnabled: z.boolean().optional(),
+      })
+      .strict(),
+    output: timeSettings,
+  },
+  "time:stats": {
+    input: z.object({ workspaceId, days: z.union([z.literal(7), z.literal(30)]) }).strict(),
+    output: timeStats,
+  },
+  "time:sessions": {
+    input: z.object({ workspaceId, limit: z.number().int().min(1).max(200).optional() }).strict(),
+    output: z.object({ sessions: z.array(sessionInfo) }),
+  },
+  "time:deleteSession": {
+    input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),
+    output: z.object({}).strict(),
+  },
   "workspace:delete": {
     input: z.object({ id: workspaceId }).strict(),
     output: z.object({}).strict(),

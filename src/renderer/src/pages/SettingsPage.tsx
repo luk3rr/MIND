@@ -8,6 +8,7 @@ import { useState } from "react";
 import { ProviderForm } from "../components/ProviderForm.js";
 import { useInvoke } from "../hooks.js";
 import { useSettingsStatus } from "../settings-status.js";
+import { TimeSettingsForm } from "../components/TimeSettingsForm.js";
 import { T } from "../strings.js";
 
 function CostPanel({ month }: { month: string }) {
@@ -49,7 +50,7 @@ function CostPanel({ month }: { month: string }) {
 }
 
 /** Settings: provider, privacy and cost panels. Backup and appearance arrive in later units. */
-export function SettingsPage() {
+export function SettingsPage({ workspaceId }: { workspaceId: number }) {
   const { state, refresh } = useSettingsStatus();
   const [message, setMessage] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
@@ -113,6 +114,7 @@ export function SettingsPage() {
           </button>
         </div>
       </section>
+      <TimeSettingsForm workspaceId={workspaceId} />
       <section className="card stack" aria-labelledby="privacy-title">
         <h2 id="privacy-title">{T.privacyTitle}</h2>
         <p>{T.privacyText}</p>

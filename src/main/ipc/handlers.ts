@@ -316,6 +316,21 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       core.time(workspaceId).blur();
       return {};
     },
+    "time:getSettings": ({ workspaceId }) => core.time(workspaceId).settings(),
+    "time:saveSettings": ({ workspaceId, dailyGoalMin, idleSeconds, autoEnabled }) =>
+      core.time(workspaceId).saveSettings({
+        ...(dailyGoalMin !== undefined ? { dailyGoalMin } : {}),
+        ...(idleSeconds !== undefined ? { idleSeconds } : {}),
+        ...(autoEnabled !== undefined ? { autoEnabled } : {}),
+      }),
+    "time:stats": ({ workspaceId, days }) => core.time(workspaceId).stats(days),
+    "time:sessions": ({ workspaceId, limit }) => ({
+      sessions: core.time(workspaceId).sessions(limit),
+    }),
+    "time:deleteSession": ({ workspaceId, id }) => {
+      core.time(workspaceId).deleteSession(id);
+      return {};
+    },
     "workspace:delete": ({ id }) => {
       core.releaseTime(id);
       core.registry.delete(id);

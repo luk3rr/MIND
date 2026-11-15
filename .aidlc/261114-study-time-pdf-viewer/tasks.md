@@ -77,16 +77,23 @@ Cada tarefa: ≤ ~1 h, estado final observável, FR/US servido e teste. Marque `
 - Como rodar: `pnpm dev`; abrir Estudar e interagir; Hoje mostra o tempo "cartões".
 - Desvios: (1) o limite de 1 ping/5 s é aplicado pelo hook do renderer, não pelo canal (o núcleo aceita todo ping para manter a última interação exata); (2) o interruptor "Contar automaticamente" na UI fica na UNIT-3 (Configurações); o serviço já respeita `time.autoEnabled`; (3) o teste de precisão de 1 h (NFR-1) usa relógio simulado e erro ≤ 60 s.
 
-### UNIT-3 — Meta, estatísticas e backup  `Status: pending`
+### UNIT-3 — Meta, estatísticas e backup  `Status: verified (2026-11-14)`
 
-- [ ] T3.1 `time:getSettings/saveSettings` (meta, ociosidade, auto) em `meta`, com limites. [FR-9; test: time-handlers.test.ts]
-- [ ] T3.2 Seção "Tempo de estudo" em Configurações e barra de meta em Hoje (meta 0 = sem meta). [FR-9, US-4; test: settings.test.tsx, today.test.tsx]
-- [ ] T3.3 `TimeService.stats` (total, média, melhor dia, por dia/origem, tópico, material) e `time:stats`. [FR-10; test: time-stats.test.ts]
-- [ ] T3.4 Aba Estatísticas > Tempo com Recharts, vazios e "Sem tópico". [FR-10, US-6; test: stats.test.tsx]
-- [ ] T3.5 `time:sessions` e `time:deleteSession` com confirmação na UI. [FR-14, US-6; test: time-handlers.test.ts, stats.test.tsx]
-- [ ] T3.6 Backup: exportar e importar com sessões; importar `.zip` antigo (sem 0003) migra e funciona. [FR-11, US-7; test: archive.test.ts]
-- [ ] T3.7 E2E do Bolt 1: iniciar, pausar, encerrar, ver em Hoje, barra e Estatísticas. [US-1..US-7; test: tests/e2e/time.spec.ts]
-- [ ] T3.8 Verificação + `pnpm e2e`, commit `feat(time): add daily goal, time statistics and backup`.
+- [x] T3.1 `time:getSettings/saveSettings` (meta, ociosidade, auto) em `meta`, com limites. [FR-9; test: time-handlers.test.ts]
+- [x] T3.2 Seção "Tempo de estudo" em Configurações e barra de meta em Hoje (meta 0 = sem meta). [FR-9, US-4; test: settings.test.tsx, today.test.tsx]
+- [x] T3.3 `TimeService.stats` (total, média, melhor dia, por dia/origem, tópico, material) e `time:stats`. [FR-10; test: time-stats.test.ts]
+- [x] T3.4 Aba Estatísticas > Tempo com Recharts, vazios e "Sem tópico". [FR-10, US-6; test: stats.test.tsx]
+- [x] T3.5 `time:sessions` e `time:deleteSession` com confirmação na UI. [FR-14, US-6; test: time-handlers.test.ts, stats.test.tsx]
+- [x] T3.6 Backup: exportar e importar com sessões; importar `.zip` antigo (sem 0003) migra e funciona. [FR-11, US-7; test: archive.test.ts]
+- [x] T3.7 E2E do Bolt 1: iniciar, pausar, encerrar, ver em Hoje, barra e Estatísticas. [US-1..US-7; test: tests/e2e/time.spec.ts]
+- [x] T3.8 Verificação + `pnpm e2e`, commit `feat(time): add daily goal, time statistics and backup`.
+
+
+**Resumo da UNIT-3 (2026-11-14).** Verificação: lint 0 · format 0 · typecheck 0 · `pnpm test --coverage`: 73 arquivos, 666 testes, todos passam; instruções 94,71% · ramos 86,47% · funções 93,78% · linhas 95,84%. `pnpm e2e`: **35 passaram**, 1 ignorado (modelo real).
+
+- Arquivos: `src/core/time/service.ts` (`settings`, `saveSettings`, `stats`, `sessions`, `deleteSession`), contratos (+5 canais `time:*`, código `SESSION_NOT_FOUND`), `main/ipc/handlers.ts`, `components/{ChartBlock,TimeStats,TimeSettingsForm,TimerCard}.tsx`, `pages/{StatsPage,SettingsPage}.tsx`, `App.tsx`, `time.tsx` (`formatDuration`), testes (`time-stats.test.ts`, `time-handlers.test.ts`, `archive.test.ts`, `time-stats.test.tsx`, `tests/e2e/time.spec.ts`).
+- Como rodar: `pnpm dev`; Configurações → Tempo de estudo; Estatísticas → Tempo de estudo.
+- Desvios: (1) em Estatísticas o tempo é uma seção da página, não uma aba (R3); (2) `ChartBlock`, `TOOLTIP` e `shortDay` saíram de `StatsPage.tsx` para `components/ChartBlock.tsx` para serem reutilizados; (3) o botão de salvar do tempo se chama "Salvar tempo" (evita colidir com o "Salvar" do provedor); (4) a lista de intervalos recentes mostra os 10 mais novos.
 
 ### UNIT-4 — Núcleo do leitor  `Status: pending`
 

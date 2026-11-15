@@ -6,12 +6,11 @@
 
 <p align="center">
   Aplicativo desktop de estudo que gera flashcards e questões a partir dos seus próprios materiais,
-  sempre citando o trecho de origem.
+  sempre citando as referências.
 </p>
 
-Importe seus materiais (PDF, Word, Markdown, texto e páginas web) e o MIND gera flashcards e
-questões no estilo de prova que **citam a passagem de origem**. Depois você estuda tudo com
-repetição espaçada (FSRS).
+Importe seus materiais (PDF, Word, Markdown, texto e páginas web) e o **MIND** gera flashcards e
+questões no estilo de prova e estude tudo com repetição espaçada ([FSRS](https://pt.wikipedia.org/wiki/Repeti%C3%A7%C3%A3o_espa%C3%A7ada)).
 
 - **Seu material, sua máquina.** Tudo fica guardado localmente. Só trechos curtos vão ao provedor de
   IA que você configurar, e somente depois de você aceitar o aviso que diz qual provedor os recebe.

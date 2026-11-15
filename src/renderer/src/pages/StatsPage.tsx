@@ -18,6 +18,8 @@ import {
   YAxis,
 } from "recharts";
 import type { OutputOf } from "../../../core/contracts/index.js";
+import { ChartBlock, TOOLTIP, shortDay } from "../components/ChartBlock.js";
+import { TimeStats } from "../components/TimeStats.js";
 import { WeakTopics } from "../components/WeakTopics.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
 import { Dialog } from "../components/Dialog.js";
@@ -28,71 +30,8 @@ import { T } from "../strings.js";
 type Overview = OutputOf<"stats:overview">;
 type TopicStat = Overview["topics"][number];
 
-const TOOLTIP = {
-  contentStyle: {
-    background: "var(--panel-2)",
-    border: "1px solid var(--line)",
-    borderRadius: 8,
-    color: "var(--fg)",
-  },
-  labelStyle: { color: "var(--fg)" },
-  cursor: { fill: "rgba(189, 147, 249, 0.15)", stroke: "var(--line)" },
-};
-
 const percent = (value: number | null): string =>
   value === null ? "—" : `${Math.round(value * 100)}%`;
-
-const shortDay = (day: string): string => day.slice(5).replace("-", "/");
-
-/** A chart plus the same numbers as a table, for screen readers and keyboard users. */
-function ChartBlock({
-  title,
-  hint,
-  label,
-  children,
-  columns,
-  rows,
-}: {
-  title: string;
-  hint?: string;
-  label: string;
-  children: React.ReactNode;
-  columns: string[];
-  rows: (string | number)[][];
-}) {
-  return (
-    <div className="card">
-      <h2>{title}</h2>
-      {hint && <p className="muted">{hint}</p>}
-      <div role="img" aria-label={label} style={{ width: "100%", height: 220 }}>
-        {children}
-      </div>
-      <details>
-        <summary>{T.chartTable}</summary>
-        <table aria-label={`${title}: ${T.chartTable}`}>
-          <thead>
-            <tr>
-              {columns.map((column) => (
-                <th key={column} scope="col">
-                  {column}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={String(row[0])}>
-                {row.map((cell, index) => (
-                  <td key={index}>{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
-    </div>
-  );
-}
 
 function GoalDialog({
   workspaceId,
@@ -277,6 +216,8 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
               </BarChart>
             </ResponsiveContainer>
           </ChartBlock>
+
+          <TimeStats workspaceId={workspaceId} />
 
           <WeakTopics workspaceId={workspaceId} topics={state.data.weakest} />
 

@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
@@ -46,6 +46,34 @@ export interface TimeState {
   goalMinutes: number;
   bySource: Record<TimeSource, number>;
 }
+
+export interface TimeSettings {
+  dailyGoalMin: number;
+  idleSeconds: number;
+  autoEnabled: boolean;
+}
+
+export interface TimeStats {
+  totalSeconds: number;
+  avgPerDaySeconds: number;
+  bestDay: { day: string; seconds: number } | null;
+  byDay: { day: string; cards: number; practice: number; reading: number; manual: number }[];
+  byTopic: { topicId: number | null; name: string | null; seconds: number }[];
+  byMaterial: { materialId: number; title: string; seconds: number }[];
+}
+
+export interface SessionInfo {
+  id: number;
+  startedAt: string;
+  endedAt: string;
+  seconds: number;
+  source: TimeSource;
+  day: string;
+  topicName: string | null;
+  materialTitle: string | null;
+}
+
+export const MAX_GOAL_MIN = 600;
 
 export interface TimeServiceOptions {
   clock?: Clock;
@@ -127,6 +155,165 @@ export class TimeService {
   /** Whether study activity is counted without the manual timer. */
   autoEnabled(): boolean {
     return this.readMeta(META_AUTO) !== "0";
+  }
+
+  settings(): TimeSettings {
+    return {
+      dailyGoalMin: this.goalMinutes(),
+      idleSeconds: this.idleSeconds(),
+      autoEnabled: this.autoEnabled(),
+    };
+  }
+
+  /** Saves the settings that were sent; every one is checked before any is written. */
+  saveSettings(input: Partial<TimeSettings>): TimeSettings {
+    const problems: { field: string; message: string }[] = [];
+    if (
+      input.dailyGoalMin !== undefined &&
+      !(
+        Number.isInteger(input.dailyGoalMin) &&
+        input.dailyGoalMin >= 0 &&
+        input.dailyGoalMin <= MAX_GOAL_MIN
+      )
+    ) {
+      problems.push({ field: "dailyGoalMin", message: `Informe de 0 a ${MAX_GOAL_MIN} minutos.` });
+    }
+    if (
+      input.idleSeconds !== undefined &&
+      !(
+        Number.isInteger(input.idleSeconds) &&
+        input.idleSeconds >= MIN_IDLE_SECONDS &&
+        input.idleSeconds <= MAX_IDLE_SECONDS
+      )
+    ) {
+      problems.push({
+        field: "idleSeconds",
+        message: `Informe de ${MIN_IDLE_SECONDS} a ${MAX_IDLE_SECONDS} segundos.`,
+      });
+    }
+    if (problems.length > 0) {
+      throw new AppError("VALIDATION_ERROR", "Configuração de tempo inválida.", problems);
+    }
+    const write = (key: string, value: string): void => {
+      this.db
+        .insert(meta)
+        .values({ key, value })
+        .onConflictDoUpdate({ target: meta.key, set: { value } })
+        .run();
+    };
+    if (input.dailyGoalMin !== undefined) write(META_GOAL, String(input.dailyGoalMin));
+    if (input.idleSeconds !== undefined) write(META_IDLE, String(input.idleSeconds));
+    if (input.autoEnabled !== undefined) write(META_AUTO, input.autoEnabled ? "1" : "0");
+    this.options.onChange?.();
+    return this.settings();
+  }
+
+  /** Time per day, topic and material over the last `days` study days, today included. */
+  stats(days: 7 | 30): TimeStats {
+    this.flush();
+    const now = this.clock.now();
+    const list: string[] = [];
+    for (let back = days - 1; back >= 0; back -= 1) {
+      list.push(studyDay(new Date(now.getTime() - back * 86_400_000), this.offset));
+    }
+    const first = list[0] ?? this.today();
+    const perDay = this.db
+      .select({
+        day: studySession.day,
+        source: studySession.source,
+        total: sql<number>`sum(${studySession.seconds})`,
+      })
+      .from(studySession)
+      .where(gte(studySession.day, first))
+      .groupBy(studySession.day, studySession.source)
+      .all();
+    const byDay = list.map((day) => ({ day, cards: 0, practice: 0, reading: 0, manual: 0 }));
+    for (const row of perDay) {
+      const entry = byDay.find((candidate) => candidate.day === row.day);
+      if (entry && (TIME_SOURCES as readonly string[]).includes(row.source)) {
+        entry[row.source as TimeSource] += row.total;
+      }
+    }
+    const totals = byDay.map(
+      (entry) => entry.cards + entry.practice + entry.reading + entry.manual,
+    );
+    const totalSeconds = totals.reduce((sum, value) => sum + value, 0);
+    let best: TimeStats["bestDay"] = null;
+    byDay.forEach((entry, index) => {
+      const seconds = totals[index] ?? 0;
+      if (seconds > 0 && (!best || seconds > best.seconds)) best = { day: entry.day, seconds };
+    });
+    const byTopic = this.db
+      .select({
+        topicId: studySession.topicId,
+        name: topic.name,
+        seconds: sql<number>`sum(${studySession.seconds})`,
+      })
+      .from(studySession)
+      .leftJoin(topic, eq(topic.id, studySession.topicId))
+      .where(gte(studySession.day, first))
+      .groupBy(studySession.topicId)
+      .all()
+      .filter((row) => row.seconds > 0)
+      .sort((a, b) => b.seconds - a.seconds);
+    const byMaterial = this.db
+      .select({
+        materialId: material.id,
+        title: material.title,
+        seconds: sql<number>`sum(${studySession.seconds})`,
+      })
+      .from(studySession)
+      .innerJoin(material, eq(material.id, studySession.materialId))
+      .where(gte(studySession.day, first))
+      .groupBy(material.id)
+      .all()
+      .filter((row) => row.seconds > 0)
+      .sort((a, b) => b.seconds - a.seconds);
+    return {
+      totalSeconds,
+      avgPerDaySeconds: Math.round(totalSeconds / days),
+      bestDay: best,
+      byDay,
+      byTopic,
+      byMaterial,
+    };
+  }
+
+  /** The most recent intervals, newest first. */
+  sessions(limit = 50): SessionInfo[] {
+    return this.db
+      .select({
+        id: studySession.id,
+        startedAt: studySession.startedAt,
+        endedAt: studySession.endedAt,
+        seconds: studySession.seconds,
+        source: studySession.source,
+        day: studySession.day,
+        topicName: topic.name,
+        materialTitle: material.title,
+      })
+      .from(studySession)
+      .leftJoin(topic, eq(topic.id, studySession.topicId))
+      .leftJoin(material, eq(material.id, studySession.materialId))
+      .orderBy(desc(studySession.id))
+      .limit(limit)
+      .all()
+      .map((row) => ({ ...row, source: row.source as TimeSource }));
+  }
+
+  /** Removes a closed interval from the history. */
+  deleteSession(id: number): void {
+    const row = this.db
+      .select({ id: studySession.id })
+      .from(studySession)
+      .where(eq(studySession.id, id))
+      .get();
+    if (!row) throw new AppError("SESSION_NOT_FOUND", "Sessão não encontrada.");
+    if (this.open?.id === id) {
+      throw new AppError("VALIDATION_ERROR", "Encerre a sessão antes de excluir este intervalo.");
+    }
+    this.db.delete(studySession).where(eq(studySession.id, id)).run();
+    this.options.onChange?.();
   }
 
   /** The state shown to the window: the stored time of the day plus the live open interval. */

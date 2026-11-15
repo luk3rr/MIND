@@ -67,6 +67,11 @@ export const CHANNEL_NAMES = [
   "time:stop",
   "time:activity",
   "time:blur",
+  "time:getSettings",
+  "time:saveSettings",
+  "time:stats",
+  "time:sessions",
+  "time:deleteSession",
 ] as const;
 
 /** Names of the events pushed from the main process to the window. */

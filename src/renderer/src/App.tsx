@@ -46,7 +46,7 @@ function Screen() {
     return (
       <Shell workspaceId={route.workspaceId} section={route.section}>
         {route.section === "today" && <TodayPage workspaceId={route.workspaceId} />}
-        {route.section === "settings" && <SettingsPage />}
+        {route.section === "settings" && <SettingsPage workspaceId={route.workspaceId} />}
         {route.section === "library" && route.detailId === undefined && (
           <LibraryPage workspaceId={route.workspaceId} />
         )}
