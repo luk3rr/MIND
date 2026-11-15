@@ -115,6 +115,9 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
         <div className="card study-card" aria-live="polite">
           <p className="muted">
             {counts?.toStudy ?? 0} {T.studyRemaining}
+            {counts
+              ? ` (${T.studyBreakdown(counts.newAvailable, counts.learning, counts.review)})`
+              : ""}
             {next.card.isNew ? ` · ${T.studyNew}` : ""}
             {next.card.topic ? ` · ${next.card.topic}` : ""}
           </p>

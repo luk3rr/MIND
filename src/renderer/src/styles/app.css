@@ -718,3 +718,68 @@ mark {
   color: var(--fg);
   margin-bottom: 16px;
 }
+
+.help-tip {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+.help-tip-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: help;
+}
+.help-tip-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+.help-tip-button:hover,
+.help-tip-button[aria-expanded="true"] {
+  background: var(--panel-2);
+}
+.help-tip-button:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+}
+.help-tip-bubble {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(360px, 80vw);
+  padding: 12px 14px;
+  background: var(--panel-2);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  text-align: left;
+}
+.help-tip-bubble[hidden] {
+  display: none;
+}
+.help-tip-bubble ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.help-tip-bubble li + li {
+  margin-top: 4px;
+}

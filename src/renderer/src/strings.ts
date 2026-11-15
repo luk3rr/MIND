@@ -183,6 +183,8 @@ export const T = {
   studyMaterial: "Material",
   studyType: "Tipo",
   studyNew: "Novo",
+  studyBreakdown: (fresh: number, learning: number, review: number) =>
+    `${fresh} novos · ${learning} aprendendo · ${review} revisões`,
   todayDue: "Vencidos",
   todayLearning: "Aprendendo",
   todayNew: "Novos",
@@ -401,6 +403,23 @@ export const T = {
   studyQuestionsHint:
     "Resolva questões (múltipla escolha e Certo/Errado) e confira o gabarito com o comentário.",
   studySubCards: "Revisão de cards",
+  helpLabel: "Como funciona",
+  helpCardsTitle: "Como revisar cards",
+  helpCardsLines: [
+    "Leia a frente e tente lembrar a resposta antes de revelar (Espaço).",
+    "Errei (1): não lembrei. O card volta em poucos minutos.",
+    "Difícil (2): lembrei com esforço. Volta em pouco tempo.",
+    "Bom (3): lembrei. É o botão para a maioria dos cards.",
+    "Fácil (4): lembrei sem esforço. O card só volta em dias.",
+    "O tempo sob cada botão mostra quando o card volta. Ctrl+Z desfaz a última avaliação.",
+  ] as readonly string[],
+  helpQuestionsTitle: "Como praticar questões",
+  helpQuestionsLines: [
+    "Escolha uma alternativa (ou as teclas 1, 2, 3...) e clique em Responder.",
+    "Depois de responder, veja o gabarito e o comentário.",
+    "Use Pular para deixar uma questão para depois e Anterior para voltar.",
+    "Questões erradas voltam para refazer; as certas só voltam se você pedir.",
+  ] as readonly string[],
   discardReasons: {
     wrong_subtype: "tipo diferente do pedido",
     empty_front: "frente vazia",

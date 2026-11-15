@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
+import { HelpTip } from "./HelpTip.js";
 
 /**
  * The two ways to study, side by side: reviewing **cards** or practicing **questions**. The tab
@@ -68,7 +69,13 @@ export function StudyTabs({
         {tab("cards", T.studyTabCards, cardCount)}
         {tab("questions", T.studyTabQuestions, questionCount)}
       </div>
-      <p className="muted">{active === "cards" ? T.studyCardsHint : T.studyQuestionsHint}</p>
+      <p className="muted">
+        {active === "cards" ? T.studyCardsHint : T.studyQuestionsHint}{" "}
+        <HelpTip
+          title={active === "cards" ? T.helpCardsTitle : T.helpQuestionsTitle}
+          lines={active === "cards" ? T.helpCardsLines : T.helpQuestionsLines}
+        />
+      </p>
     </div>
   );
 }

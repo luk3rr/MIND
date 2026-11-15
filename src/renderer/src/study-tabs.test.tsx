@@ -87,6 +87,24 @@ describe("Study tabs: cards or questions", () => {
     expect(screen.getByRole("heading", { name: "Estudar" })).toBeVisible();
   });
 
+  it("explains how to study in a help bubble opened by a visible ? button", async () => {
+    open("/w/1/study", { studyQueue: [card(1)], questions: [question(7)] });
+    const user = userEvent.setup();
+    const help = await screen.findByRole("button", { name: /Como funciona/ });
+    expect(screen.getByRole("tooltip", { hidden: true })).not.toBeVisible();
+    await user.click(help);
+    const bubble = screen.getByRole("tooltip");
+    expect(bubble).toBeVisible();
+    expect(bubble).toHaveTextContent("Como revisar cards");
+    expect(bubble).toHaveTextContent("Errei (1)");
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("tooltip", { hidden: true })).not.toBeVisible();
+
+    await user.click(screen.getByRole("tab", { name: /Questões/ }));
+    await user.click(await screen.findByRole("button", { name: /Como funciona/ }));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Como praticar questões");
+  });
+
   it("switches back and forth without piling up the history, and the arrows move between tabs", async () => {
     open("/w/1/today", { studyQueue: [card(1)], questions: [question(7)] });
     const user = userEvent.setup();
