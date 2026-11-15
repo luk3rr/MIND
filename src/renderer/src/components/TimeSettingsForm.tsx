@@ -4,26 +4,27 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { useInvoke } from "../hooks.js";
 import { T } from "../strings.js";
 
+type Loaded = { dailyGoalMin: number; idleSeconds: number; autoEnabled: boolean };
+
 /** Study time settings of the open workspace: daily goal, idle limit and automatic counting. */
 export function TimeSettingsForm({ workspaceId }: { workspaceId: number }) {
   const { state } = useInvoke("time:getSettings", { workspaceId });
-  const [goal, setGoal] = useState("");
-  const [idle, setIdle] = useState("");
-  const [auto, setAuto] = useState(true);
+  // The fields start from what was loaded, so a late load can never overwrite what is typed.
+  if (state.status !== "ready") return null;
+  return <Fields workspaceId={workspaceId} loaded={state.data} />;
+}
+
+function Fields({ workspaceId, loaded }: { workspaceId: number; loaded: Loaded }) {
+  const [goal, setGoal] = useState(String(loaded.dailyGoalMin));
+  const [idle, setIdle] = useState(String(loaded.idleSeconds));
+  const [auto, setAuto] = useState(loaded.autoEnabled);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (state.status !== "ready") return;
-    setGoal(String(state.data.dailyGoalMin));
-    setIdle(String(state.data.idleSeconds));
-    setAuto(state.data.autoEnabled);
-  }, [state]);
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();
@@ -49,7 +50,6 @@ export function TimeSettingsForm({ workspaceId }: { workspaceId: number }) {
       });
   };
 
-  if (state.status !== "ready") return null;
   return (
     <section className="card stack" aria-labelledby="time-settings-title">
       <h2 id="time-settings-title">{T.timeTitle}</h2>
