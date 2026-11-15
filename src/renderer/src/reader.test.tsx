@@ -287,3 +287,20 @@ describe("separate reader window (FR-19, FR-5)", () => {
     window.history.pushState({}, "", "/");
   });
 });
+
+describe("zoom with Ctrl + wheel", () => {
+  it("zooms in and out only when Ctrl is held", async () => {
+    open("/w/1/library/4/read");
+    await screen.findByRole("img", { name: "Página 1" });
+    const viewport = document.querySelector(".reader-viewport") as HTMLElement;
+    expect(screen.getByText("129%")).toBeInTheDocument();
+    fireEvent.wheel(viewport, { deltaY: -100 });
+    expect(screen.getByText("129%")).toBeInTheDocument();
+    fireEvent.wheel(viewport, { deltaY: -100, ctrlKey: true });
+    await waitFor(() => expect(screen.getByText("160%")).toBeInTheDocument());
+    fireEvent.wheel(viewport, { deltaY: 300, ctrlKey: true });
+    await waitFor(() => expect(screen.getByText("90%")).toBeInTheDocument());
+    fireEvent.wheel(viewport, { deltaY: 5000, ctrlKey: true });
+    await waitFor(() => expect(screen.getByText("50%")).toBeInTheDocument());
+  });
+});

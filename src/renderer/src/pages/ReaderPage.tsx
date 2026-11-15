@@ -195,6 +195,22 @@ export function ReaderPage({
     };
   }, [workspaceId, materialId, current, size]);
 
+  // Ctrl + mouse wheel zooms the page smoothly, like in a browser (the wheel alone scrolls).
+  const effectiveRef = useRef(1);
+  effectiveRef.current = effective;
+  useEffect(() => {
+    const element = viewport.current;
+    if (!element) return undefined;
+    const onWheel = (event: WheelEvent): void => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      const next = effectiveRef.current * Math.exp(-event.deltaY * 0.002);
+      setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(next * 20) / 20)));
+    };
+    element.addEventListener("wheel", onWheel, { passive: false });
+    return () => element.removeEventListener("wheel", onWheel);
+  }, [info.state.status]);
+
   const goTo = (next: number): void => {
     if (total > 0) setPage(Math.min(Math.max(next, 1), total));
   };
@@ -301,70 +317,74 @@ export function ReaderPage({
       </div>
       <h1 id="reader-title">{data.title}</h1>
       <div className="reader-tools" role="toolbar" aria-label="Controles do leitor">
-        <button
-          type="button"
-          className="btn ghost"
-          aria-label={T.readerPrev}
-          onClick={() => goTo(current - 1)}
-          disabled={current <= 1}
-        >
-          <ChevronLeft size={16} aria-hidden="true" />
-        </button>
-        <form
-          className="row"
-          onSubmit={(event) => {
-            event.preventDefault();
-            goTo(Number(pageDraft ?? current));
-            setPageDraft(null);
-          }}
-        >
-          <input
-            aria-label={T.readerGoTo}
-            className="reader-page-input"
-            inputMode="numeric"
-            value={pageDraft ?? String(current)}
-            onChange={(event) => setPageDraft(event.target.value)}
-            onBlur={() => setPageDraft(null)}
-          />
-          <span className="muted">{T.readerOfTotal(total)}</span>
-        </form>
-        <button
-          type="button"
-          className="btn ghost"
-          aria-label={T.readerNext}
-          onClick={() => goTo(current + 1)}
-          disabled={current >= total}
-        >
-          <ChevronRight size={16} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="btn ghost"
-          aria-label={T.readerZoomOut}
-          onClick={() => zoomBy(-ZOOM_STEP)}
-        >
-          <ZoomOut size={16} aria-hidden="true" />
-        </button>
-        <span className="muted" aria-live="polite">
-          {Math.round(effective * 100)}%
-        </span>
-        <button
-          type="button"
-          className="btn ghost"
-          aria-label={T.readerZoomIn}
-          onClick={() => zoomBy(ZOOM_STEP)}
-        >
-          <ZoomIn size={16} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="btn ghost"
-          aria-label={T.readerFitWidth}
-          onClick={() => setZoom("fit")}
-        >
-          <Maximize2 size={16} aria-hidden="true" />
-        </button>
-        <form className="row" role="search" onSubmit={search}>
+        <div className="group">
+          <button
+            type="button"
+            className="btn ghost"
+            aria-label={T.readerPrev}
+            onClick={() => goTo(current - 1)}
+            disabled={current <= 1}
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <form
+            className="group"
+            onSubmit={(event) => {
+              event.preventDefault();
+              goTo(Number(pageDraft ?? current));
+              setPageDraft(null);
+            }}
+          >
+            <input
+              aria-label={T.readerGoTo}
+              className="reader-page-input"
+              inputMode="numeric"
+              value={pageDraft ?? String(current)}
+              onChange={(event) => setPageDraft(event.target.value)}
+              onBlur={() => setPageDraft(null)}
+            />
+            <span className="muted">{T.readerOfTotal(total)}</span>
+          </form>
+          <button
+            type="button"
+            className="btn ghost"
+            aria-label={T.readerNext}
+            onClick={() => goTo(current + 1)}
+            disabled={current >= total}
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="group">
+          <button
+            type="button"
+            className="btn ghost"
+            aria-label={T.readerZoomOut}
+            onClick={() => zoomBy(-ZOOM_STEP)}
+          >
+            <ZoomOut size={16} aria-hidden="true" />
+          </button>
+          <span className="muted zoom-label" aria-live="polite">
+            {Math.round(effective * 100)}%
+          </span>
+          <button
+            type="button"
+            className="btn ghost"
+            aria-label={T.readerZoomIn}
+            onClick={() => zoomBy(ZOOM_STEP)}
+          >
+            <ZoomIn size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="btn ghost"
+            aria-label={T.readerFitWidth}
+            onClick={() => setZoom("fit")}
+          >
+            <Maximize2 size={16} aria-hidden="true" />
+          </button>
+        </div>
+        <form className="group" role="search" onSubmit={search}>
           <input
             ref={searchInput}
             className="search-input"
@@ -378,7 +398,7 @@ export function ReaderPage({
           </button>
         </form>
         {hits !== null && (
-          <span className="row" role="status">
+          <span className="group" role="status">
             {hits.length === 0 ? (
               T.readerNoHits
             ) : (

@@ -69,11 +69,11 @@ export function TimerCard({ workspaceId }: { workspaceId: number }) {
         </button>
       )}
       <p className="muted">{time.todaySeconds === 0 ? T.timeNone : T.timeBreakdown(parts)}</p>
-      <div className="row" style={{ alignItems: "center" }}>
+      <div className="timer-controls">
         {state.status === "idle" && (
           <>
-            <label className="muted">
-              {T.timeTopic}{" "}
+            <label className="timer-topic muted">
+              {T.timeTopic}
               <select
                 value={topicId ?? ""}
                 onChange={(event) =>
@@ -109,7 +109,7 @@ export function TimerCard({ workspaceId }: { workspaceId: number }) {
             <button type="button" className="btn ghost" onClick={time.stop}>
               <Square size={14} aria-hidden="true" /> {T.timeStop}
             </button>
-            <span role="status">
+            <span role="status" className="timer-status">
               {formatClock(time.activeSeconds)} ·{" "}
               {state.status === "running" ? T.timeRunning : T.timePaused}
             </span>
