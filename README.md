@@ -12,12 +12,11 @@
 Importe seus materiais (PDF, Word, Markdown, texto e páginas web) e o **MIND** gera flashcards e
 questões no estilo de prova e estude tudo com repetição espaçada ([FSRS](https://pt.wikipedia.org/wiki/Repeti%C3%A7%C3%A3o_espa%C3%A7ada)).
 
-- **Seu material, sua máquina.** Tudo fica guardado localmente. Só trechos curtos vão ao provedor de
-  IA que você configurar, e somente depois de você aceitar o aviso que diz qual provedor os recebe.
-  Nada roda como servidor: o app não abre nenhuma porta de rede.
+- **Seu material, sua máquina.** Tudo fica guardado localmente no seu computador. Apenas trechos curtos vão ao provedor de
+  IA que você configurar.
 - **Todo item cita a fonte.** Um card ou questão só é mantido se a citação for encontrada no trecho
   de onde veio; as questões ainda passam por uma segunda verificação feita por outro modelo.
-- **Estude offline.** Revisão, prática, estatísticas e biblioteca funcionam sem rede. Só geração,
+- **Estude offline.** Revisão, prática, estatísticas e biblioteca funcionam sem internet. Só geração,
   verificação e chat precisam dela.
 - **Interface em português do Brasil** (os materiais podem estar em qualquer idioma).
 
@@ -43,12 +42,11 @@ pacote (`sudo apt remove mind`) também não apaga os seus dados.
    curto para experimentar.
 4. Em **Gerar**, escolha o material, o tipo (cards ou questões) e a quantidade; o custo estimado
    aparece antes de começar. Revise os rascunhos e aprove os que quiser.
-5. **Estude** a fila do dia (Espaço revela, 1 a 4 avaliam, Ctrl+Z desfaz) e **Pratique** questões.
+5. **Estude** a fila do dia e **Pratique** questões.
 6. Acompanhe o progresso em **Estatísticas**, revise os erros em **Erros**, treine os pontos fracos
    a partir de **Hoje** e pergunte ao **Chat** sobre o seu próprio material.
 
-A busca semântica opcional (painel do Chat) baixa uma vez um modelo multilíngue pequeno (cerca de
-130 MB) e o executa no seu computador.
+> A busca semântica opcional (tela do Chat) baixa uma vez um modelo multilíngue pequeno (cerca de 130 MB) e o executa no seu computador.
 
 ## Onde ficam os dados
 

@@ -95,15 +95,22 @@ Cada tarefa: ≤ ~1 h, estado final observável, FR/US servido e teste. Marque `
 - Como rodar: `pnpm dev`; Configurações → Tempo de estudo; Estatísticas → Tempo de estudo.
 - Desvios: (1) em Estatísticas o tempo é uma seção da página, não uma aba (R3); (2) `ChartBlock`, `TOOLTIP` e `shortDay` saíram de `StatsPage.tsx` para `components/ChartBlock.tsx` para serem reutilizados; (3) o botão de salvar do tempo se chama "Salvar tempo" (evita colidir com o "Salvar" do provedor); (4) a lista de intervalos recentes mostra os 10 mais novos.
 
-### UNIT-4 — Núcleo do leitor  `Status: pending`
+### UNIT-4 — Núcleo do leitor  `Status: verified (2026-11-14)`
 
-- [ ] T4.1 Resolução segura do arquivo do material (rejeita `..`, absoluto, fora do workspace; `FILE_MISSING`). [NFR-4; test: reader-path.test.ts]
-- [ ] T4.2 Worker `reader.worker` com mupdf: abre documento (cache LRU), `info` com tamanhos de página, `PDF_PROTECTED`/`EXTRACTION_FAILED`. [FR-24; test: reader.test.ts com PDFs de fixture]
-- [ ] T4.3 `reader:page`: PNG em data URL, teto de pixels, cache de poucas páginas. [FR-15, NFR-2; test: reader.test.ts]
-- [ ] T4.4 `reader:text` com linhas e caixas e `reader:search` (limite 500, trunca). [FR-17, FR-18; test: reader.test.ts]
-- [ ] T4.5 Spike A19: renderizar uma página e conferir que as caixas de `reader:text` batem com o texto visual (teste de fixture com texto conhecido). [A19; test: reader.test.ts]
-- [ ] T4.6 Esquemas, canais e handlers `reader:info/page/text/search`, novos códigos de erro. [FR-15..17; test: reader-handlers.test.ts, channels.test.ts]
-- [ ] T4.7 Verificação e commit `feat(reader): add the PDF reading core`.
+- [x] T4.1 Resolução segura do arquivo do material (rejeita `..`, absoluto, fora do workspace; `FILE_MISSING`). [NFR-4; test: reader-path.test.ts]
+- [x] T4.2 Worker `reader.worker` com mupdf: abre documento (cache LRU), `info` com tamanhos de página, `PDF_PROTECTED`/`EXTRACTION_FAILED`. [FR-24; test: reader.test.ts com PDFs de fixture]
+- [x] T4.3 `reader:page`: PNG em data URL, teto de pixels, cache de poucas páginas. [FR-15, NFR-2; test: reader.test.ts]
+- [x] T4.4 `reader:text` com linhas e caixas e `reader:search` (limite 500, trunca). [FR-17, FR-18; test: reader.test.ts]
+- [x] T4.5 Spike A19: renderizar uma página e conferir que as caixas de `reader:text` batem com o texto visual (teste de fixture com texto conhecido). [A19; test: reader.test.ts]
+- [x] T4.6 Esquemas, canais e handlers `reader:info/page/text/search`, novos códigos de erro. [FR-15..17; test: reader-handlers.test.ts, channels.test.ts]
+- [x] T4.7 Verificação e commit `feat(reader): add the PDF reading core`.
+
+
+**Resumo da UNIT-4 (2026-11-14).** Verificação: lint 0 · format 0 · typecheck 0 · `pnpm test --coverage`: 76 arquivos, 685 testes, todos passam; linhas 95,72% · ramos 86,24% · funções 93,78%. `electron-vite build` gera o chunk `reader.worker`.
+
+- Arquivos: `src/core/reader/{pdf-reader,backend,reader.worker,files,service}.ts`, `src/main/reader-worker.ts`, `core.ts` (`reader`, `createReaderWorker`), contratos (`reader:info|page|text|search`, códigos `FILE_MISSING`, `PDF_PROTECTED`), `main/ipc/handlers.ts`, `main/index.ts`, `renderer/test/fake-mind.ts`, testes `reader.test.ts`, `worker-reader.test.ts`, `reader-handlers.test.ts`.
+- Como rodar: pelos testes (`pnpm exec vitest run src/core/reader`); a interface vem na UNIT-5.
+- Desvios: (1) a busca é feita por glifos do mupdf (ignora maiúsculas e acentos) em vez de `page.search`, que diferencia maiúsculas; (2) `hits[]` do `reader:search` é uma entrada por ocorrência; (3) o worker real só roda no app (testado com um worker de mentira e, de ponta a ponta, na UNIT-5/8); (4) `reader:info.lastPage` volta `null` até a UNIT-7.
 
 ### UNIT-5 — Leitor de PDF (UI)  `Status: pending`
 

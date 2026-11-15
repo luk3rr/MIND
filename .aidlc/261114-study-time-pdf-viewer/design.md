@@ -526,6 +526,27 @@ sequenceDiagram
 
 **UI.** A barra de meta fica no cartão "Tempo de estudo" de Hoje (meta 0 vira o link "Definir meta"); a seção "Tempo de estudo" de Configurações edita as três opções; **Estatísticas** ganha a seção "Tempo de estudo" (seletor de período, cartões de resumo, gráfico empilhado com tabela equivalente, tabelas por tópico e material e lista de intervalos recentes). Desvio do mockup R3: seção na mesma página em vez de aba, para não reorganizar a tela existente.
 
+### UNIT-4 — Functional design
+
+**Regras.** O leitor é um serviço do núcleo com três camadas: `materialFile` (resolve o arquivo **somente** dentro de `files/` do workspace, rejeitando `..`, caminhos absolutos e links que escapam; `FILE_MISSING`), `PdfReader` (mupdf: informações, página em PNG, linhas de texto com caixas, busca) e um *backend* (`WorkerReader` mantém **uma** thread viva e conversa por mensagens com id; `InProcessReader` roda na mesma thread, nos testes). A página renderizada tem teto de 16 megapixels (a escala é reduzida), o serviço limita `scale` a 0,25–4 e guarda as 12 últimas imagens em cache. A busca ignora maiúsculas, acentos e tipo de espaço, devolve **uma entrada por ocorrência** (uma caixa por linha ocupada, até 500, com `truncated`). Contrato ajustado em relação a 2.8: `hits[]` = ocorrências, não páginas.
+
+```mermaid
+sequenceDiagram
+  participant UI as Renderer
+  participant S as ReaderService
+  participant F as materialFile
+  participant W as Worker (mupdf)
+  UI->>S: reader:page {material, página, escala}
+  S->>F: resolve arquivo seguro
+  F-->>S: caminho absoluto
+  S->>S: cache de páginas
+  S->>W: renderPage(caminho, página, escala)
+  W-->>S: PNG
+  S-->>UI: data URL, largura, altura
+```
+
+**Spike A19 (resultado).** As caixas de linha do mupdf coincidem com onde a página desenha o texto: o teste lê os pixels da página e acha tinta dentro da caixa e nenhuma fora dela. A camada de texto da UNIT-5 usa uma caixa por linha (suficiente para selecionar e copiar frases); ADR-1 permanece.
+
 ## 3.2–3.4 NFR e infraestrutura (todas as Units)
 
 - **3.2 NFR requirements:** os NFR de 2.3 valem como estão; por Unit, cada Definition of Done cita os que a Unit possui (2.7).

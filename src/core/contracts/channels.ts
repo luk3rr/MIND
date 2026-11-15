@@ -314,6 +314,15 @@ const timeStats = z.object({
   ),
 });
 
+const box = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
+
+const readerTarget = { workspaceId, materialId: z.number().int().positive() };
+
 export const channels = {
   "window:getState": {
     input: z.object({}).strict(),
@@ -784,6 +793,44 @@ export const channels = {
   "time:deleteSession": {
     input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),
     output: z.object({}).strict(),
+  },
+  "reader:info": {
+    input: z.object(readerTarget).strict(),
+    output: z.object({
+      title: z.string(),
+      pageCount: z.number().int(),
+      pages: z.array(z.object({ width: z.number(), height: z.number() })),
+      lastPage: z.number().int().nullable(),
+    }),
+  },
+  "reader:page": {
+    input: z
+      .object({
+        ...readerTarget,
+        page: z.number().int().min(1),
+        scale: z.number().min(0.25).max(4),
+      })
+      .strict(),
+    output: z.object({
+      dataUrl: z.string().startsWith("data:image/png;base64,"),
+      width: z.number().int(),
+      height: z.number().int(),
+    }),
+  },
+  "reader:text": {
+    input: z.object({ ...readerTarget, page: z.number().int().min(1) }).strict(),
+    output: z.object({
+      width: z.number(),
+      height: z.number(),
+      lines: z.array(box.extend({ text: z.string() })),
+    }),
+  },
+  "reader:search": {
+    input: z.object({ ...readerTarget, query: z.string().min(1).max(200) }).strict(),
+    output: z.object({
+      hits: z.array(z.object({ page: z.number().int(), rects: z.array(box) })),
+      truncated: z.boolean(),
+    }),
   },
   "workspace:delete": {
     input: z.object({ id: workspaceId }).strict(),

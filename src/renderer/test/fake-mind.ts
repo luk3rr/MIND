@@ -65,6 +65,14 @@ export interface FakeState {
   backupFailure: string | null;
   importResult: OutputOf<"material:import">;
   searchHits: OutputOf<"material:search">["hits"];
+  reader: {
+    info: OutputOf<"reader:info">;
+    /** Text lines by page number; a page without lines has no text. */
+    lines: Record<number, OutputOf<"reader:text">["lines"]>;
+    hits: OutputOf<"reader:search">["hits"];
+    /** When set, every reader call fails with this error. */
+    failure: ErrorInfo | null;
+  };
   time: FakeTime;
   timeSettings: OutputOf<"time:getSettings">;
   timeStats: OutputOf<"time:stats">;
@@ -174,6 +182,21 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     backupFailure: null,
     importResult: { materials: [], errors: [] },
     searchHits: [],
+    reader: {
+      info: {
+        title: "apostila",
+        pageCount: 3,
+        pages: [
+          { width: 595, height: 842 },
+          { width: 595, height: 842 },
+          { width: 595, height: 842 },
+        ],
+        lastPage: null,
+      },
+      lines: {},
+      hits: [],
+      failure: null,
+    },
     time: idleTime(),
     timeSettings: { dailyGoalMin: 60, idleSeconds: 120, autoEnabled: true },
     timeStats: {
@@ -685,6 +708,25 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           state.time = { ...state.time, status: "running", pausedReason: null };
         }
         return ok(state.time);
+      case "reader:info":
+        return state.reader.failure
+          ? { ok: false, error: state.reader.failure }
+          : ok(state.reader.info);
+      case "reader:page":
+        return state.reader.failure
+          ? { ok: false, error: state.reader.failure }
+          : ok({ dataUrl: "data:image/png;base64,iVBORw0KGgo=", width: 100, height: 140 });
+      case "reader:text": {
+        const { page } = payload as InputOf<"reader:text">;
+        return state.reader.failure
+          ? { ok: false, error: state.reader.failure }
+          : ok({ width: 595, height: 842, lines: state.reader.lines[page] ?? [] });
+      }
+      case "reader:search": {
+        const { query } = payload as InputOf<"reader:search">;
+        const found = state.reader.hits.filter((hit) => hit.rects.length > 0 && query.length > 0);
+        return ok({ hits: found, truncated: false });
+      }
       case "time:getSettings":
         return ok(state.timeSettings);
       case "time:saveSettings": {

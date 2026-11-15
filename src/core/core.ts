@@ -37,6 +37,8 @@ import { StatsService } from "./stats/service.js";
 import { TopicService } from "./stats/topics.js";
 import { StudyService } from "./study/service.js";
 import { TimeService } from "./time/service.js";
+import { InProcessReader, WorkerReader } from "./reader/backend.js";
+import { PageCache, ReaderService } from "./reader/service.js";
 import type { TzOffset } from "./study/scheduler.js";
 import { WorkspaceRegistry } from "./workspaces/registry.js";
 
@@ -65,6 +67,8 @@ export interface CoreOptions {
   modelsDir?: string;
   /** Creates the worker thread that runs the model (the app passes the bundled worker). */
   createEmbedWorker?: () => Worker;
+  /** Creates the worker thread that draws PDF pages (the app passes the bundled worker). */
+  createReaderWorker?: () => Worker;
   /** Called with the workspace id whenever its study timer changes. */
   onTimeEvent?: (event: { workspaceId: number }) => void;
 }
@@ -93,6 +97,8 @@ export interface Core {
   study(workspaceId: number): StudyService;
   /** The study timer of a workspace; one instance per workspace for the life of the core. */
   time(workspaceId: number): TimeService;
+  /** Opens the original PDF of a material of the workspace. */
+  reader(workspaceId: number): ReaderService;
   /** Closes and forgets the timer of a workspace (before it is deleted). */
   releaseTime(workspaceId: number): void;
   practice(workspaceId: number): PracticeService;
@@ -166,6 +172,10 @@ export function createCore(options: CoreOptions): Core {
     ensureReady,
   };
   const timers = new Map<number, TimeService>();
+  const readerBackend = options.createReaderWorker
+    ? new WorkerReader(options.createReaderWorker)
+    : new InProcessReader();
+  const pageCache = new PageCache();
   return {
     registry,
     queue,
@@ -181,6 +191,8 @@ export function createCore(options: CoreOptions): Core {
       timers.set(workspaceId, created);
       return created;
     },
+    reader: (workspaceId) =>
+      new ReaderService(registry.open(workspaceId), readerBackend, pageCache),
     releaseTime: (workspaceId) => {
       timers.get(workspaceId)?.shutdown();
       timers.delete(workspaceId);
@@ -237,6 +249,7 @@ export function createCore(options: CoreOptions): Core {
     async close() {
       for (const timer of timers.values()) timer.shutdown();
       timers.clear();
+      await readerBackend.close();
       await queue.shutdown();
       if (embedder instanceof TransformersEmbedder) embedder.close();
       registry.close();

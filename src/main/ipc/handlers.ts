@@ -331,6 +331,13 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       core.time(workspaceId).deleteSession(id);
       return {};
     },
+    "reader:info": ({ workspaceId, materialId }) => core.reader(workspaceId).info(materialId),
+    "reader:page": ({ workspaceId, materialId, page, scale }) =>
+      core.reader(workspaceId).page(materialId, page, scale),
+    "reader:text": ({ workspaceId, materialId, page }) =>
+      core.reader(workspaceId).text(materialId, page),
+    "reader:search": ({ workspaceId, materialId, query }) =>
+      core.reader(workspaceId).search(materialId, query),
     "workspace:delete": ({ id }) => {
       core.releaseTime(id);
       core.registry.delete(id);

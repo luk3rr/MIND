@@ -14,6 +14,7 @@ import { installLogRedaction } from "../core/redaction.js";
 import type { Core } from "../core/index.js";
 import { createEmbedWorker } from "./embed-worker.js";
 import { FakeEmbedder } from "../core/retrieval/fake-embedder.js";
+import { createReaderWorker } from "./reader-worker.js";
 import { extractWithWorker } from "./extract-worker.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { createRouter } from "./ipc/router.js";
@@ -114,6 +115,7 @@ if (!app.requestSingleInstanceLock()) {
       ...(process.env["MIND_E2E_FAKE_LLM"] === "1" && !app.isPackaged
         ? { provider: scriptedCardProvider() }
         : {}),
+      createReaderWorker,
       onTimeEvent: (event) => {
         mainWindow?.webContents.send("time:changed", event);
       },
