@@ -208,16 +208,93 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
     expect(await screen.findByRole("heading", { name: "Praticar questões" })).toBeVisible();
   });
 
-  it("offers a filter built from the facets", async () => {
-    const fake = open("/w/1/study", { studyQueue: [card(1)] });
+  it("filters by topic, material and type together, with a search over the topics", async () => {
+    const facetTopics = [
+      { key: 1, label: "Biologia", count: 3 },
+      { key: 2, label: "Elasticidade-renda", count: 9 },
+      { key: 3, label: "Elasticidade-preço", count: 5 },
+    ];
+    const fake = open("/w/1/study", { studyQueue: [card(1)], facetTopics });
     const user = userEvent.setup();
-    const select = await screen.findByRole("combobox", { name: "Estudar" });
-    await user.selectOptions(select, "topic:1");
+    const group = await screen.findByRole("group", { name: "Estudar" });
+    const search = within(group).getByRole("combobox", { name: "Tópico" });
+    await user.click(search);
+    // Most items first.
+    expect(within(screen.getByRole("listbox")).getAllByRole("option")[0]).toHaveTextContent(
+      "Elasticidade-renda (9)",
+    );
+    await user.type(search, "preco");
+    const list = screen.getByRole("listbox", { name: "Tópico" });
+    expect(within(list).getAllByRole("option")).toHaveLength(1);
+    await user.click(within(list).getByRole("option", { name: /Elasticidade-preço/ }));
     await waitFor(() =>
       expect(fake.invoke).toHaveBeenCalledWith("study:next", {
         workspaceId: 1,
+        filter: { topicId: 3 },
+      }),
+    );
+    expect(search).toHaveValue("Elasticidade-preço");
+
+    await user.selectOptions(within(group).getByLabelText("Tipo"), "qa");
+    await user.selectOptions(within(group).getByLabelText("Material"), "1");
+    await waitFor(() =>
+      expect(fake.invoke).toHaveBeenLastCalledWith("study:next", {
+        workspaceId: 1,
+        filter: { topicId: 3, materialId: 1, subtype: "qa" },
+      }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() =>
+      expect(fake.invoke).toHaveBeenLastCalledWith("study:next", { workspaceId: 1 }),
+    );
+    expect(search).toHaveValue("");
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).toBeNull();
+  });
+
+  it("chooses a topic with the keyboard and says when none matches", async () => {
+    const facetTopics = [
+      { key: 1, label: "Biologia", count: 3 },
+      { key: 2, label: "Química", count: 5 },
+    ];
+    const fake = open("/w/1/study", { studyQueue: [card(1)], facetTopics });
+    const user = userEvent.setup();
+    const search = await screen.findByRole("combobox", { name: "Tópico" });
+    await user.type(search, "zzz");
+    expect(screen.getByText("Nenhum tópico encontrado")).toBeVisible();
+    await user.clear(search);
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() =>
+      expect(fake.invoke).toHaveBeenLastCalledWith("study:next", {
+        workspaceId: 1,
         filter: { topicId: 1 },
       }),
+    );
+    await user.click(screen.getByRole("button", { name: "Remover o filtro de tópico" }));
+    await waitFor(() =>
+      expect(fake.invoke).toHaveBeenLastCalledWith("study:next", { workspaceId: 1 }),
+    );
+  });
+
+  it("remembers the filter and drops a part that no longer exists", async () => {
+    const facetTopics = [{ key: 2, label: "Química", count: 5 }];
+    const fake = open("/w/1/study", {
+      studyQueue: [card(1)],
+      facetTopics,
+      rememberedFilters: { "mind.filter.1.study-cards": "topic:2|material:99" },
+    });
+    expect(await screen.findByRole("combobox", { name: "Tópico" })).toHaveValue("Química");
+    // The material is gone, so only the topic stays, and that is what is remembered.
+    await waitFor(() =>
+      expect(fake.invoke).toHaveBeenLastCalledWith("study:next", {
+        workspaceId: 1,
+        filter: { topicId: 2 },
+      }),
+    );
+    expect(window.localStorage.getItem("mind.filter.1.study-cards")).toBe("topic:2");
+    await userEvent.setup().click(screen.getByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() =>
+      expect(window.localStorage.getItem("mind.filter.1.study-cards")).toBeNull(),
     );
   });
 });

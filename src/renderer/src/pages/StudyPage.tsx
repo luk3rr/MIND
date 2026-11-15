@@ -11,7 +11,7 @@ import { MathText } from "../MathText.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
-import { FilterSelect, parseFilter } from "../components/FilterSelect.js";
+import { FilterSelect, parseFilter, usePersistedFilter } from "../components/FilterSelect.js";
 import { StudyTabs } from "../components/StudyTabs.js";
 import { ItemActions } from "../components/ItemActions.js";
 
@@ -36,7 +36,9 @@ function Pieces({ pieces }: { pieces: { text: string; hit: boolean }[] }) {
 /** Studies the day's queue one card at a time: reveal (Space), rate (1 to 4), undo (Ctrl+Z). */
 export function StudyPage({ workspaceId }: { workspaceId: number }) {
   const today = useInvoke("study:today", { workspaceId });
-  const [filterValue, setFilterValue] = useState("");
+  const [filterValue, setFilterValue] = usePersistedFilter(
+    `mind.filter.${workspaceId}.study-cards`,
+  );
   const filter = parseFilter(filterValue);
   const [next, setNext] = useState<Next | null>(null);
   const [revealed, setRevealed] = useState(false);

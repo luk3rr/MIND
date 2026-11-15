@@ -11,6 +11,7 @@ import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import type { Route } from "../router.js";
 import { T } from "../strings.js";
+import { SearchCombobox } from "../components/SearchCombobox.js";
 
 type Run = OutputOf<"generation:list">["runs"][number];
 const ACTIVE = new Set(["queued", "running"]);
@@ -200,6 +201,7 @@ export function GeneratePage({
   );
   const [quantity, setQuantity] = useState("20");
   const [instructions, setInstructions] = useState("");
+  const [topicName, setTopicName] = useState("");
   const [variations, setVariations] = useState(false);
   const [estimate, setEstimate] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -224,6 +226,7 @@ export function GeneratePage({
       ...(trainTopic === null && pageFrom.trim() ? { pageFrom: Number(pageFrom) } : {}),
       ...(trainTopic === null && pageTo.trim() ? { pageTo: Number(pageTo) } : {}),
       ...(instructions.trim() ? { instructions: instructions.trim() } : {}),
+      ...(trainTopic === null && topicName.trim() ? { topicName: topicName.trim() } : {}),
       ...(variations ? { variations: true } : {}),
     };
   };
@@ -243,6 +246,7 @@ export function GeneratePage({
     pageFrom,
     pageTo,
     instructions,
+    topicName,
     variations,
   ]);
   useEffect(() => {
@@ -451,6 +455,22 @@ export function GeneratePage({
               )}
             </div>
           </div>
+          {trainTopic === null && (
+            <div className="field">
+              <label htmlFor="gen-topic">{T.generateTopic}</label>
+              <SearchCombobox
+                inputId="gen-topic"
+                label={T.generateTopic}
+                placeholder={T.generateTopicPlaceholder}
+                options={[...topicNames.entries()].map(([key, label]) => ({ key, label }))}
+                text={topicName}
+                onText={setTopicName}
+              />
+              <p id="gen-topic-hint" className="muted">
+                {T.generateTopicHint}
+              </p>
+            </div>
+          )}
           <div className="field">
             <label htmlFor="gen-instructions">{T.generateInstructions}</label>
             <textarea

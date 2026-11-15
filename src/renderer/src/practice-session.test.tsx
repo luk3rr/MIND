@@ -56,13 +56,17 @@ describe("filter of the questions (like the cards)", () => {
       questions: [question(1, "multiple_choice"), question(2, "certo_errado")],
     });
     const user = userEvent.setup();
-    const select = await screen.findByRole("combobox", { name: "Estudar" });
-    expect(within(select).getByRole("option", { name: "Todas as questões" })).toBeInTheDocument();
-    expect(within(select).getByRole("option", { name: /Biologia/ })).toBeInTheDocument();
-    expect(within(select).getByRole("option", { name: /apostila/ })).toBeInTheDocument();
-    expect(within(select).getByRole("option", { name: /Múltipla escolha/ })).toBeInTheDocument();
+    const group = await screen.findByRole("group", { name: "Estudar" });
+    const topic = within(group).getByRole("combobox", { name: "Tópico" });
+    await user.click(topic);
+    expect(screen.getByRole("option", { name: /Biologia/ })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    const material = within(group).getByLabelText("Material");
+    expect(within(material).getByRole("option", { name: /apostila/ })).toBeInTheDocument();
+    const type = within(group).getByLabelText("Tipo");
+    expect(within(type).getByRole("option", { name: /Múltipla escolha/ })).toBeInTheDocument();
     expect(await screen.findByText("Enunciado 1?")).toBeVisible();
-    await user.selectOptions(select, "subtype:certo_errado");
+    await user.selectOptions(type, "certo_errado");
     expect(await screen.findByText("Enunciado 2?")).toBeVisible();
     expect(screen.queryByText("Enunciado 1?")).not.toBeInTheDocument();
     expect(invoke).toHaveBeenCalledWith(

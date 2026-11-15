@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
-import { FilterSelect, parseFilter } from "../components/FilterSelect.js";
+import { FilterSelect, parseFilter, usePersistedFilter } from "../components/FilterSelect.js";
 import { ItemActions } from "../components/ItemActions.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 import { StudyTabs } from "../components/StudyTabs.js";
@@ -35,7 +35,9 @@ interface Entry {
  */
 export function PracticePage({ workspaceId }: { workspaceId: number }) {
   const facets = useInvoke("practice:facets", { workspaceId });
-  const [filterValue, setFilterValue] = useState("");
+  const [filterValue, setFilterValue] = usePersistedFilter(
+    `mind.filter.${workspaceId}.study-questions`,
+  );
   const filter = parseFilter(filterValue);
   const [redo, setRedo] = useState(false);
   const [deck, setDeck] = useState<Entry[]>([]);

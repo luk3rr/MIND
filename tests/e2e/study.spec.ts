@@ -198,7 +198,7 @@ test("skips a question, goes back to it and filters the questions by type (pract
   const { page } = current;
   await page.getByRole("button", { name: "Estudar", exact: true }).click();
   await page.getByRole("tab", { name: /Questões/ }).click();
-  await expect(page.getByRole("combobox", { name: "Estudar" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Estudar" })).toBeVisible();
   await expect(page.getByText(/Questão 1 de 1/)).toBeVisible();
   await page.getByRole("button", { name: "Pular" }).click();
   await expect(page.getByText(/Questão 2 de 2/)).toBeVisible();
@@ -208,8 +208,6 @@ test("skips a question, goes back to it and filters the questions by type (pract
     window.mind.invoke("practice:counts", { workspaceId: 1 }),
   );
   expect(counts).toMatchObject({ ok: true, data: { answeredToday: 0 } });
-  await page
-    .getByRole("combobox", { name: "Estudar" })
-    .selectOption({ label: "Múltipla escolha (3)" });
+  await page.getByLabel("Tipo").selectOption({ label: "Múltipla escolha (3)" });
   await expect(page.getByText(/Questão 1 de 1/)).toBeVisible();
 });

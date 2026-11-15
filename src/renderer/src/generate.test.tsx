@@ -157,6 +157,32 @@ describe("Generate page", () => {
     const call = invoke.mock.calls.find(([channel]) => channel === "generation:start");
     expect(call?.[1]).not.toHaveProperty("instructions");
     expect(call?.[1]).not.toHaveProperty("variations");
+    expect(call?.[1]).not.toHaveProperty("topicName");
+  });
+
+  it("lets the person name the topic of the whole run, suggesting the existing ones", async () => {
+    const { invoke } = open("/w/1/generate", {
+      topicList: [{ id: 1, name: "Elasticidade-renda", cards: 3, questions: 0 } as never],
+    });
+    const user = userEvent.setup();
+    const field = await screen.findByRole("combobox", { name: "Tópico (opcional)" });
+    expect(field).toHaveAttribute("placeholder", "Automático: o modelo escolhe");
+    await user.click(field);
+    // The suggestions open below the field, in a list that scrolls like the filter's.
+    const list = await screen.findByRole("listbox", { name: "Tópico (opcional)" });
+    expect(within(list).getAllByRole("option")).toHaveLength(1);
+    await user.click(within(list).getByRole("option", { name: "Elasticidade-renda" }));
+    expect(field).toHaveValue("Elasticidade-renda");
+    await user.type(field, " real");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    await user.clear(field);
+    await user.type(field, "  Elasticidade-renda ");
+    await user.click(screen.getByRole("button", { name: "Gerar cards" }));
+    await screen.findByText("Na fila");
+    expect(invoke).toHaveBeenCalledWith(
+      "generation:start",
+      expect.objectContaining({ topicName: "Elasticidade-renda" }),
+    );
   });
 
   it("shows the message when there are no approved items to vary", async () => {

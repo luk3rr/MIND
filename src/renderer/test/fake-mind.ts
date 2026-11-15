@@ -51,6 +51,10 @@ export interface FakeState {
   answeredToday: number;
   errorEntries: FakeErrorEntry[];
   topicList: FakeTopic[];
+  /** Topics of the study and practice filters; one "Biologia" topic when not given. */
+  facetTopics?: { key: number; label: string; count: number }[];
+  /** Filters the screens remember, by local storage key. */
+  rememberedFilters?: Record<string, string>;
   overview: FakeOverview;
   madeCards: number[];
   chat: FakeReply[];
@@ -179,6 +183,17 @@ export function idleTime(overrides: Partial<FakeTime> = {}): FakeTime {
 
 /** An in-memory `window.mind` that behaves like the real core for the channels the UI uses. */
 export function installFakeMind(initial: Partial<FakeState> = {}) {
+  // Study screens remember their filter in localStorage; every test starts without one.
+  try {
+    for (const key of Object.keys(window.localStorage)) {
+      if (key.startsWith("mind.filter.")) window.localStorage.removeItem(key);
+    }
+    for (const [key, value] of Object.entries(initial.rememberedFilters ?? {})) {
+      window.localStorage.setItem(key, value);
+    }
+  } catch {
+    // Not available in this environment.
+  }
   const state: FakeState = {
     workspaces: [],
     route: null,
@@ -520,7 +535,9 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           counts: studyCounts(state),
           settings: { newPerDay: 20, dailyGoal: 40, desiredRetention: 0.9 },
           facets: {
-            topics: [{ key: 1, label: "Biologia", count: state.studyQueue.length }],
+            topics: state.facetTopics ?? [
+              { key: 1, label: "Biologia", count: state.studyQueue.length },
+            ],
             materials: [{ key: 1, label: "apostila", count: state.studyQueue.length }],
             subtypes: [{ key: "qa", label: "qa", count: state.studyQueue.length }],
             cards: state.studyQueue.length,
@@ -529,7 +546,9 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         });
       case "practice:facets":
         return ok({
-          topics: [{ key: 1, label: "Biologia", count: state.questions.length }],
+          topics: state.facetTopics ?? [
+            { key: 1, label: "Biologia", count: state.questions.length },
+          ],
           materials: [{ key: 1, label: "apostila", count: state.questions.length }],
           subtypes: [...new Set(state.questions.map((q) => q.item.subtype))].map((key) => ({
             key,
