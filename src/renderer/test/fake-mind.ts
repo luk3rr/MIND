@@ -78,7 +78,12 @@ export interface FakeState {
     failure: ErrorInfo | null;
   };
   /** Windows and system viewers the user asked for, newest last. */
-  opened: { kind: "window" | "system"; materialId: number; page?: number }[];
+  opened: { kind: "window" | "system" | "release"; materialId: number; page?: number }[];
+  update: OutputOf<"update:state">;
+  /** The release the next "check" finds; null means the app is up to date. */
+  updateFound: { version: string; url: string } | null;
+  /** When true the check fails (no connection). */
+  updateFails: boolean;
   /** When set, opening a window or a file fails with this message. */
   openFailure: string | null;
   time: FakeTime;
@@ -208,6 +213,9 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       failure: null,
     },
     opened: [],
+    update: { enabled: true, current: "0.2.0", available: null, checkedAt: null },
+    updateFound: null,
+    updateFails: false,
     openFailure: null,
     time: idleTime(),
     timeSettings: { dailyGoalMin: 60, idleSeconds: 120, autoEnabled: true },
@@ -772,6 +780,35 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         return ok({ rects: state.reader.cited });
       case "reader:savePosition":
         state.reader.saved.push((payload as InputOf<"reader:savePosition">).page);
+        return ok({});
+      case "update:state":
+        return ok(state.update);
+      case "update:check": {
+        if (state.updateFails) return ok({ outcome: "error", state: state.update, release: null });
+        state.update = {
+          ...state.update,
+          available: state.updateFound,
+          checkedAt: "2026-03-01T10:00:00.000Z",
+        };
+        return ok({
+          outcome: state.updateFound ? "available" : "current",
+          state: state.update,
+          release: state.updateFound,
+        });
+      }
+      case "update:setEnabled":
+        state.update = {
+          ...state.update,
+          enabled: (payload as InputOf<"update:setEnabled">).enabled,
+        };
+        return ok(state.update);
+      case "update:dismiss":
+        state.update = { ...state.update, available: null };
+        return ok(state.update);
+      case "update:openRelease":
+        if (!state.update.available)
+          return failure("OPEN_FAILED", "Não há uma nova versão para abrir.");
+        state.opened.push({ kind: "release", materialId: 0 });
         return ok({});
       case "reader:openWindow": {
         const { materialId, page } = payload as InputOf<"reader:openWindow">;

@@ -438,4 +438,19 @@ export const T = {
     `${count} ${count === 1 ? "questão pulada continua" : "questões puladas continuam"} sem resposta.`,
   practiceReviewSkipped: "Voltar às puladas",
   practiceUnanswered: "Sem resposta ainda",
+  updateAvailable: (version: string, current: string) =>
+    `Nova versão ${version} disponível (você usa a ${current}).`,
+  updateSee: "Ver a nova versão",
+  updateLater: "Agora não",
+  updateSection: "Atualizações",
+  updateAuto: "Avisar quando houver uma nova versão",
+  updateAutoHint:
+    "Uma vez por dia o app consulta a página de versões do projeto no GitHub. Nada sobre você ou seus materiais é enviado.",
+  updateCurrentVersion: (version: string) => `Versão instalada: ${version}`,
+  updateCheckNow: "Verificar agora",
+  updateChecking: "Verificando…",
+  updateUpToDate: "Você está na versão mais recente.",
+  updateFound: (version: string) => `Há uma nova versão: ${version}.`,
+  updateFailed: "Não foi possível verificar agora. Confira a conexão e tente de novo.",
+  updateLastChecked: (when: string) => `Última verificação: ${when}`,
 } as const;

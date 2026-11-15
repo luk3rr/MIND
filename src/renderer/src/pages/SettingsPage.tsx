@@ -9,6 +9,7 @@ import { ProviderForm } from "../components/ProviderForm.js";
 import { useInvoke } from "../hooks.js";
 import { useSettingsStatus } from "../settings-status.js";
 import { TimeSettingsForm } from "../components/TimeSettingsForm.js";
+import { UpdateSettings } from "../components/UpdateSettings.js";
 import { T } from "../strings.js";
 
 function CostPanel({ month }: { month: string }) {
@@ -115,6 +116,7 @@ export function SettingsPage({ workspaceId }: { workspaceId: number }) {
         </div>
       </section>
       <TimeSettingsForm workspaceId={workspaceId} />
+      <UpdateSettings />
       <section className="card stack" aria-labelledby="privacy-title">
         <h2 id="privacy-title">{T.privacyTitle}</h2>
         <p>{T.privacyText}</p>

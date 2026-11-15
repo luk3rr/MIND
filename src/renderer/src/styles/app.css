@@ -713,3 +713,8 @@ mark {
   background: rgba(0, 0, 0, 0.2);
   color: inherit;
 }
+.alert.info {
+  border-color: var(--info);
+  color: var(--fg);
+  margin-bottom: 16px;
+}

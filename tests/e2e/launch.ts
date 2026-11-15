@@ -46,7 +46,14 @@ export async function launch(
   const app = await electron.launch({
     ...(EXECUTABLE ? { executablePath: EXECUTABLE } : {}),
     args: [...EXTRA_ARGS, ...APP_ARGS],
-    env: { ...process.env, OPENROUTER_API_KEY: "", ...extraEnv, MIND_USER_DATA_DIR: userData },
+    env: {
+      ...process.env,
+      OPENROUTER_API_KEY: "",
+      // The runs stay offline: the update check is tested on its own.
+      MIND_UPDATE_CHECK: "0",
+      ...extraEnv,
+      MIND_USER_DATA_DIR: userData,
+    },
   });
   const page = await app.firstWindow();
   await page.waitForLoadState("domcontentloaded");

@@ -37,6 +37,8 @@ import { StatsService } from "./stats/service.js";
 import { TopicService } from "./stats/topics.js";
 import { StudyService } from "./study/service.js";
 import { TimeService } from "./time/service.js";
+import { UpdateService } from "./update/service.js";
+import type { ReleaseInfo } from "./update/service.js";
 import { InProcessReader, WorkerReader } from "./reader/backend.js";
 import { PageCache, ReaderService } from "./reader/service.js";
 import type { TzOffset } from "./study/scheduler.js";
@@ -69,6 +71,14 @@ export interface CoreOptions {
   createEmbedWorker?: () => Worker;
   /** Creates the worker thread that draws PDF pages (the app passes the bundled worker). */
   createReaderWorker?: () => Worker;
+  /** The installed version, used to tell whether a release is newer. */
+  appVersion?: string;
+  /** Replaces the request that looks for a new release (tests). */
+  updateFetch?: FetchLike;
+  /** Replaces the address of the release lookup (development and end-to-end runs only). */
+  updateUrl?: string;
+  /** Called when a newer release is found. */
+  onUpdateAvailable?: (release: ReleaseInfo) => void;
   /** Called with the workspace id whenever its study timer changes. */
   onTimeEvent?: (event: { workspaceId: number }) => void;
 }
@@ -89,6 +99,8 @@ export interface Llm {
 /** Everything the application needs, built from a data directory. It never imports Electron. */
 export interface Core {
   registry: WorkspaceRegistry;
+  /** Looks for a newer release of the app. */
+  updates: UpdateService;
   queue: JobQueue;
   llm: Llm;
   materials(workspaceId: number): MaterialService;
@@ -171,6 +183,15 @@ export function createCore(options: CoreOptions): Core {
     fetch: fetchImpl,
     ensureReady,
   };
+  const updates = new UpdateService(app, {
+    currentVersion: options.appVersion ?? "0.0.0",
+    fetch: loggedFetch(options.updateFetch ?? ((url, init) => fetch(url, init)), {
+      withPath: true,
+    }),
+    clock,
+    ...(options.updateUrl ? { apiUrl: options.updateUrl } : {}),
+    ...(options.onUpdateAvailable ? { onAvailable: options.onUpdateAvailable } : {}),
+  });
   const timers = new Map<number, TimeService>();
   const readerBackend = options.createReaderWorker
     ? new WorkerReader(options.createReaderWorker)
@@ -178,6 +199,7 @@ export function createCore(options: CoreOptions): Core {
   const pageCache = new PageCache();
   return {
     registry,
+    updates,
     queue,
     llm,
     time: (workspaceId) => {

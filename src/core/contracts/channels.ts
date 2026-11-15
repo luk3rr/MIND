@@ -344,6 +344,13 @@ const box = z.object({
 
 const readerTarget = { workspaceId, materialId: z.number().int().positive() };
 
+const updateState = z.object({
+  enabled: z.boolean(),
+  current: z.string(),
+  available: z.object({ version: z.string(), url: z.string() }).nullable(),
+  checkedAt: z.string().nullable(),
+});
+
 export const channels = {
   "window:getState": {
     input: z.object({}).strict(),
@@ -877,6 +884,21 @@ export const channels = {
     input: z.object({ ...readerTarget, page: z.number().int().min(1) }).strict(),
     output: z.object({}).strict(),
   },
+  "update:state": { input: z.object({}).strict(), output: updateState },
+  "update:check": {
+    input: z.object({}).strict(),
+    output: z.object({
+      outcome: z.enum(["disabled", "current", "available", "error"]),
+      state: updateState,
+      release: z.object({ version: z.string(), url: z.string() }).nullable(),
+    }),
+  },
+  "update:setEnabled": { input: z.object({ enabled: z.boolean() }).strict(), output: updateState },
+  "update:dismiss": {
+    input: z.object({ version: z.string().max(32) }).strict(),
+    output: updateState,
+  },
+  "update:openRelease": { input: z.object({}).strict(), output: z.object({}).strict() },
   "workspace:delete": {
     input: z.object({ id: workspaceId }).strict(),
     output: z.object({}).strict(),

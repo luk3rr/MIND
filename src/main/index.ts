@@ -16,6 +16,7 @@ import { createEmbedWorker } from "./embed-worker.js";
 import { FakeEmbedder } from "../core/retrieval/fake-embedder.js";
 import { createReaderWorker } from "./reader-worker.js";
 import { ReaderWindows } from "./reader-windows.js";
+import { startUpdateChecks } from "./update-scheduler.js";
 import { extractWithWorker } from "./extract-worker.js";
 import { createHandlers } from "./ipc/handlers.js";
 import { createRouter } from "./ipc/router.js";
@@ -33,6 +34,7 @@ const devServerUrl = process.env["ELECTRON_RENDERER_URL"];
 let mainWindow: BrowserWindow | null = null;
 let core: Core | null = null;
 let uninstallRedaction: (() => void) | null = null;
+let stopUpdateChecks: (() => void) | null = null;
 
 /** The window may only show the app itself: no new windows and no navigation away from it. */
 function hardenWindow(window: BrowserWindow): void {
@@ -159,6 +161,14 @@ if (!app.requestSingleInstanceLock()) {
         ? { provider: scriptedCardProvider() }
         : {}),
       createReaderWorker,
+      appVersion: app.getVersion(),
+      // A packaged app only ever asks GitHub; the address can be changed to test the notice.
+      ...(!app.isPackaged && process.env["MIND_UPDATE_URL"]
+        ? { updateUrl: process.env["MIND_UPDATE_URL"] }
+        : {}),
+      onUpdateAvailable: (release) => {
+        mainWindow?.webContents.send("update:available", release);
+      },
       onTimeEvent: (event) => {
         mainWindow?.webContents.send("time:changed", event);
       },
@@ -172,6 +182,7 @@ if (!app.requestSingleInstanceLock()) {
         appVersion: app.getVersion(),
         openReaderWindow: (target) => readerWindows.open(target),
         openPath: (path) => shell.openPath(path),
+        openExternal: (url) => shell.openExternal(url),
         pickSavePath: async (defaultName) => {
           const options = {
             defaultPath: join(app.getPath("documents"), defaultName),
@@ -211,6 +222,16 @@ if (!app.requestSingleInstanceLock()) {
       dispatch(channel, payload),
     );
     mainWindow = createWindow(state);
+    // The installed app looks for a new release now and then; a development run and the
+    // end-to-end runs stay offline unless `MIND_UPDATE_CHECK=1` asks for it.
+    const checkUpdates =
+      process.env["MIND_UPDATE_CHECK"] === "1" ||
+      (app.isPackaged && process.env["MIND_UPDATE_CHECK"] !== "0");
+    if (checkUpdates) {
+      stopUpdateChecks = startUpdateChecks(async () => {
+        await core?.updates.check();
+      });
+    }
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow(state);
     });
@@ -227,6 +248,7 @@ if (!app.requestSingleInstanceLock()) {
     event.preventDefault();
     closing = true;
     uninstallRedaction?.();
+    stopUpdateChecks?.();
     const closing_ = core.close();
     core = null;
     void closing_.finally(() => app.quit());

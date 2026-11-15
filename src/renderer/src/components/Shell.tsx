@@ -15,6 +15,7 @@ import { TimeProvider } from "../time.js";
 import { applyTheme, nextTheme, readTheme, saveTheme } from "../theme.js";
 import type { Theme } from "../theme.js";
 import { QuickSwitcher } from "./QuickSwitcher.js";
+import { UpdateBanner } from "./UpdateBanner.js";
 import { Sidebar } from "./Sidebar.js";
 import { StatusBar } from "./StatusBar.js";
 import type { ReactNode } from "react";
@@ -59,6 +60,7 @@ export function Shell({
         </a>
         <Sidebar workspaceId={workspaceId} active={section} />
         <main id="main" className="content" tabIndex={-1}>
+          <UpdateBanner />
           {needsSetup && (
             <p className="alert warn" role="status">
               {T.setupBanner}{" "}

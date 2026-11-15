@@ -80,6 +80,11 @@ export const CHANNEL_NAMES = [
   "reader:search",
   "reader:locate",
   "reader:savePosition",
+  "update:state",
+  "update:check",
+  "update:setEnabled",
+  "update:dismiss",
+  "update:openRelease",
   "reader:openWindow",
   "material:openOriginal",
 ] as const;
@@ -90,6 +95,7 @@ export const EVENT_NAMES = [
   "job:progress",
   "job:finished",
   "time:changed",
+  "update:available",
 ] as const;
 
 export type ChannelName = (typeof CHANNEL_NAMES)[number];

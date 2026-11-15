@@ -51,6 +51,8 @@ export interface UiBridge {
   pickBackup?(): Promise<string | null>;
   /** Opens (or focuses) the separate reader window of a PDF. */
   openReaderWindow?(target: { workspaceId: number; materialId: number; page?: number }): void;
+  /** Opens an address in the system browser (only ever the release page of an update). */
+  openExternal?(url: string): Promise<void>;
   /** Opens a file in the system's default application; returns an error text, empty on success. */
   openPath?(path: string): Promise<string>;
   appVersion?: string;
@@ -353,6 +355,19 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     }),
     "reader:savePosition": ({ workspaceId, materialId, page }) => {
       core.reader(workspaceId).savePosition(materialId, page);
+      return {};
+    },
+    "update:state": () => core.updates.state(),
+    "update:check": () => core.updates.check(true),
+    "update:setEnabled": ({ enabled }) => core.updates.setEnabled(enabled),
+    "update:dismiss": ({ version }) => core.updates.dismiss(version),
+    "update:openRelease": async () => {
+      // The address comes from the checked release, never from the window.
+      const url = core.updates.releaseUrl();
+      if (!url || !ui.openExternal) {
+        throw new AppError("OPEN_FAILED", "Não há uma nova versão para abrir.");
+      }
+      await ui.openExternal(url);
       return {};
     },
     "reader:openWindow": ({ workspaceId, materialId, page }) => {
