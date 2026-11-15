@@ -6,6 +6,7 @@
 
 import type { Provider } from "../llm/provider.js";
 import { buildJudgeMessages } from "./question-prompts.js";
+import { withSelfContainedJudge } from "./self-contained.js";
 import type { JudgeItem } from "./question-prompts.js";
 import { judgeBatchSchema } from "./schemas.js";
 
@@ -27,7 +28,7 @@ export class Judge {
   ): Promise<JudgeResult> {
     if (items.length === 0) return { supported: [], reasons: [], costUsd: 0 };
     const { value, usage } = await this.provider.complete(
-      buildJudgeMessages(items, calculation),
+      withSelfContainedJudge(buildJudgeMessages(items, calculation)),
       judgeBatchSchema,
       {
         model,

@@ -97,7 +97,7 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
       if (!choices) {
         return {
           subtype: "certo_errado",
-          statement: `Segundo o trecho ${excerpt.id}, ${subject} é citado (${index + 1}).`,
+          statement: `${subject} é um conceito do material de estudo (${index + 1}).`,
           options: [],
           answer: "C",
           explanation: "O trecho confirma a afirmação.",

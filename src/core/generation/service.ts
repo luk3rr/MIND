@@ -7,7 +7,7 @@
 import { logger } from "../logging.js";
 
 const log = logger("generation");
-import { and, desc, eq, inArray, ne, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, or } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import type { FieldError } from "../contracts/errors.js";
 import { chunk, generationRun, item, material } from "../db/workspace-schema.js";
@@ -91,6 +91,8 @@ export interface RunInfo {
 
 export interface RunView extends RunInfo {
   progress: number | null;
+  /** Drafts of the run still waiting for review. */
+  pending: number;
 }
 
 function toInfo(row: typeof generationRun.$inferSelect): RunInfo {
@@ -546,7 +548,17 @@ export class GenerationService {
   /** A run with the progress of its job while it is active. */
   view(run: RunInfo): RunView {
     const active = ["queued", "running"].includes(run.status) && run.jobId !== null;
-    return { ...run, progress: active ? getJob(this.db, run.jobId as number).progress : null };
+    const pending =
+      this.db
+        .select({ total: count() })
+        .from(item)
+        .where(and(eq(item.runId, run.id), eq(item.status, "draft")))
+        .get()?.total ?? 0;
+    return {
+      ...run,
+      progress: active ? getJob(this.db, run.jobId as number).progress : null,
+      pending,
+    };
   }
 
   get(runId: number): RunInfo {

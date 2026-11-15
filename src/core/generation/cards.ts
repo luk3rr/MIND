@@ -14,6 +14,7 @@ import type { PromptChunk, PromptExtra } from "./prompts.js";
 import { chunkLabel } from "./planning.js";
 import type { SourceChunk } from "./planning.js";
 import { cardBatchSchema } from "./schemas.js";
+import { dependsOnSource, withSelfContained } from "./self-contained.js";
 import type { CardOut, CardPayload } from "./schemas.js";
 import { upsertTopic } from "./topics.js";
 import type { KnownTopics } from "./topics.js";
@@ -63,7 +64,11 @@ export function payloadProblem(subtype: string, front: string, back: string): st
 
 export function cardProblem(card: CardOut, subtype: string): string | null {
   if (card.subtype !== subtype) return "wrong_subtype";
-  return payloadProblem(subtype, card.front, card.back);
+  const problem = payloadProblem(subtype, card.front, card.back);
+  if (problem !== null) return problem;
+  // A cloze front is a sentence of the material itself, so only the other types are checked.
+  if (subtype !== "cloze" && dependsOnSource(card.front, true)) return "not_self_contained";
+  return null;
 }
 
 export interface BatchRequest {
@@ -95,12 +100,14 @@ export class CardGenerator {
       label: chunkLabel(c),
       text: c.text,
     }));
-    const messages = buildCardMessages(
-      request.subtype,
-      request.count,
-      promptChunks,
-      request.avoid ?? [],
-      request.extra ?? {},
+    const messages = withSelfContained(
+      buildCardMessages(
+        request.subtype,
+        request.count,
+        promptChunks,
+        request.avoid ?? [],
+        request.extra ?? {},
+      ),
     );
     const { value, usage } = await this.provider.complete(messages, cardBatchSchema, {
       model: request.model,

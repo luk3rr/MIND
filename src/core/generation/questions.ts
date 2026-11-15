@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { dependsOnSource, withSelfContained } from "./self-contained.js";
 import { and, eq, ne } from "drizzle-orm";
 import { item, topic } from "../db/workspace-schema.js";
 import type { WorkspaceDb } from "../jobs/store.js";
@@ -34,6 +35,7 @@ export function questionProblem(question: QuestionOut, profile: string): string 
   if (!wanted) return "unknown_profile";
   if (question.subtype !== wanted.subtype) return "wrong_subtype";
   if (!question.statement.trim()) return "empty_statement";
+  if (dependsOnSource(question.statement)) return "not_self_contained";
   if (!question.explanation.trim()) return "empty_explanation";
   if (wanted.subtype === "certo_errado")
     return ["C", "E"].includes(question.answer) ? null : "bad_answer";
@@ -117,12 +119,14 @@ export class QuestionGenerator {
       text: c.text,
     }));
     const { value, usage } = await this.provider.complete(
-      buildQuestionMessages(
-        request.profile,
-        request.count,
-        promptChunks,
-        request.avoid ?? [],
-        request.extra ?? {},
+      withSelfContained(
+        buildQuestionMessages(
+          request.profile,
+          request.count,
+          promptChunks,
+          request.avoid ?? [],
+          request.extra ?? {},
+        ),
       ),
       questionBatchSchema,
       { model: request.model, purpose: "generation", schemaName: "QuestionBatch" },
