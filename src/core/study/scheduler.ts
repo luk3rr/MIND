@@ -8,7 +8,6 @@ import { createEmptyCard, fsrs, generatorParameters } from "ts-fsrs";
 import type { Card } from "ts-fsrs";
 
 export const DAY_ROLLOVER_HOUR = 4;
-export const LEARN_AHEAD_MS = 20 * 60 * 1000;
 export const REVIEW_STATE = 2;
 
 export enum Rating {

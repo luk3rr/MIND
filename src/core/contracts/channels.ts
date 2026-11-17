@@ -839,6 +839,8 @@ export const channels = {
         filter: studyFilter.optional(),
         /** New cards to allow today on top of the daily limit ("study more"). */
         extraNew: z.number().int().min(0).max(500).optional(),
+        /** Study the cards that are due later today now, without waiting for their time. */
+        early: z.boolean().optional(),
       })
       .strict(),
     output: z.object({
@@ -862,6 +864,8 @@ export const channels = {
         })
         .nullable(),
       counts: studyCounts,
+      /** Cards that come back later today (not due yet): how many and when the first is due. */
+      waiting: z.object({ count: z.number().int(), due: z.string() }).nullable(),
     }),
   },
   "study:rate": {

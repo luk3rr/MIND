@@ -117,8 +117,9 @@ describe("StudyService queue and rating (FR-12, FR-13)", () => {
     expect(updated).toMatchObject({ state: 1, reps: 1, lapses: 0 });
     // The card is in learning but not due yet, so the next new card comes first.
     expect(study.nextCard()?.item.id).toBe(rig.itemIds[1]);
-    expect(study.queue(10).map((c) => c.item.id)).toEqual([rig.itemIds[1], rig.itemIds[2], first]);
-    expect(study.counts()).toMatchObject({ learning: 1, newAvailable: 2 });
+    expect(study.queue(10).map((c) => c.item.id)).toEqual([rig.itemIds[1], rig.itemIds[2]]);
+    // It is waiting for its time, so it is not counted as something to study yet.
+    expect(study.counts()).toMatchObject({ learning: 0, newAvailable: 2 });
     const logs = rig.core.registry
       .open(rig.workspaceId)
       .connection.sqlite.prepare("SELECT * FROM review_log")
@@ -134,16 +135,46 @@ describe("StudyService queue and rating (FR-12, FR-13)", () => {
     expect(study.counts()).toMatchObject({ reviewedToday: 1, newStudiedToday: 1 });
   });
 
-  it("brings a failed card back within the learn-ahead window", async () => {
+  it("keeps a card rated again out of the queue until its time, even when it is the only one", async () => {
     rig = await studyRig(1);
     const study = rig.core.study(rig.workspaceId);
-    study.rate(rig.itemIds[0] as number, Rating.AGAIN, { now: rig.clock.now() });
-    expect(study.nextCard(new Date(rig.clock.now().getTime() + MINUTE))?.item.id).toBe(
-      rig.itemIds[0],
-    );
-    expect(study.counts().learning).toBe(1);
-    // An hour earlier the card (due in a minute) is outside the 20-minute learn-ahead window.
-    expect(study.counts(new Date(rig.clock.now().getTime() - 3_600_000)).learning).toBe(0);
+    const t0 = rig.clock.now();
+    study.rate(rig.itemIds[0] as number, Rating.AGAIN, { now: t0 });
+    // Due in a minute or so: right after rating there is nothing to study.
+    expect(study.nextCard(t0)).toBeNull();
+    expect(study.counts(t0)).toMatchObject({ learning: 0, toStudy: 0 });
+    expect(study.nextCard(new Date(t0.getTime() + 30_000))).toBeNull();
+    // When its time arrives the card comes back.
+    expect(study.nextCard(new Date(t0.getTime() + 2 * MINUTE))?.item.id).toBe(rig.itemIds[0]);
+    expect(study.counts(new Date(t0.getTime() + 2 * MINUTE)).learning).toBe(1);
+  });
+
+  it("says when the cards that come back later today are due, and not those of another day", async () => {
+    rig = await studyRig(2);
+    const study = rig.core.study(rig.workspaceId);
+    const t0 = rig.clock.now();
+    expect(study.waiting(t0)).toBeNull();
+    study.rate(rig.itemIds[0] as number, Rating.AGAIN, { now: t0 });
+    study.rate(rig.itemIds[1] as number, Rating.HARD, { now: t0 });
+    const waiting = study.waiting(t0);
+    expect(waiting?.count).toBe(2);
+    expect(Date.parse(waiting?.due ?? "")).toBeGreaterThan(t0.getTime());
+    expect(Date.parse(waiting?.due ?? "")).toBeLessThan(t0.getTime() + 15 * MINUTE);
+    // Once their time comes they are due, not waiting.
+    expect(study.waiting(new Date(t0.getTime() + 15 * MINUTE))).toBeNull();
+    // A card that graduated is due in days, so it is not "later today".
+    study.rate(rig.itemIds[0] as number, Rating.EASY, { now: t0 });
+    expect(study.waiting(t0)?.count).toBe(1);
+  });
+
+  it("lets the person study the cards due later today without waiting (early)", async () => {
+    rig = await studyRig(1);
+    const study = rig.core.study(rig.workspaceId);
+    const t0 = rig.clock.now();
+    study.rate(rig.itemIds[0] as number, Rating.AGAIN, { now: t0 });
+    expect(study.nextCard(t0)).toBeNull();
+    expect(study.nextCard(t0, undefined, 0, true)?.item.id).toBe(rig.itemIds[0]);
+    expect(study.queue(10, t0, undefined, 0, true).map((c) => c.item.id)).toEqual([rig.itemIds[0]]);
   });
 
   it("serves learning cards first, then reviews due today, then new ones", async () => {

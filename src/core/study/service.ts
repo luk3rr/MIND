@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { and, asc, count, desc, eq, inArray, isNull, lte, notInArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNull, lte, notInArray } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import type { FieldError } from "../contracts/errors.js";
@@ -23,7 +23,6 @@ import { ReviewService } from "../review/service.js";
 import type { ItemInfo } from "../review/service.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 import {
-  LEARN_AHEAD_MS,
   REVIEW_STATE,
   Rating,
   Scheduler,
@@ -291,7 +290,7 @@ export class StudyService {
   /** `extraNew` raises today's limit of new cards for this call (the person asked for more). */
   counts(now: Date = this.clock.now(), filter?: StudyFilter, extraNew = 0): TodayCounts {
     const end = dayEnd(now, this.offset).toISOString();
-    const ahead = new Date(now.getTime() + LEARN_AHEAD_MS).toISOString();
+    const due = now.toISOString();
     const day = this.today(now);
     const wanted = filterConditions(filter, this.db);
     const learning =
@@ -299,7 +298,7 @@ export class StudyService {
         .select({ total: count() })
         .from(cardState)
         .innerJoin(item, eq(item.id, cardState.itemId))
-        .where(and(...wanted, inArray(cardState.state, LEARNING_STATES), lte(cardState.due, ahead)))
+        .where(and(...wanted, inArray(cardState.state, LEARNING_STATES), lte(cardState.due, due)))
         .get()?.total ?? 0;
     const review =
       this.db
@@ -342,15 +341,20 @@ export class StudyService {
   }
 
   /**
-   * Upcoming cards: learning cards that are already due, reviews due today, new cards in the
-   * quota, and only then learning cards still inside the learn-ahead window. Holding the
-   * learn-ahead cards back keeps a card just rated "again" or "hard" (due in minutes) from coming
-   * straight back while other cards are waiting.
+   * Upcoming cards: learning cards that are already due, reviews due today and new cards in the
+   * quota. A learning card that is not due yet (just rated "again" or "hard", due in minutes) is
+   * left out, even when nothing else is waiting: it comes back when its time arrives.
    */
-  queue(limit = 20, now: Date = this.clock.now(), filter?: StudyFilter, extraNew = 0): StudyCard[] {
+  queue(
+    limit = 20,
+    now: Date = this.clock.now(),
+    filter?: StudyFilter,
+    extraNew = 0,
+    early = false,
+  ): StudyCard[] {
     const end = dayEnd(now, this.offset).toISOString();
-    const due = now.toISOString();
-    const ahead = new Date(now.getTime() + LEARN_AHEAD_MS).toISOString();
+    // With `early` the person asked not to wait: learning cards due later today count as due.
+    const due = early ? end : now.toISOString();
     const wanted = filterConditions(filter, this.db);
     const cards: StudyCard[] = [];
     const seen = new Set<number>();
@@ -386,12 +390,42 @@ export class StudyService {
         .all();
       for (const row of fresh) cards.push({ item: this.review.get(row.id), schedule: null });
     }
-    take(LEARNING_STATES, ahead);
     return cards;
   }
 
-  nextCard(now: Date = this.clock.now(), filter?: StudyFilter, extraNew = 0): StudyCard | null {
-    return this.queue(1, now, filter, extraNew)[0] ?? null;
+  nextCard(
+    now: Date = this.clock.now(),
+    filter?: StudyFilter,
+    extraNew = 0,
+    early = false,
+  ): StudyCard | null {
+    return this.queue(1, now, filter, extraNew, early)[0] ?? null;
+  }
+
+  /**
+   * The learning cards that are not due yet but will be before the day ends: how many, and when
+   * the first one is due. Null when there are none.
+   */
+  waiting(
+    now: Date = this.clock.now(),
+    filter?: StudyFilter,
+  ): { count: number; due: string } | null {
+    const rows = this.db
+      .select({ due: cardState.due })
+      .from(cardState)
+      .innerJoin(item, eq(item.id, cardState.itemId))
+      .where(
+        and(
+          ...filterConditions(filter, this.db),
+          inArray(cardState.state, LEARNING_STATES),
+          gt(cardState.due, now.toISOString()),
+          lte(cardState.due, dayEnd(now, this.offset).toISOString()),
+        ),
+      )
+      .orderBy(asc(cardState.due))
+      .all();
+    const first = rows[0];
+    return first ? { count: rows.length, due: first.due } : null;
   }
 
   /** Selector options with how many approved items each holds. */

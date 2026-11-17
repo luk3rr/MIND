@@ -49,6 +49,9 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
   const [error, setError] = useState<string | null>(null);
   // New cards allowed today on top of the daily limit, asked for with "study more".
   const [extraNew, setExtraNew] = useState(0);
+  // Cards due later today, pulled forward because the person did not want to wait.
+  const [early, setEarly] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
   const { navigate } = useRouter();
   const shownAt = useRef(0);
   useActivity("cards", next?.card ? { itemId: next.card.itemId } : {});
@@ -59,6 +62,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
         workspaceId,
         ...(filter ? { filter } : {}),
         ...(extraNew > 0 ? { extraNew } : {}),
+        ...(early ? { early } : {}),
       })
       .then((result) => {
         if (!result.ok) {
@@ -74,7 +78,24 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
       });
   };
 
-  useEffect(() => load(), [workspaceId, filterValue, extraNew]);
+  useEffect(() => load(), [workspaceId, filterValue, extraNew, early]);
+
+  // While cards wait for their time, the countdown follows the clock and the card comes back
+  // by itself when the time arrives.
+  const waiting = next?.card === null ? next.waiting : null;
+  useEffect(() => {
+    if (!waiting) return;
+    const due = Date.parse(waiting.due);
+    const tick = setInterval(() => setClock(Date.now()), 15_000);
+    const arrive = setTimeout(
+      () => load(),
+      Math.min(Math.max(due - Date.now(), 0) + 500, 2 ** 31 - 1),
+    );
+    return () => {
+      clearInterval(tick);
+      clearTimeout(arrive);
+    };
+  }, [waiting?.due]);
 
   const rate = (rating: 1 | 2 | 3 | 4): void => {
     if (!next?.card || !revealed) return;
@@ -122,34 +143,63 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
         </p>
       )}
       {next && next.card === null && (
-        <div className="card">
-          {counts && counts.newWaiting > 0 ? (
-            <>
-              <h2>{T.studyLimitTitle}</h2>
-              <p className="muted">{T.studyLimitBody(counts.newStudiedToday, counts.newWaiting)}</p>
-              <div className="row">
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => setExtraNew((value) => value + MORE_NEW)}
-                >
-                  {T.studyMoreNew(Math.min(MORE_NEW, counts.newWaiting))}
-                </button>
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={() => navigate(sectionPath(workspaceId, "settings"))}
-                >
-                  {T.studyChangeLimit}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <h2>{T.studyDoneTitle}</h2>
-              <p className="muted">{T.studyDoneBody}</p>
-            </>
-          )}
+        <div className="card stack">
+          {(() => {
+            const limit = counts && counts.newWaiting > 0 ? counts : null;
+            return (
+              <>
+                {waiting ? (
+                  <>
+                    <h2>{T.studyDoneTitle}</h2>
+                    <p className="muted">
+                      {T.studyWaiting(
+                        waiting.count,
+                        new Date(waiting.due).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }),
+                        Math.ceil((Date.parse(waiting.due) - clock) / 60_000),
+                      )}
+                    </p>
+                    <div className="actions">
+                      <button type="button" className="btn" onClick={() => setEarly(true)}>
+                        {T.studyEarly(waiting.count)}
+                      </button>
+                    </div>
+                  </>
+                ) : limit ? null : (
+                  <>
+                    <h2>{T.studyDoneTitle}</h2>
+                    <p className="muted">{T.studyDoneBody}</p>
+                  </>
+                )}
+                {limit && (
+                  <section aria-label={T.studyLimitTitle} className="stack">
+                    {waiting ? <h3>{T.studyLimitTitle}</h3> : <h2>{T.studyLimitTitle}</h2>}
+                    <p className="muted">
+                      {T.studyLimitBody(limit.newStudiedToday, limit.newWaiting)}
+                    </p>
+                    <div className="actions">
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => setExtraNew((value) => value + MORE_NEW)}
+                      >
+                        {T.studyMoreNew(Math.min(MORE_NEW, limit.newWaiting))}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={() => navigate(sectionPath(workspaceId, "settings"))}
+                      >
+                        {T.studyChangeLimit}
+                      </button>
+                    </div>
+                  </section>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
       {next?.card && (

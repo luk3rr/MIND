@@ -193,6 +193,14 @@ export const T = {
   undo: "Desfazer",
   ratingNames: { "1": "Errei", "2": "Difícil", "3": "Bom", "4": "Fácil" } as Record<string, string>,
   studyRemaining: "restantes",
+  studyWaiting: (count: number, at: string, minutes: number) =>
+    count === 1
+      ? `Seu próximo card volta às ${at} (${minutes <= 0 ? "agora" : `em ${minutes} min`}).`
+      : `Seus próximos ${count} cards voltam a partir das ${at} (${minutes <= 0 ? "agora" : `em ${minutes} min`}).`,
+  studyEarly: (count: number) =>
+    count === 1
+      ? "Estudar esse card agora, sem esperar"
+      : `Estudar esses ${count} cards agora, sem esperar`,
   studyDoneTitle: "Nada para estudar agora",
   studyDoneBody: "Volte mais tarde ou gere novos cards.",
   studyLimitTitle: "Limite diário de cards novos atingido",

@@ -72,6 +72,11 @@ export interface FakeState {
   /** The templates the person saved, newest last; `cancelTemplate` makes the dialog return nothing. */
   templates?: { kind: "card" | "question"; format: "csv" | "xlsx" }[];
   cancelTemplate?: boolean;
+  /**
+   * Cards that come back later today: while set, the queue is empty and the answer says when;
+   * asking `early` serves `cards` instead. Set `cards` to what the early study gives.
+   */
+  waitingCards?: { due: string; cards: FakeStudyCard[] };
   /** What generating from a passage answers: drafts, or an error. Defaults to two cards. */
   selection?: {
     drafts?: OutputOf<"selection:generate">["drafts"];
@@ -845,14 +850,30 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           questions: state.questions.length,
         });
       case "study:next": {
-        const { extraNew } = payload as InputOf<"study:next">;
+        const { extraNew, early } = payload as InputOf<"study:next">;
         const held = state.studyHeldBack ?? [];
         const already = state.releasedExtra ?? 0;
         if ((extraNew ?? 0) > already && held.length > 0) {
           state.studyQueue = [...state.studyQueue, ...held.splice(0, (extraNew ?? 0) - already)];
           state.releasedExtra = extraNew ?? 0;
         }
-        return ok({ card: state.studyQueue[0] ?? null, counts: studyCounts(state) });
+        if (state.waitingCards && state.studyQueue.length === 0) {
+          if (early) {
+            state.studyQueue = [...state.waitingCards.cards];
+            state.waitingCards = undefined;
+          } else {
+            return ok({
+              card: null,
+              counts: studyCounts(state),
+              waiting: { count: state.waitingCards.cards.length, due: state.waitingCards.due },
+            });
+          }
+        }
+        return ok({
+          card: state.studyQueue[0] ?? null,
+          counts: studyCounts(state),
+          waiting: null,
+        });
       }
       case "study:rate": {
         const first = state.studyQueue[0];

@@ -469,4 +469,74 @@ describe("Review page for questions", () => {
     expect(screen.getByLabelText("Enunciado")).toBeVisible();
     expect(screen.getByLabelText("Comentário")).toBeVisible();
   });
+  describe("cards that come back later today", () => {
+    const soon = () => new Date(Date.now() + 6 * 60_000 + 20_000).toISOString();
+
+    it("tells when the next card comes back instead of just saying there is nothing", async () => {
+      open("/w/1/study", { studyQueue: [], waitingCards: { due: soon(), cards: [card(1)] } });
+      expect(await screen.findByText("Nada para estudar agora")).toBeVisible();
+      expect(
+        screen.getByText(/Seu próximo card volta às \d{2}:\d{2} \(em 7 min\)\./),
+      ).toBeVisible();
+      expect(screen.queryByText("Volte mais tarde ou gere novos cards.")).toBeNull();
+    });
+
+    it("counts the cards when there are several", async () => {
+      open("/w/1/study", {
+        studyQueue: [],
+        waitingCards: { due: soon(), cards: [card(1), card(2), card(3)] },
+      });
+      expect(await screen.findByText(/Seus próximos 3 cards voltam a partir das/)).toBeVisible();
+    });
+
+    it("studies them now when the person does not want to wait", async () => {
+      const fake = open("/w/1/study", {
+        studyQueue: [],
+        waitingCards: { due: soon(), cards: [card(1)] },
+      });
+      const user = userEvent.setup();
+      await user.click(
+        await screen.findByRole("button", { name: "Estudar esse card agora, sem esperar" }),
+      );
+      expect(await screen.findByLabelText("Frente")).toHaveTextContent("Pergunta 1?");
+      expect(fake.invoke).toHaveBeenCalledWith("study:next", { workspaceId: 1, early: true });
+    });
+
+    it("offers both the card that comes back and the new cards beyond the daily limit", async () => {
+      const fake = open("/w/1/study", {
+        studyQueue: [],
+        studyHeldBack: [card(9), card(10)],
+        waitingCards: { due: soon(), cards: [card(1)] },
+      });
+      expect(await screen.findByText(/Seu próximo card volta às/)).toBeVisible();
+      expect(
+        screen.getByRole("heading", { name: "Limite diário de cards novos atingido" }),
+      ).toBeVisible();
+      const user = userEvent.setup();
+      // Each button does one thing: the first brings the waiting card, the second the new ones.
+      await user.click(screen.getByRole("button", { name: "Estudar mais 2 novos" }));
+      expect(await screen.findByLabelText("Frente")).toHaveTextContent("Pergunta 9?");
+      expect(fake.invoke).toHaveBeenCalledWith("study:next", { workspaceId: 1, extraNew: 10 });
+    });
+
+    it("keeps the plain message when nothing comes back today", async () => {
+      open("/w/1/study", { studyQueue: [] });
+      expect(await screen.findByText("Volte mais tarde ou gere novos cards.")).toBeVisible();
+      expect(screen.queryByRole("button", { name: /^Estudar agora/ })).toBeNull();
+    });
+
+    it("brings the card back by itself when its time arrives", async () => {
+      const fake = open("/w/1/study", {
+        studyQueue: [],
+        waitingCards: { due: new Date(Date.now() + 1200).toISOString(), cards: [card(1)] },
+      });
+      await screen.findByText("Nada para estudar agora");
+      // Its time comes: the queue now has the card, and the page asks again on its own.
+      fake.state.waitingCards = undefined;
+      fake.state.studyQueue = [card(1)];
+      expect(
+        await screen.findByLabelText("Frente", undefined, { timeout: 4000 }),
+      ).toHaveTextContent("Pergunta 1?");
+    });
+  });
 });
