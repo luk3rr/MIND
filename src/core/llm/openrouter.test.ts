@@ -131,6 +131,26 @@ describe("OpenRouterProvider", () => {
     });
   });
 
+  it("turns an answer that stalls after the headers into a provider error to retry", async () => {
+    const stalled = (name: string): Response => {
+      const response = new Response("{}", { status: 200 });
+      response.text = () => Promise.reject(new DOMException("aborted", name));
+      return response;
+    };
+    const timeout = setup([stalled("TimeoutError")]);
+    const error = await timeout.provider.complete(messages, Card, options).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AppError);
+    expect(error).toMatchObject({
+      code: "PROVIDER_ERROR",
+      message: "O provedor demorou mais de 120 s para responder. Tente de novo.",
+    });
+    const dropped = setup([stalled("NetworkError")]);
+    await expect(dropped.provider.complete(messages, Card, options)).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+      message: expect.stringContaining("A conexão com o provedor caiu"),
+    });
+  });
+
   it.each([401, 403])("reports a rejected key (%i) without leaking it", async (status) => {
     const { provider } = setup([new Response("nope", { status })]);
     const error = await provider.complete(messages, Card, options).catch((e: unknown) => e);

@@ -261,4 +261,86 @@ describe("SelectionGenerator", () => {
     expect(text).toContain("[selection] selection answered");
     expect(text).not.toMatch(/SECRET|fotossíntese|cloroplastos/);
   });
+  it("asks for the type the person chose and drops what comes back in another type", async () => {
+    const provider = fake();
+    provider.script("SelectionCards", {
+      cards: [
+        card("A {{c1::luz}} vira energia química.", QUOTE_A, { subtype: "cloze", back: "" }),
+        card("Pergunta comum sobre a luz?"),
+      ],
+    });
+    const r = setup(provider);
+    const result = await generator(r).generate({ ...base(r), subtype: "cloze" });
+    expect(provider.calls[0]?.messages.at(-1)?.content).toContain('must use `subtype` = "cloze"');
+    expect(result.drafts).toHaveLength(1);
+    expect(result.drafts[0]?.draft).toMatchObject({ subtype: "cloze" });
+    expect(result.discarded.invalid).toBe(1);
+  });
+
+  it("lets the model choose the type when none is given", async () => {
+    const provider = fake();
+    provider.script("SelectionCards", { cards: [card("Pergunta?")] });
+    const r = setup(provider);
+    await generator(r).generate(base(r));
+    expect(provider.calls[0]?.messages.at(-1)?.content).toContain(
+      "choose the best one for each item",
+    );
+    expect(provider.calls[0]?.messages.at(-1)?.content).not.toContain("must use `subtype`");
+  });
+
+  it("asks for multiple choice with four or five alternatives and keeps only that many", async () => {
+    const provider = fake();
+    const option = (key: string) => ({ key, text: `Texto ${key}`, why: `Motivo ${key}` });
+    const question = (statement: string, keys: string) => ({
+      subtype: "multiple_choice",
+      statement,
+      options: keys.split("").map(option),
+      answer: "A",
+      explanation: "x",
+      quote: QUOTE_A,
+    });
+    provider.script("SelectionQuestions", {
+      questions: [question("Com cinco?", "ABCDE"), question("Com quatro?", "ABCD")],
+    });
+    const r = setup(provider);
+    const result = await generator(r).generate({
+      ...base(r),
+      kind: "question",
+      subtype: "multiple_choice_5",
+    });
+    expect(provider.calls[0]?.messages.at(-1)?.content).toContain("exactly 5 options");
+    expect(result.drafts.map((d) => d.draft.kind === "question" && d.draft.statement)).toEqual([
+      "Com cinco?",
+    ]);
+  });
+
+  it("passes what the person wrote to the model, as their own request", async () => {
+    const provider = fake();
+    provider.script("SelectionCards", { cards: [card("Pergunta?")] });
+    const r = setup(provider);
+    await generator(r).generate({
+      ...base(r),
+      instructions: "Um card sobre sílaba tônica e outro sobre acento gráfico",
+    });
+    const prompt = provider.calls[0]?.messages.at(-1)?.content ?? "";
+    expect(prompt).toContain("Specific request from the student");
+    expect(prompt).toContain("Um card sobre sílaba tônica e outro sobre acento gráfico");
+  });
+
+  it("refuses a type of the other kind and a request that is too long, without calling the model", async () => {
+    const provider = fake();
+    const r = setup(provider);
+    const field = async (change: object): Promise<string | undefined> => {
+      try {
+        await generator(r).generate({ ...base(r), ...change });
+      } catch (error) {
+        return (error as AppError).fields?.[0]?.field;
+      }
+      return undefined;
+    };
+    expect(await field({ subtype: "certo_errado" })).toBe("subtype");
+    expect(await field({ kind: "question", subtype: "cloze" })).toBe("subtype");
+    expect(await field({ instructions: "x".repeat(1001) })).toBe("instructions");
+    expect(provider.calls).toHaveLength(0);
+  });
 });

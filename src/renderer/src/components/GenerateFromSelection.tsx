@@ -60,6 +60,8 @@ export function GenerateFromSelection({
   const [kind, setKind] = useState<Kind>("card");
   const [quantity, setQuantity] = useState("");
   const [subject, setSubject] = useState("");
+  const [subtype, setSubtype] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [estimate, setEstimate] = useState<number | null | undefined>(undefined);
   const [waiting, setWaiting] = useState(false);
   const [failure, setFailure] = useState<{ message: string; code: string } | null>(null);
@@ -81,6 +83,8 @@ export function GenerateFromSelection({
     kind,
     ...(amount !== undefined && !badQuantity ? { quantity: amount } : {}),
     ...(subject.trim() ? { subject: subject.trim() } : {}),
+    ...(subtype ? { subtype: subtype as InputOf<"selection:generate">["subtype"] } : {}),
+    ...(instructions.trim() ? { instructions: instructions.trim() } : {}),
   } satisfies InputOf<"selection:generate">;
 
   // The estimate follows the type and the quantity; the person sees it before asking.
@@ -97,7 +101,7 @@ export function GenerateFromSelection({
       current = false;
     };
     // The subject only changes the size a little; the request is rebuilt from the same state.
-  }, [kind, quantity, tooLong, badQuantity, text, materialId]);
+  }, [kind, subtype, quantity, tooLong, badQuantity, text, materialId]);
 
   const generate = async (): Promise<void> => {
     run.current += 1;
@@ -162,6 +166,7 @@ export function GenerateFromSelection({
         initialTopic={editing.generated.topic ?? ""}
         initialSource={{ materialId, page: String(page), quote: editing.generated.quote }}
         onClose={() => setEditing(null)}
+        onBack={() => setEditing(null)}
         onSaved={(created) =>
           patch(editing.id, { state: "saved", linked: created.sourceLinked, error: null })
         }
@@ -200,13 +205,35 @@ export function GenerateFromSelection({
                   value={value}
                   checked={kind === value}
                   style={{ width: "auto" }}
-                  onChange={() => setKind(value)}
+                  onChange={() => {
+                    setKind(value);
+                    // A type of one kind does not exist in the other.
+                    setSubtype("");
+                  }}
                 />
                 {label}
               </label>
             ))}
           </div>
         </fieldset>
+        <div className="field">
+          <label htmlFor="gen-type">{T.genType}</label>
+          <select
+            id="gen-type"
+            value={subtype}
+            onChange={(event) => setSubtype(event.target.value)}
+          >
+            <option value="">{T.genTypeAuto}</option>
+            {(kind === "card"
+              ? Object.entries(T.cardTypes)
+              : Object.entries(T.genQuestionTypes)
+            ).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="field">
           <label htmlFor="gen-quantity">{T.genQuantity}</label>
           <input
@@ -231,6 +258,17 @@ export function GenerateFromSelection({
             placeholder={T.genSubjectHint}
             value={subject}
             onChange={(event) => setSubject(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="gen-instructions">{T.genInstructions}</label>
+          <textarea
+            id="gen-instructions"
+            rows={3}
+            maxLength={1000}
+            placeholder={T.genInstructionsHint}
+            value={instructions}
+            onChange={(event) => setInstructions(event.target.value)}
           />
         </div>
         {estimate !== undefined && (

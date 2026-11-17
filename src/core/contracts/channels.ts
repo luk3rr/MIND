@@ -235,6 +235,20 @@ const selectionRequest = z
     kind: z.enum(["card", "question"]),
     quantity: z.number().int().min(1).max(20).optional(),
     subject: z.string().max(200).optional(),
+    /** One type for every item; the model chooses per item when absent. */
+    subtype: z
+      .enum([
+        "qa",
+        "cloze",
+        "compare",
+        "true_false",
+        "certo_errado",
+        "multiple_choice_4",
+        "multiple_choice_5",
+      ])
+      .optional(),
+    /** What the person wants in their own words. */
+    instructions: z.string().max(1000).optional(),
   })
   .strict();
 

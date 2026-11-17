@@ -103,7 +103,8 @@ describe("Model help in the item editor", () => {
     await user.click(within(panel).getByRole("button", { name: "Melhorar" }));
     expect(await screen.findByText("O modelo não sugeriu mudanças.")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Aceitar tudo" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Descartar" }));
+    expect(screen.queryByRole("button", { name: "Descartar" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
     expect(await screen.findByRole("dialog", { name: "Novo cartão" })).toBeVisible();
   });
 

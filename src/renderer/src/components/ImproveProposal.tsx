@@ -85,7 +85,7 @@ export function ImproveProposal({
           </button>
         )}
         <button type="button" className="btn ghost" onClick={onDiscard}>
-          {T.assistDiscard}
+          {fields.length === 0 ? T.newItemBack : T.assistDiscard}
         </button>
       </div>
     </div>

@@ -132,12 +132,23 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
     const passage = passageOf(messages);
     const count = Number(/Create exactly (\d+) flashcards/.exec(prompt)?.[1] ?? 2);
     const subject = /Subject requested by the student: ([^\n.]*)/.exec(prompt)?.[1]?.trim();
+    const subtype = /must use `subtype` = "(\w+)"/.exec(prompt)?.[1] ?? "qa";
     const words = passage.split(/\s+/).slice(0, 4).join(" ");
     return {
       cards: Array.from({ length: count }, (_, index) => ({
-        subtype: "qa",
-        front: `O que o trecho diz sobre ${subject ?? words} (${index + 1})?`,
-        back: `Veja o trecho: ${words}.`,
+        subtype,
+        front:
+          subtype === "cloze"
+            ? `{{c1::${words}}} aparece no trecho (${index + 1}).`
+            : subtype === "compare"
+              ? `${words} vs ${subject ?? "o resto"} (${index + 1})`
+              : `O que o trecho diz sobre ${subject ?? words} (${index + 1})?`,
+        back:
+          subtype === "cloze"
+            ? ""
+            : subtype === "true_false"
+              ? `Verdadeiro, conforme o trecho: ${words}.`
+              : `Veja o trecho: ${words}.`,
         topic: subject ?? "Trecho selecionado",
         quote: passage.slice(0, 60),
       })),
@@ -147,17 +158,37 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
     const prompt = messages.at(-1)?.content ?? "";
     const passage = passageOf(messages);
     const count = Number(/Create exactly (\d+) questions/.exec(prompt)?.[1] ?? 2);
+    const choices = Number(/exactly (\d) options/.exec(prompt)?.[1] ?? 0);
     const words = passage.split(/\s+/).slice(0, 4).join(" ");
     return {
-      questions: Array.from({ length: count }, (_, index) => ({
-        subtype: "certo_errado",
-        statement: `${words} aparece no trecho selecionado (${index + 1}).`,
-        options: [],
-        answer: "C",
-        explanation: "O trecho confirma a afirmação.",
-        topic: "Trecho selecionado",
-        quote: passage.slice(0, 60),
-      })),
+      questions: Array.from({ length: count }, (_, index) =>
+        choices > 0 && /must use `subtype` = "multiple_choice"/.test(prompt)
+          ? {
+              subtype: "multiple_choice",
+              statement: `Qual alternativa descreve ${words} (${index + 1})?`,
+              options: "ABCDE"
+                .slice(0, choices)
+                .split("")
+                .map((key) => ({
+                  key,
+                  text: key === "A" ? "Descrição correta do trecho" : `Descrição errada ${key}`,
+                  why: key === "A" ? "Confere com o trecho." : "Não confere.",
+                })),
+              answer: "A",
+              explanation: "A alternativa A repete o trecho.",
+              topic: "Trecho selecionado",
+              quote: passage.slice(0, 60),
+            }
+          : {
+              subtype: "certo_errado",
+              statement: `${words} aparece no trecho selecionado (${index + 1}).`,
+              options: [],
+              answer: "C",
+              explanation: "O trecho confirma a afirmação.",
+              topic: "Trecho selecionado",
+              quote: passage.slice(0, 60),
+            },
+      ),
     };
   });
   // Help with the text of an item: the answer repeats the item with a marker, so a run can see it.

@@ -251,4 +251,69 @@ describe("Generating items from the selected passage (FR-5, FR-7, FR-8, FR-9)", 
     expect(fake.invoke).not.toHaveBeenCalledWith("items:create", expect.anything());
     expect(document.querySelector(".reader.with-panel")).toBeNull();
   });
+  it("sends the type and the request in the person's words, and resets the type when the kind changes", async () => {
+    const { fake, user, panel } = await openPanel();
+    const type = within(panel).getByLabelText("Tipo (opcional)");
+    expect(within(type).getByRole("option", { name: "O modelo escolhe" })).toBeInTheDocument();
+    await user.selectOptions(type, "cloze");
+    await user.type(
+      within(panel).getByLabelText("O que você quer especificamente (opcional)"),
+      "um sobre sílaba tônica e outro sobre acento gráfico",
+    );
+    await user.click(within(panel).getByRole("button", { name: "Gerar" }));
+    await within(panel).findByText("2 rascunho(s) do trecho");
+    expect(requests(fake)[0]?.[1]).toMatchObject({
+      kind: "card",
+      subtype: "cloze",
+      instructions: "um sobre sílaba tônica e outro sobre acento gráfico",
+    });
+    await user.click(within(panel).getByRole("radio", { name: "Questões" }));
+    expect(within(panel).getByLabelText("Tipo (opcional)")).toHaveValue("");
+    expect(
+      within(within(panel).getByLabelText("Tipo (opcional)"))
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual([
+      "O modelo escolhe",
+      "Certo ou errado",
+      "Múltipla escolha (4 alternativas)",
+      "Múltipla escolha (5 alternativas)",
+    ]);
+    await user.selectOptions(within(panel).getByLabelText("Tipo (opcional)"), "multiple_choice_5");
+    await user.click(within(panel).getByRole("button", { name: "Pedir mais" }));
+    await waitFor(() => expect(requests(fake)).toHaveLength(2));
+    expect(requests(fake)[1]?.[1]).toMatchObject({
+      kind: "question",
+      subtype: "multiple_choice_5",
+    });
+  });
+
+  it("sends neither type nor request when they are left empty", async () => {
+    const { fake, user, panel } = await openPanel();
+    await user.click(within(panel).getByRole("button", { name: "Gerar" }));
+    await within(panel).findByText("2 rascunho(s) do trecho");
+    expect(requests(fake)[0]?.[1]).not.toHaveProperty("subtype");
+    expect(requests(fake)[0]?.[1]).not.toHaveProperty("instructions");
+  });
+
+  it("goes back from the editor of a draft without saving it, with the Voltar button", async () => {
+    const { fake, user, panel } = await openPanel();
+    await user.click(within(panel).getByRole("button", { name: "Gerar" }));
+    const draft = await within(panel).findByRole("article", { name: /Rascunho: Pergunta 1/ });
+    await user.click(within(draft).getByRole("button", { name: "Editar" }));
+    const editor = await screen.findByRole("dialog", { name: "Novo cartão" });
+    await user.clear(within(editor).getByLabelText("Frente"));
+    await user.type(within(editor).getByLabelText("Frente"), "Mudei de ideia");
+    await user.click(within(editor).getByRole("button", { name: "Voltar" }));
+    const back = await screen.findByRole("dialog", { name: "Gerar itens do trecho" });
+    expect(within(back).getByText("Pergunta 1 sobre o trecho?")).toBeVisible();
+    expect(within(back).queryByText("Mudei de ideia")).toBeNull();
+    expect(within(back).queryByText(/^Salvo e aprovado/)).toBeNull();
+    expect(fake.invoke).not.toHaveBeenCalledWith("items:create", expect.anything());
+  });
+
+  it("has no Voltar button in the editor opened from the Items screen", async () => {
+    const { panel } = await openPanel();
+    expect(within(panel).queryByRole("button", { name: "Voltar" })).toBeNull();
+  });
 });

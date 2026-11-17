@@ -20,11 +20,15 @@ import { MAX_QUOTE } from "./prompts.js";
 import {
   buildSelectionMessages,
   MAX_SELECTION_CHARS,
+  MAX_SELECTION_INSTRUCTIONS,
   MAX_SELECTION_ITEMS,
   MAX_SUBJECT_CHARS,
+  SELECTION_CARD_TYPES,
+  SELECTION_QUESTION_TYPES,
   SELECTION_CARD_SYSTEM,
   SELECTION_QUESTION_SYSTEM,
 } from "./selection-prompts.js";
+import type { SelectionSubtype } from "./selection-prompts.js";
 import { CARD_SUBTYPES, optionOutSchema } from "./schemas.js";
 import {
   OUTPUT_TOKENS_PER_CARD,
@@ -68,6 +72,10 @@ export interface SelectionRequest {
   kind: "card" | "question";
   quantity?: number | undefined;
   subject?: string | undefined;
+  /** One type for every item; the model chooses per item when absent. */
+  subtype?: SelectionSubtype | undefined;
+  /** What the person wants in their own words. */
+  instructions?: string | undefined;
 }
 
 export interface SelectionDraft {
@@ -110,7 +118,11 @@ export class SelectionGenerator {
     const system =
       request.kind === "card" ? SELECTION_CARD_SYSTEM.length : SELECTION_QUESTION_SYSTEM.length;
     const chars =
-      system + PROMPT_OVERHEAD_CHARS + request.text.trim().length + (request.subject?.length ?? 0);
+      system +
+      PROMPT_OVERHEAD_CHARS +
+      request.text.trim().length +
+      (request.subject?.length ?? 0) +
+      (request.instructions?.length ?? 0);
     const items = request.quantity ?? MAX_SELECTION_ITEMS / 2;
     const perItem = request.kind === "card" ? OUTPUT_TOKENS_PER_CARD : OUTPUT_TOKENS_PER_QUESTION;
     return {
@@ -147,6 +159,7 @@ export class SelectionGenerator {
       const text = draft.kind === "card" ? draft.front : draft.statement;
       if (
         draftProblem(draft) !== null ||
+        !this.matchesType(draft, request.subtype) ||
         dependsOnSource(text, draft.kind === "card" && draft.subtype !== "cloze")
       ) {
         result.discarded.invalid += 1;
@@ -236,9 +249,28 @@ export class SelectionGenerator {
     ) {
       fail("quantity", `Peça de 1 a ${MAX_SELECTION_ITEMS} itens.`);
     }
+    if ((request.instructions?.length ?? 0) > MAX_SELECTION_INSTRUCTIONS) {
+      fail("instructions", `Use até ${MAX_SELECTION_INSTRUCTIONS} caracteres.`);
+    }
+    const allowed: readonly string[] =
+      request.kind === "card" ? SELECTION_CARD_TYPES : SELECTION_QUESTION_TYPES;
+    if (request.subtype !== undefined && !allowed.includes(request.subtype)) {
+      fail("subtype", "Esse tipo não serve para o que foi pedido.");
+    }
     if ((request.subject?.length ?? 0) > MAX_SUBJECT_CHARS) {
       fail("subject", `Use até ${MAX_SUBJECT_CHARS} caracteres.`);
     }
+  }
+
+  /** True when no type was asked for, or the draft is of the type that was. */
+  private matchesType(draft: ItemDraft, wanted: SelectionSubtype | undefined): boolean {
+    if (wanted === undefined) return true;
+    if (draft.kind === "card") return draft.subtype === wanted;
+    if (wanted === "certo_errado") return draft.subtype === "certo_errado";
+    return (
+      draft.subtype === "multiple_choice" &&
+      draft.options.length === (wanted === "multiple_choice_5" ? 5 : 4)
+    );
   }
 
   /** The normalised first side of every item that is still in use, to avoid repeating them. */

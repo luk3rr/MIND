@@ -87,6 +87,7 @@ export function ItemEditor({
   initialSource = null,
   initialDraft = null,
   initialTopic = "",
+  onBack,
   onClose,
   onSaved,
 }: {
@@ -97,6 +98,8 @@ export function ItemEditor({
   /** A draft to start with, such as one written by the model from a passage. */
   initialDraft?: Draft | null;
   initialTopic?: string;
+  /** When given, a "Voltar" button leaves the editor without saving, back to where it came from. */
+  onBack?: () => void;
   onClose: () => void;
   /** Called after each saved item, so the page behind can refresh. */
   onSaved: (created: OutputOf<"items:create">) => void;
@@ -691,6 +694,11 @@ export function ItemEditor({
           >
             {T.newItemSaveAnother}
           </button>
+          {onBack && (
+            <button type="button" className="btn ghost" disabled={busy} onClick={onBack}>
+              {T.newItemBack}
+            </button>
+          )}
         </div>
       </form>
     </SidePanel>

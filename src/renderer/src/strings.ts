@@ -507,6 +507,7 @@ export const T = {
   editOptionWhyPlaceholder: "Por que esta alternativa está certa ou errada",
   newItem: "Novo item",
   newItemTitle: "Novo cartão",
+  newItemBack: "Voltar",
   newQuestionTitle: "Nova questão",
   newItemKind: "Tipo de item",
   newItemCard: "Cartão",
@@ -612,6 +613,16 @@ export const T = {
   genPassage: (page: number, chars: number) =>
     `Trecho · p. ${page} · ${chars.toLocaleString("pt-BR")} de 8.000 caracteres`,
   genKind: "O que gerar",
+  genType: "Tipo (opcional)",
+  genTypeAuto: "O modelo escolhe",
+  genQuestionTypes: {
+    certo_errado: "Certo ou errado",
+    multiple_choice_4: "Múltipla escolha (4 alternativas)",
+    multiple_choice_5: "Múltipla escolha (5 alternativas)",
+  } as Record<string, string>,
+  genInstructions: "O que você quer especificamente (opcional)",
+  genInstructionsHint:
+    "Ex.: um card sobre sílaba tônica perguntando o que é, e outro sobre acento gráfico",
   genQuantity: "Quantidade (opcional)",
   genQuantityHint: "1 a 20; vazio = o modelo decide",
   genQuantityError: "Peça de 1 a 20 itens.",

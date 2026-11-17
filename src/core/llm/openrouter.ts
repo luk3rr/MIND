@@ -117,7 +117,7 @@ export class OpenRouterProvider implements Provider {
     for (let attempt = 0; attempt <= maxRetries;) {
       const body = this.body(options, conversation, jsonSchema, structured);
       const response = await this.post(key, body);
-      const text = await response.text();
+      const text = await this.readBody(response);
       if (response.status === 400 && structured && text.includes("response_format")) {
         structured = false;
         log.info("model without structured output, retrying with a schema in the prompt", {
@@ -202,6 +202,25 @@ export class OpenRouterProvider implements Provider {
       if (attempt === 0) await this.sleep(this.retryDelayMs);
     }
     throw new AppError("PROVIDER_ERROR", `O provedor não respondeu: ${problem}.`);
+  }
+
+  /**
+   * Reads the answer. The time limit also covers this part, so a provider that sends the headers
+   * and then stalls ends here, and it must reach the person as a provider problem to retry.
+   */
+  private async readBody(response: Response): Promise<string> {
+    try {
+      return await response.text();
+    } catch (error) {
+      const name = error instanceof Error ? error.name : "";
+      log.warn("provider answer not read", { problem: name || "erro" });
+      throw new AppError(
+        "PROVIDER_ERROR",
+        name === "TimeoutError" || name === "AbortError"
+          ? `O provedor demorou mais de ${Math.round(this.timeoutMs / 1000)} s para responder. Tente de novo.`
+          : "A conexão com o provedor caiu antes do fim da resposta. Tente de novo.",
+      );
+    }
   }
 
   private okPayload(status: number, text: string): Payload {
