@@ -1,6 +1,6 @@
 # Convenções
 
-Status: draft · Confiança: média (regras [inferred] não confirmadas pelo autor)
+Status: human-reviewed (2026-11-16) · Confiança: alta
 
 - Código, comentários, logs, commits em inglês; textos da UI em pt-BR (`src/renderer/src/strings.ts`); cabeçalho `Filename/Created on/Author` em todo arquivo, checado por `scripts/check-headers.mjs`. [mem: M-8; src: package.json lint]
 - Commits convencionais, atômicos, sem push até pedido. [mem: M-5, M-7]
@@ -10,3 +10,5 @@ Status: draft · Confiança: média (regras [inferred] não confirmadas pelo aut
 - Testes ao lado do código (`*.test.ts[x]`), e2e em `tests/e2e`, LLM sempre mockado, relógio injetável (`clock.ts`). [mem: M-5; src: src/core/clock.ts]
 - `fixtures/` congeladas; dados do usuário fora da instalação; novas dependências compatíveis com AGPL. [mem: M-10, M-11, M-6]
 - Dependência nativa ou worker em pacote precisa de `asarUnpack` no `electron-builder.yml`. [inferred: electron-builder.yml]
+
+**Confirmado pelo autor em 2026-11-16** [user]: as quatro regras marcadas [inferred] acima (novo canal IPC em quatro passos, núcleo sem Electron, mudança de esquema por Drizzle + `pnpm db:generate`, `asarUnpack` para nativos e workers) estão corretas.

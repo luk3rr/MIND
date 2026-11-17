@@ -1,0 +1,241 @@
+<!doctype html>
+<!--
+  Filename: refined.html
+  Created on: November 16, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+-->
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockups: criar e importar itens</title>
+<style>
+/* Tokens copied from src/renderer/src/styles/tokens.css (dark default, light override). */
+:root{--bg:#1e1f29;--panel:#282a36;--panel-2:#303243;--line:#44475a;--fg:#f8f8f2;--muted:#a4a9c3;--accent:#bd93f9;--on-accent:#282a36;--success:#50fa7b;--side:#44337a;--side-ink:#f8f8f2;--side-active:rgba(255,255,255,.18);--danger:#ff6e6e;--warn:#ffb86c;--info:#8be9fd;--radius:12px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--shadow:0 1px 0 rgba(255,255,255,.04),0 8px 24px rgba(0,0,0,.25);color-scheme:dark}
+:root[data-theme="light"]{--bg:#f3f5f7;--panel:#fff;--panel-2:#eef1f4;--line:#d8dde3;--fg:#1f2328;--muted:#5b6472;--accent:#6f42c1;--on-accent:#fff;--success:#177a41;--side:#5b3fa8;--side-ink:#fff;--side-active:rgba(255,255,255,.22);--danger:#c62828;--warn:#8f4411;--info:#0b6e99;--shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08);color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px Inter,"Segoe UI",system-ui,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.n{color:var(--muted);margin:0 0 12px;max-width:980px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.tabs button{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit}
+.tabs button.on{border-color:var(--accent);outline:1px solid var(--accent)}
+.app{display:grid;grid-template-columns:200px 1fr;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;max-width:1240px;min-height:620px;background:var(--bg);position:relative}
+.sidebar{background:var(--side);color:var(--side-ink);padding:var(--space-4) var(--space-3);display:flex;flex-direction:column;gap:var(--space-1)}
+.sidebar b{font-size:16px;margin-bottom:var(--space-3)}
+.sidebar span{padding:8px 12px;border-radius:8px}.sidebar span.on{background:var(--side-active);font-weight:700}
+.content{padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4);position:relative}
+.content h2{margin:0;font-size:22px}
+.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.row{display:flex;gap:var(--space-4);flex-wrap:wrap;align-items:center}
+.actions{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:var(--on-accent);border:0;border-radius:999px;padding:9px 18px;font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn.sm{padding:5px 12px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:default}
+.pill{padding:2px 10px;border-radius:999px;font-size:12px;background:var(--panel-2);border:1px solid var(--line)}
+.pill.ok{color:var(--success)}.pill.bad{color:var(--danger)}.pill.warn{color:var(--warn)}.pill.info{color:var(--info)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-size:12px;text-transform:uppercase}
+td.num,th.num{text-align:right}
+input,select,textarea{width:100%;padding:9px 12px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;font:inherit}
+textarea{min-height:70px;resize:vertical}
+label{display:block;margin-bottom:var(--space-1);font-weight:600}
+.stack{display:flex;flex-direction:column;gap:var(--space-3)}
+.err{color:var(--danger);font-size:13px;margin-top:4px}
+.banner{border:1px solid var(--warn);color:var(--warn);border-radius:8px;padding:8px 12px}
+.banner.bad{border-color:var(--danger);color:var(--danger)}.banner.ok{border-color:var(--success);color:var(--success)}
+.seg{display:flex;gap:6px}.seg span{padding:4px 14px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}.seg span.on{border-color:var(--accent);color:var(--fg)}
+.panel{z-index:3;position:absolute;top:0;right:0;bottom:0;width:430px;background:var(--panel);border-left:1px solid var(--line);box-shadow:var(--shadow);padding:var(--space-4) var(--space-5);overflow:auto;display:flex;flex-direction:column;gap:var(--space-3)}
+.panel header{display:flex;justify-content:space-between;align-items:center}.panel h3{margin:0;font-size:18px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)}
+.col{border:1px solid var(--line);border-radius:8px;padding:var(--space-3);background:var(--bg)}
+.col h4{margin:0 0 6px;font-size:12px;color:var(--muted);text-transform:uppercase}
+ins{background:color-mix(in srgb,var(--success) 25%,transparent);text-decoration:underline}del{background:color-mix(in srgb,var(--danger) 25%,transparent)}
+.reader{border:1px solid var(--line);border-radius:8px;background:#fff;color:#222;padding:24px 32px;line-height:1.6;min-height:300px;position:relative}
+.reader mark{background:#bd93f9aa;color:#111}
+.selbar{position:absolute;display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:var(--shadow);color:var(--fg)}
+.opt{display:grid;grid-template-columns:28px 1fr 1fr 28px;gap:8px;align-items:start}
+.dropzone{border:2px dashed var(--line);border-radius:var(--radius);padding:28px;text-align:center;color:var(--muted)}
+.steps{color:var(--muted)}.steps b{color:var(--fg)}
+.readerview{position:absolute;inset:0;z-index:1;background:var(--bg);padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-3)}
+.hide{display:none !important}
+.note{color:var(--muted);max-width:980px;margin-top:12px}
+</style>
+</head>
+<body>
+<h1>Criar e importar cartões e questões</h1>
+<p class="n">Valores fictícios, paleta e componentes reais do MIND (tokens de <code>tokens.css</code>, classes <code>.btn</code>, <code>.card</code>, <code>.pill</code>, tabela e diálogo). O editor é um painel lateral compartilhado. Use as abas para ver cada tela e estado, e o botão Tema para alternar escuro e claro.</p>
+<div class="tabs" id="tabs">
+  <button data-v="a" class="on">A · Itens</button>
+  <button data-v="b">B · Novo cartão</button>
+  <button data-v="c">C · Nova questão</button>
+  <button data-v="d">D · Proposta do modelo</button>
+  <button data-v="e">E · Leitor: seleção</button>
+  <button data-v="f">F · Gerar do trecho</button>
+  <button data-v="g">G · Rascunhos</button>
+  <button data-v="h">H · Importar: arquivo</button>
+  <button data-v="i">I · Importar: prévia</button>
+  <button data-v="j">J · Importar: resultado</button>
+  <button data-v="k">K · Erros e sem provedor</button>
+  <span style="width:16px"></span><button id="theme">Tema: escuro</button>
+</div>
+
+<div class="app">
+  <nav class="sidebar" aria-label="Seções"><b>MIND</b><span>Hoje</span><span id="s-lib">Biblioteca</span><span>Gerar</span><span class="on" id="s-items">Itens</span><span>Estudar</span><span>Estatísticas</span><span>Erros</span><span>Chat</span><span>Configurações</span></nav>
+  <main class="content" id="content">
+
+    <!-- Base: tela Itens -->
+    <div class="row" style="justify-content:space-between"><h2 id="title">Itens</h2>
+      <div class="actions"><button class="btn ghost">Importar…</button><button class="btn">+ Novo item</button></div></div>
+    <p class="muted" style="margin:0">Todos os cartões e questões do workspace. Filtre, edite e organize por tópico.</p>
+    <div class="row">
+      <select style="width:150px"><option>Em uso</option></select>
+      <select style="width:150px"><option>Todos os tipos</option></select>
+      <select style="width:170px"><option>Todas as origens</option><option>Gerado</option><option>Manual</option><option>Do leitor</option><option>Importado</option><option>Caderno de erros</option></select>
+      <input style="width:240px" placeholder="Buscar nos itens" aria-label="Buscar nos itens">
+    </div>
+    <div class="card"><table>
+      <thead><tr><th>Tipo</th><th>Texto</th><th>Tópico</th><th>Origem</th><th>Fonte</th></tr></thead>
+      <tbody>
+        <tr><td>Cartão</td><td>Qual a função da mitocôndria?</td><td>Biologia celular</td><td><span class="pill">Gerado</span></td><td>p. 12</td></tr>
+        <tr><td>Questão</td><td>A fotossíntese ocorre nos cloroplastos.</td><td>Biologia celular</td><td><span class="pill info">Manual</span></td><td class="muted">sem fonte</td></tr>
+        <tr><td>Cartão</td><td>Defina juros compostos.</td><td>Matemática financeira</td><td><span class="pill info">Do leitor</span></td><td>p. 48</td></tr>
+        <tr><td>Cartão</td><td>Capital de {{c1::Brasília}} é...</td><td>Geografia</td><td><span class="pill info">Importado</span></td><td class="muted">sem fonte</td></tr>
+      </tbody></table></div>
+    <p class="muted" id="count">4 de 4 itens</p>
+
+    <!-- Overlays por aba -->
+    <aside class="panel view hide" id="vb" role="dialog" aria-label="Novo item">
+      <header><h3>Novo item</h3><button class="btn ghost sm" aria-label="Fechar">✕</button></header>
+      <div class="seg"><span class="on">Cartão</span><span>Questão</span></div>
+      <div><label>Subtipo</label><select><option>Pergunta e resposta</option><option>Cloze</option><option>Comparar</option><option>Verdadeiro ou falso</option></select></div>
+      <div><label>Frente</label><textarea>Qual a função da mitocôndria?</textarea></div>
+      <div><label>Verso</label><textarea>Produzir energia (ATP) pela respiração celular.</textarea></div>
+      <div><label>Tópico</label><input value="Biologia celular"></div>
+      <div><label>Fonte</label><div class="row" style="gap:8px"><span class="pill">sem fonte</span><button class="btn ghost sm">Escolher fonte…</button></div></div>
+      <div class="actions"><button class="btn ghost sm">✦ Melhorar com IA ▾</button><span class="muted" style="font-size:12px">Melhorar · Corrigir · Ajustar</span></div>
+      <div class="actions" style="margin-top:auto"><button class="btn">Salvar</button><button class="btn ghost">Salvar e criar outro</button></div>
+    </aside>
+
+    <aside class="panel view hide" id="vc" role="dialog" aria-label="Nova questão">
+      <header><h3>Nova questão</h3><button class="btn ghost sm" aria-label="Fechar">✕</button></header>
+      <div class="seg"><span>Cartão</span><span class="on">Questão</span></div>
+      <div><label>Subtipo</label><select><option>Múltipla escolha</option><option>Certo ou errado</option></select></div>
+      <div><label>Enunciado</label><textarea>Qual organela produz a maior parte do ATP da célula?</textarea></div>
+      <div><label>Alternativas (2 a 5) e o motivo de cada uma</label>
+        <div class="stack">
+          <div class="opt"><b>A</b><input value="Mitocôndria"><input value="Realiza a respiração celular"><button class="btn ghost sm" aria-label="Remover A">✕</button></div>
+          <div class="opt"><b>B</b><input value="Ribossomo"><input value="Sintetiza proteínas"><button class="btn ghost sm" aria-label="Remover B">✕</button></div>
+          <div class="opt"><b>C</b><input value="Lisossomo"><input value=""><button class="btn ghost sm" aria-label="Remover C">✕</button></div>
+        </div><div class="err">Alternativa C: informe o motivo.</div>
+        <button class="btn ghost sm" style="margin-top:8px">+ Alternativa</button></div>
+      <div><label>Gabarito</label><select><option>A</option></select></div>
+      <div><label>Explicação</label><textarea>A mitocôndria concentra a cadeia respiratória.</textarea></div>
+      <div class="actions" style="margin-top:auto"><button class="btn ghost sm">✦ Melhorar com IA ▾</button><button class="btn">Salvar</button></div>
+    </aside>
+
+    <aside class="panel view hide" id="vd" role="dialog" aria-label="Proposta do modelo" style="width:620px">
+      <header><h3>Proposta: Corrigir</h3><button class="btn ghost sm" aria-label="Fechar">✕</button></header>
+      <p class="muted" style="margin:0">Nada é salvo até você aceitar e clicar em Salvar.</p>
+      <div><label>Frente</label><div class="split"><div class="col"><h4>Original</h4>Qual a <del>funcao</del> da mitocondria?</div><div class="col"><h4>Proposta</h4>Qual a <ins>função</ins> da <ins>mitocôndria</ins>?<div class="actions" style="margin-top:8px"><button class="btn sm">Aceitar campo</button></div></div></div></div>
+      <div><label>Verso</label><div class="split"><div class="col"><h4>Original</h4>Produz energia pela respiração <del>celula</del>.</div><div class="col"><h4>Proposta</h4>Produz energia <ins>(ATP)</ins> pela respiração <ins>celular</ins>.<div class="actions" style="margin-top:8px"><button class="btn sm">Aceitar campo</button></div></div></div></div>
+      <div class="actions" style="margin-top:auto"><button class="btn">Aceitar tudo</button><button class="btn ghost">Editar manualmente</button><button class="btn ghost">Descartar</button></div>
+    </aside>
+
+    <aside class="panel view hide" id="vf" role="dialog" aria-label="Gerar itens do trecho">
+      <header><h3>Gerar itens do trecho</h3><button class="btn ghost sm" aria-label="Fechar">✕</button></header>
+      <div class="card" style="background:var(--bg)"><span class="muted" style="font-size:12px">Trecho · p. 48 · 312 de 8.000 caracteres</span><br>“Juros compostos são calculados sobre o capital inicial mais os juros acumulados…”</div>
+      <div class="seg"><span class="on">Cartões</span><span>Questões</span></div>
+      <div class="row"><div style="flex:1"><label>Quantidade (opcional)</label><input placeholder="1 a 20; vazio = o modelo decide" inputmode="numeric"></div></div>
+      <div><label>Assunto (opcional)</label><input placeholder="Vazio = o modelo escolhe os assuntos"></div>
+      <p class="muted" style="margin:0">Custo estimado: ~US$ 0,01 · modelo configurado em Configurações.</p>
+      <div class="actions" style="margin-top:auto"><button class="btn">Gerar</button><button class="btn ghost">Cancelar</button></div>
+    </aside>
+
+    <aside class="panel view hide" id="vg" role="dialog" aria-label="Rascunhos" style="width:520px">
+      <header><h3>3 rascunhos do trecho</h3><button class="btn ghost sm" aria-label="Fechar">✕</button></header>
+      <div class="card"><b>Cartão 1</b> <span class="pill">Pergunta e resposta</span><p style="margin:6px 0">O que são juros compostos?</p><div class="actions"><button class="btn sm">Salvar</button><button class="btn ghost sm">Editar</button><button class="btn ghost sm">Descartar</button></div></div>
+      <div class="card"><b>Cartão 2</b> <span class="pill">Cloze</span><p style="margin:6px 0">Os juros compostos incidem sobre o {{c1::capital e os juros acumulados}}.</p><div class="actions"><button class="btn sm">Salvar</button><button class="btn ghost sm">Editar</button><button class="btn ghost sm">Descartar</button></div></div>
+      <div class="card" style="opacity:.6"><b>Cartão 3</b> <span class="pill ok">Salvo e aprovado</span><p style="margin:6px 0">Diferença entre juros simples e compostos.</p></div>
+      <div class="actions" style="margin-top:auto"><button class="btn ghost">Pedir mais</button><button class="btn ghost">Fechar</button></div>
+    </aside>
+
+    <!-- Leitor -->
+    <section class="view hide readerview" id="ve">
+      <div class="row" style="justify-content:space-between"><h2>Leitor · Matemática financeira.pdf</h2><span class="muted">Página 48 de 210</span></div>
+      <div class="reader">
+        <p>Os juros simples incidem apenas sobre o capital inicial, enquanto <mark>os juros compostos são calculados sobre o capital inicial mais os juros acumulados em períodos anteriores</mark>. Por isso o crescimento é exponencial.</p>
+        <p>Considere um capital de R$ 1.000 aplicado a 10% ao mês durante três meses.</p>
+        <div class="selbar" style="top:110px;left:120px" role="toolbar" aria-label="Ações da seleção"><button class="btn sm">✦ Gerar itens</button><button class="btn ghost sm">+ Criar item</button></div>
+      </div>
+      <p class="muted" style="margin:0">A barra aparece junto à seleção, é alcançável por Tab e some quando a seleção é limpa. O painel de criação abre ao lado do PDF, sem cobri-lo.</p>
+    </section>
+
+    <!-- Importar -->
+    <section class="view hide card" id="vh" style="position:absolute;inset:var(--space-5);z-index:2;overflow:auto">
+      <h2 style="font-size:18px;margin:0 0 8px">Importar itens</h2>
+      <div class="steps"><b>1 Arquivo</b> › 2 Prévia › 3 Resultado</div>
+      <div class="stack" style="margin-top:12px">
+        <div class="seg"><span class="on">Cartões</span><span>Questões</span></div>
+        <div class="dropzone">Escolha um arquivo <b>.csv</b> ou <b>.xlsx</b> (até 5.000 linhas e 10 MB)<br><br><button class="btn">Escolher arquivo…</button></div>
+        <div><label>Templates</label><div class="actions"><button class="btn ghost sm">Cartões · CSV</button><button class="btn ghost sm">Cartões · XLSX</button><button class="btn ghost sm">Questões · CSV</button><button class="btn ghost sm">Questões · XLSX</button></div></div>
+        <p class="muted" style="margin:0">Nada é gravado antes da sua confirmação. Fórmulas não são calculadas; só os valores entram.</p>
+        <div class="actions" style="justify-content:flex-end"><button class="btn ghost">Cancelar</button></div>
+      </div>
+    </section>
+
+    <section class="view hide card" id="vi" style="position:absolute;inset:var(--space-5);z-index:2;overflow:auto">
+      <h2 style="font-size:18px;margin:0 0 8px">Importar itens</h2>
+      <div class="steps">1 Arquivo › <b>2 Prévia</b> › 3 Resultado</div>
+      <p style="margin:8px 0"><b>cartoes.xlsx</b> · 52 linhas · <span class="pill ok">48 válidas</span> <span class="pill bad">2 com erro</span> <span class="pill warn">2 duplicadas</span></p>
+      <div class="seg" style="margin-bottom:8px"><span class="on">Todas (52)</span><span>Válidas (48)</span><span>Erros (2)</span><span>Duplicadas (2)</span></div>
+      <table><thead><tr><th class="num">Linha</th><th>Conteúdo</th><th>Tópico</th><th>Situação</th><th>Importar</th></tr></thead><tbody>
+        <tr><td class="num">2</td><td>Qual a capital da França?</td><td>Geografia</td><td><span class="pill ok">Válida</span></td><td>☑</td></tr>
+        <tr><td class="num">9</td><td>Defina entropia.</td><td>Física <span class="pill info">novo</span></td><td><span class="pill ok">Válida</span></td><td>☑</td></tr>
+        <tr><td class="num">17</td><td class="muted">(vazio)</td><td></td><td><span class="pill bad">Erro: coluna “verso” vazia</span></td><td>—</td></tr>
+        <tr><td class="num">31</td><td>Qual a função da mitocôndria?</td><td>Biologia celular</td><td><span class="pill warn">Duplicada</span></td><td>☐ importar mesmo assim</td></tr>
+        <tr><td class="num">44</td><td>Fórmula de Bhaskara</td><td></td><td><span class="pill bad">Erro: tópico com mais de 200 caracteres</span></td><td>—</td></tr>
+      </tbody></table>
+      <p class="muted">Tópicos que serão criados: Física.</p>
+      <div class="actions" style="justify-content:space-between;margin-top:8px"><span class="muted">Resumo: 48 entram · 2 erros ignorados · 2 duplicadas puladas</span><span class="actions"><button class="btn ghost">Voltar</button><button class="btn">Importar 48 válidas</button></span></div>
+    </section>
+
+    <section class="view hide card" id="vj" style="position:absolute;inset:var(--space-5);z-index:2;overflow:auto">
+      <h2 style="font-size:18px;margin:0 0 8px">Importação concluída</h2>
+      <div class="steps">1 Arquivo › 2 Prévia › <b>3 Resultado</b></div>
+      <div class="banner ok" role="status" style="margin:12px 0">48 itens adicionados e aprovados, 2 duplicadas puladas, 2 linhas com erro ignoradas.</div>
+      <table><thead><tr><th>Tipo</th><th class="num">Adicionados</th><th class="num">Ignorados</th></tr></thead><tbody><tr><td>Cartões</td><td class="num">48</td><td class="num">4</td></tr></tbody></table>
+      <div class="actions" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost">Ver itens importados</button><button class="btn">Fechar</button></div>
+    </section>
+
+    <!-- Erros -->
+    <section class="view hide card" id="vk" style="position:absolute;inset:var(--space-5);z-index:2;overflow:auto">
+      <h2 style="font-size:18px;margin:0 0 12px">Estados de erro e sem provedor</h2>
+      <div class="stack">
+        <div class="banner bad">Arquivo recusado: tem 5.001 linhas (limite 5.000).</div>
+        <div class="banner bad">Arquivo recusado: extensão “.xls” não é aceita. Use .csv ou .xlsx.</div>
+        <div class="banner bad">Colunas obrigatórias ausentes: “verso”. Baixe o template de cartões.</div>
+        <div class="banner">Nenhum provedor de IA configurado. A criação manual funciona; para usar “Melhorar com IA” ou “Gerar itens”, <u>configure um provedor</u>.</div>
+        <div class="banner">Consentimento pendente: o texto do item será enviado ao provedor escolhido. <button class="btn sm">Permitir</button></div>
+        <div class="banner bad">O modelo devolveu uma resposta inválida (gabarito fora das alternativas). O formulário não foi alterado. <button class="btn ghost sm">Tentar de novo</button></div>
+        <div class="banner">Trecho com mais de 8.000 caracteres: selecione um trecho menor.</div>
+        <div class="card" style="background:var(--bg)"><span class="muted">Carregando</span><br>Pedindo ao modelo… <button class="btn ghost sm">Cancelar</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+<p class="note">Notas: o editor reaproveita o corpo de <code>EditItemDialog</code>; criar item sem fonte não mostra “Ver no PDF”; itens manuais e importados nascem aprovados; “Salvar e criar outro” mantém tipo, subtipo e tópico. Ctrl+Enter salva, Esc fecha o painel.</p>
+<script>
+const views={a:null,b:'vb',c:'vc',d:'vd',e:'ve',f:'vf',g:'vg',h:'vh',i:'vi',j:'vj',k:'vk'};
+function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.add('hide'));
+ if(views[v])document.getElementById(views[v]).classList.remove('hide');
+ if(v==='f'||v==='g')document.getElementById('ve').classList.remove('hide');
+ const reader='efg'.includes(v);document.getElementById('s-lib').classList.toggle('on',reader);document.getElementById('s-items').classList.toggle('on',!reader);
+ document.querySelectorAll('#tabs button[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));}
+document.querySelectorAll('#tabs button[data-v]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.v)));
+document.getElementById('theme').addEventListener('click',e=>{const r=document.documentElement;const l=r.dataset.theme!=='light';r.dataset.theme=l?'light':'dark';e.target.textContent='Tema: '+(l?'claro':'escuro');});
+</script>
+</body>
+</html>

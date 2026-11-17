@@ -1,6 +1,6 @@
 # Memória do projeto (regras aprovadas)
 
-- M-1: Todo flashcard ou questão gerado cita um trecho fonte verificável; item sem fonte é descartado. [gate 1.7]
+- M-1: Todo flashcard ou questão gerado cita um trecho fonte verificável; item sem fonte é descartado. [gate 1.7] (emendada por M-13 em 2026-11-16: vale só para itens gerados pelo modelo)
 - M-2: O MIND nunca lê, copia ou referencia dados pessoais do autor nem de outros projetos dele. [gate 1.7]
 - M-3: Arquivos de `.aidlc/` e o repositório são públicos: não citar o nome do autor nem sua finalidade pessoal de uso; manter exemplos e textos genéricos. [gate 1.7, pedido do autor]
 - M-4: TypeScript `strict` com pnpm; Electron + React + Vite; ESLint e Prettier; dados, IPC e saídas do LLM validados com zod. (Substitui a regra de Python, que não vale mais.) [gate 2.2, retrospectiva da Construction]
@@ -11,3 +11,6 @@
 - M-9: O app nunca abre porta de rede; o renderer só fala com o núcleo por IPC tipado e validado (um único canal, esquemas zod compartilhados). [retrospectiva da Construction]
 - M-10: Os dados do usuário ficam fora da instalação; instalar, atualizar ou remover o pacote nunca os apaga. [retrospectiva da Construction]
 - M-11: O Python original existe só na tag `legacy-python`; os arquivos de `fixtures/` são referência congelada e não se editam à mão (ver `fixtures/README.md`). [retrospectiva da Construction]
+- M-12: Mockups (estágios 1.6 e 2.5 e qualquer tela nova) são arquivos HTML autocontidos em `<intent>/mockups/`, com a paleta, os componentes e os temas escuro e claro reais do app, abas para alternar telas e estados (vazio, carregando, erro, sem provedor) e valores fictícios; ASCII serve só de rascunho dentro de `design.md`. [gate 2.5, pedido do autor]
+- M-13: Todo item GERADO pelo modelo cita um trecho fonte verificável, e o gerado sem fonte é descartado (M-1 mantida para a geração). Itens criados à mão, a partir de trecho do leitor ou importados de planilha podem ter fonte opcional, ficam marcados pela origem (`manual`, `reader`, `import`) e não mostram "Ver no PDF" sem `chunk_id`. [gate 1.1 do intent manual-cards-import, retrospectiva da Inception]
+- M-14: Fluxos com seleção de texto, diálogos nativos ou bibliotecas de arquivo precisam de um teste e2e no Electron real além dos testes em jsdom; no intent manual-cards-import o jsdom escondeu dois defeitos (seleção por triplo clique e leitura de XLSX no processo principal). [retrospectiva da Construção, intent manual-cards-import]

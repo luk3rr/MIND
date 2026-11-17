@@ -30,3 +30,26 @@ Status: draft · Confiança: alta
 | `src/renderer/src/time.tsx` | `TimeProvider`, `useTime`, `useActivity`, `formatClock`, `formatDuration` |
 | `src/renderer/src/pages/ReaderPage.tsx` | leitor de PDF (imagem, camada de texto, busca, zoom) |
 | `src/renderer/src/components/` | `TimerCard`, `TimeStats`, `TimeSettingsForm`, `ChartBlock`, `SeeInPdf` |
+
+**Adições até 240ed43 (2026-11-16).**
+
+| Caminho | Conteúdo |
+|---|---|
+| `src/core/update/` | `UpdateService` e `version.ts` (aviso de nova versão); `src/main/update-scheduler.ts` agenda a consulta |
+| `src/core/generation/` | além de `cards.ts`/`questions.ts`/`prompts.ts`: `calc.ts` (questões de cálculo), `self-contained.ts`, `topics.ts` (reuso de tópicos), `training.ts`, `judge.ts`, `planning.ts`, `service.ts` |
+| `src/core/review/service.ts` | `ReviewService`: lista/catálogo de itens, `review`, `bulk`, edição, `discardApproved`, `restore`, `approveAll` |
+| `src/core/notebook/service.ts` | caderno de erros e criação de cartão a partir de questão errada (run sintética) |
+| `src/renderer/src/pages/` | `ItemsPage` (lista paginada, filtros, ações em lote), `ReviewPage`, `GeneratePage`, `ReaderPage` (807 linhas) |
+| `src/renderer/src/components/` | `EditItemDialog` (edição de item), `ItemActions`, `ListControls`, `FilterSelect`, `SearchCombobox`, `MaterialProgress`, `StudyTabs`, `StudySettingsForm`, `HelpTip`, `UpdateBanner`, `Dialog`, `ConfirmDialog`, `PromptDialog` |
+| `src/renderer/test/fake-mind.ts` | `window.mind` falso para testes de interface |
+
+**Adições do intent manual-cards-import (2026-11-16).**
+
+| Caminho | Conteúdo |
+|---|---|
+| `src/core/authoring/` | `ItemAuthoringService` (cria itens à mão, do leitor e em lote; run sintética por origem; `resolveSource`) e `validate.ts` (regras de rascunho compartilhadas com a ajuda do modelo e a importação) |
+| `src/core/assist/` | `AssistService` e prompts: melhorar, corrigir e ajustar o texto de um item; só propõe |
+| `src/core/generation/selection*.ts` | `SelectionGenerator`: itens de um trecho selecionado, com a citação verificada dentro do trecho |
+| `src/core/importing/` | templates (`templates.ts`), leitura segura de CSV e XLSX (`read.ts`, `zip.ts`), validação por linha (`validate.ts`) e `ImportService` (prévia em memória, `commit`) |
+| `src/core/db/run-kinds.ts` | `SYNTHETIC_RUN_KINDS`: runs que só existem para satisfazer `item.run_id` |
+| `src/renderer/src/components/` | `SidePanel`, `ItemEditor` (cartão e questão), `SourcePicker`, `ImproveProposal`, `SelectionBar`, `GenerateFromSelection`, `ImportPanel`; `wordDiff.ts` |
