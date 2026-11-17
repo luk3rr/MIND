@@ -7,13 +7,20 @@ PNPM := corepack pnpm
 
 LOG := $(HOME)/.config/mind/logs/mind.log
 
-.PHONY: help install dev dev-debug logs check fmt test e2e package verify-deb install-deb clean
+.PHONY: help install install-hooks pre-commit dev dev-debug logs check fmt test e2e package verify-deb install-deb clean
 
 help: ## Show the available commands
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[35m%-12s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install the dependencies
 	$(PNPM) install
+
+install-hooks: ## Enable the git pre-commit hook (formatting, lint and headers of staged files)
+	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit
+
+pre-commit: ## Run the pre-commit checks on the staged files
+	.githooks/pre-commit
 
 dev: ## Run the app with hot reload
 	$(PNPM) dev

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Filename: pre-commit
+# Created on: November 17, 2026
+# Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+#
+# Checks formatting, lint and file headers of the staged files before allowing a commit, the same
+# checks that fail the CI "verify" job. Install with: make install-hooks
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+if [ ! -x node_modules/.bin/tsx ]; then
+  echo "[pre-commit] dependencies are not installed. Run: make install" >&2
+  exit 1
+fi
+
+exec node_modules/.bin/tsx scripts/pre-commit.ts
