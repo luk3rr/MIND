@@ -24,6 +24,14 @@ questões no estilo de prova e estude tudo com [repetição espaçada](https://s
 - **Consulte o original e acompanhe o seu tempo.** Abra o PDF original no próprio app e vá direto à página citada por um card ou questão.
 - **Interface em português do Brasil** (os materiais podem estar em qualquer idioma).
 
+## Fundamentação científica
+
+O MIND se baseia nas práticas de estudo com respaldo em evidências científicas reunidas no livro
+_Fixe o Conhecimento: a ciência da aprendizagem bem-sucedida_ (BROWN, P. C. et al.): repetição
+espaçada, recuperação ativa (flashcards e questões) e revisão dos erros.
+
+> Referência completa: BROWN, Peter C.; ROEDIGER III, Henry L.; McDANIEL, Mark A. _Fixe o Conhecimento: a ciência da aprendizagem bem-sucedida_. Tradução de Cláudio de Moura Castro e Henrique de Oliveira Guerra. Original: _Make It Stick: The Science of Successful Learning_, 2014.
+
 ## Instalação
 
 O MIND está disponível para **Linux** (Debian, Ubuntu e derivados) e **Windows** (64 bits).
