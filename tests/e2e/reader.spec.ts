@@ -5,6 +5,7 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { launch, newProfile, removeProfile, ROOT } from "./launch.js";
 import type { Launched } from "./launch.js";
@@ -222,3 +223,137 @@ test("See in PDF lands on the cited page when the reader is in scroll mode", asy
   await page.waitForTimeout(700);
   await expect(page.getByLabel("Ir para a página")).toHaveValue("3");
 });
+
+/** A minimal PDF whose pages alternate between portrait, landscape and a wide landscape page. */
+function mixedPdf(pages: number, textAt: "top" | "bottom" = "top"): Buffer {
+  const sizes = [
+    [595, 842],
+    [842, 595],
+    [595, 842],
+    [1190, 842],
+    [595, 842],
+  ] as const;
+  const objects: string[] = [];
+  const add = (body: string): number => objects.push(body);
+  const catalog = add("");
+  const tree = add("");
+  const font = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  const kids: number[] = [];
+  for (let index = 0; index < pages; index += 1) {
+    const [width, height] = sizes[index % sizes.length] as readonly [number, number];
+    const stream = `BT /F1 24 Tf 40 ${textAt === "top" ? height - 80 : 60} Td (Mista pagina ${index + 1} do documento de teste) Tj ET`;
+    const content = add(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+    kids.push(
+      add(
+        `<< /Type /Page /Parent ${tree} 0 R /MediaBox [0 0 ${width} ${height}] /Contents ${content} 0 R /Resources << /Font << /F1 ${font} 0 R >> >> >>`,
+      ),
+    );
+  }
+  objects[catalog - 1] = `<< /Type /Catalog /Pages ${tree} 0 R >>`;
+  objects[tree - 1] =
+    `<< /Type /Pages /Kids [${kids.map((kid) => `${kid} 0 R`).join(" ")}] /Count ${pages} >>`;
+  let out = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  objects.forEach((body, index) => {
+    offsets.push(out.length);
+    out += `${index + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xref = out.length;
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) out += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  out += `trailer\n<< /Size ${objects.length + 1} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(out, "latin1");
+}
+
+test("lands on the cited page in continuous scroll even when the pages have different sizes", async () => {
+  const dir = newProfile();
+  profiles.push(dir);
+  const file = join(dir, "mista.pdf");
+  writeFileSync(file, mixedPdf(40));
+  current = await launch(dir);
+  const { page } = current;
+  await prepare(current, [file]);
+  await page.getByRole("button", { name: /^Ler / }).click();
+  await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Rolagem contínua" }).click();
+  await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
+
+  for (const target of [4, 17, 23, 38]) {
+    await page
+      .getByRole("textbox", { name: "Buscar nos materiais" })
+      .fill(`Mista pagina ${target} do documento`);
+    await page.getByRole("textbox", { name: "Buscar nos materiais" }).press("Enter");
+    await page
+      .getByRole("button", { name: `Ver no PDF, pág. ${target}`, exact: true })
+      .first()
+      .click();
+    await expect(page.getByLabel("Ir para a página")).toHaveValue(String(target));
+    // The cited page is at the top of the area, and every page has the same width, so a wide page
+    // did not rescale the document while the jump was made.
+    await expect
+      .poll(async () =>
+        page.evaluate((number) => {
+          const area = document.querySelector(".reader-viewport") as HTMLElement;
+          const el = document.querySelector(`.reader-page[data-page="${number}"]`) as HTMLElement;
+          return Math.abs(el.getBoundingClientRect().top - area.getBoundingClientRect().top) < 60;
+        }, target),
+      )
+      .toBe(true);
+    const widths = await page.evaluate(() => [
+      ...new Set(
+        [...document.querySelectorAll<HTMLElement>(".reader-page")].map((el) =>
+          Math.round(el.getBoundingClientRect().width),
+        ),
+      ),
+    ]);
+    expect(widths).toHaveLength(1);
+    await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
+  }
+});
+
+for (const mode of ["scroll", "page"] as const) {
+  test(`See in PDF brings a passage at the bottom of a tall page into view (${mode} mode)`, async () => {
+    const dir = newProfile();
+    profiles.push(dir);
+    const file = join(dir, "rodape.pdf");
+    // A page is taller than the reading area, so a line at its foot is out of sight at the top.
+    writeFileSync(file, mixedPdf(12, "bottom"));
+    current = await launch(dir);
+    const { page } = current;
+    await prepare(current, [file]);
+    if (mode === "scroll") {
+      await page.getByRole("button", { name: /^Ler / }).click();
+      await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible();
+      await page.getByRole("button", { name: "Rolagem contínua" }).click();
+      await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
+    }
+    const made = await page.evaluate(() =>
+      window.mind.invoke("items:create", {
+        workspaceId: 1,
+        origin: "manual",
+        draft: { kind: "card", subtype: "qa", front: "Cartao do rodape?", back: "Sim." },
+        source: { materialId: 1, page: 9, quote: "Mista pagina 9 do documento de teste" },
+      }),
+    );
+    expect(made).toMatchObject({ ok: true, data: { sourceLinked: true } });
+    await page.getByRole("button", { name: "Hoje", exact: true }).click();
+    await page.getByRole("button", { name: /^Estudar agora/ }).click();
+    await expect(page.getByLabel("Frente")).toBeVisible();
+    await page.keyboard.press("Space");
+    await page.getByRole("button", { name: "Ver no PDF, pág. 9", exact: true }).first().click();
+    await expect(page.getByLabel("Ir para a página")).toHaveValue("9");
+    // The highlighted passage is inside the reading area, not below it.
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const area = document.querySelector(".reader-viewport") as HTMLElement;
+          const mark = document.querySelector(".reader-hit.cited") as HTMLElement | null;
+          if (!mark) return false;
+          const box = mark.getBoundingClientRect();
+          const outer = area.getBoundingClientRect();
+          return box.top >= outer.top && box.bottom <= outer.bottom;
+        }),
+      )
+      .toBe(true);
+  });
+}

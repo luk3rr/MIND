@@ -325,6 +325,48 @@ describe("continuous scroll mode", () => {
     expect(window.localStorage.getItem("mind.reader.mode")).toBe("scroll");
   });
 
+  it("fits every page to the same width, so a wide page does not rescale the others", async () => {
+    window.localStorage.setItem("mind.reader.mode", "scroll");
+    open("/w/1/library/4/read", {
+      reader: {
+        info: {
+          title: "apostila",
+          pageCount: 3,
+          // A portrait page, a landscape one twice as wide, and a portrait one again.
+          pages: [
+            { width: 595, height: 842 },
+            { width: 1190, height: 842 },
+            { width: 595, height: 842 },
+          ],
+          lastPage: null,
+        },
+        lines: {},
+        hits: [],
+        cited: [],
+        saved: [],
+        failure: null,
+      },
+    });
+    await screen.findByRole("img", { name: "Página 1" });
+    const widths = () =>
+      [...document.querySelectorAll<HTMLElement>(".reader-page")].map((page) => page.style.width);
+    // Each page is as wide as the area; the wide one is not drawn bigger, and the layout is the
+    // same whichever page is the current one.
+    expect(new Set(widths()).size).toBe(1);
+    const heights = [...document.querySelectorAll<HTMLElement>(".reader-page")].map(
+      (page) => page.style.height,
+    );
+    expect(Number.parseFloat(heights[1] ?? "0")).toBeCloseTo(
+      Number.parseFloat(heights[0] ?? "0") / 2,
+      0,
+    );
+    await userEvent.setup().click(screen.getByRole("button", { name: "Próxima página" }));
+    expect(new Set(widths()).size).toBe(1);
+    expect(
+      [...document.querySelectorAll<HTMLElement>(".reader-page")].map((page) => page.style.height),
+    ).toEqual(heights);
+  });
+
   it("opens in scrolling when that was the last choice and goes back to pages", async () => {
     window.localStorage.setItem("mind.reader.mode", "scroll");
     open("/w/1/library/4/read");

@@ -63,6 +63,10 @@ function LineText({ line, zoom }: { line: Lines[number]; zoom: number }) {
 
 type PageSize = OutputOf<"reader:info">["pages"][number];
 
+/** Where a cited passage sits on screen: a third of the way down the area, never above its page. */
+const CITED_LINE = 0.3;
+const citedTop = (lines: Lines): number => Math.min(...lines.map((line) => line.y));
+
 /** Space between two pages in the continuous scroll mode, in pixels. */
 const GAP = 16;
 const MODE_KEY = "mind.reader.mode";
@@ -252,7 +256,8 @@ function ScrollPages({
   materialId,
   pages,
   zoom,
-  scale,
+  fitWidth,
+  ratio,
   viewport,
   request,
   hitsByPage,
@@ -263,8 +268,12 @@ function ScrollPages({
   workspaceId: number;
   materialId: number;
   pages: PageSize[];
-  zoom: number;
-  scale: number;
+  /** A fixed zoom for every page, or "fit": each page is as wide as the area (pages of other widths included). */
+  zoom: number | "fit";
+  /** The width a fitted page takes, in pixels. */
+  fitWidth: number;
+  /** Device pixel ratio, for the resolution the pages are drawn at. */
+  ratio: number;
   viewport: React.RefObject<HTMLDivElement | null>;
   /** Asks for a scroll to a page; a new object scrolls even to the same page again. */
   request: { page: number } | null;
@@ -273,14 +282,23 @@ function ScrollPages({
   citedPage: number | undefined;
   onVisiblePage: (page: number) => void;
 }) {
+  // With "fit" every page gets its own zoom, so a wide page never rescales the others: the
+  // position of each page depends only on the pages before it and does not change while reading.
+  const zooms = useMemo(
+    () =>
+      pages.map((size) =>
+        zoom === "fit" ? Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fitWidth / size.width)) : zoom,
+      ),
+    [pages, zoom, fitWidth],
+  );
   const offsets = useMemo(() => {
     let top = 0;
-    return pages.map((size) => {
+    return pages.map((size, index) => {
       const at = top;
-      top += size.height * zoom + GAP;
+      top += size.height * (zooms[index] ?? 1) + GAP;
       return at;
     });
-  }, [pages, zoom]);
+  }, [pages, zooms]);
   const [range, setRange] = useState<[number, number]>([0, 1]);
   const quiet = useRef(0);
   const latest = useRef(1);
@@ -297,7 +315,7 @@ function ScrollPages({
     let last = 0;
     let current = 0;
     offsets.forEach((offset, index) => {
-      const bottom = offset + (pages[index]?.height ?? 0) * zoom;
+      const bottom = offset + (pages[index]?.height ?? 0) * (zooms[index] ?? 1);
       if (bottom >= from && offset <= to) {
         first = Math.min(first, index);
         last = Math.max(last, index);
@@ -315,7 +333,7 @@ function ScrollPages({
       clearTimeout(later.current);
       later.current = setTimeout(update, wait + 20);
     }
-  }, [viewport, offsets, pages, zoom, onVisiblePage]);
+  }, [viewport, offsets, pages, zooms, onVisiblePage]);
 
   useEffect(() => {
     const element = viewport.current;
@@ -370,7 +388,24 @@ function ScrollPages({
     quiet.current = Date.now() + 400;
     element.scrollTop = offsets[latest.current - 1] ?? 0;
     update();
-  }, [zoom]);
+  }, [zooms]);
+
+  // The passage a card cites is brought into view, not only its page: a page is taller than the
+  // area, so the top of the page can show nothing of it.
+  useLayoutEffect(() => {
+    const element = viewport.current;
+    if (!element || !cited || cited.length === 0 || citedPage === undefined) return;
+    const index = citedPage - 1;
+    quiet.current = Date.now() + 400;
+    element.scrollTop = Math.max(
+      offsets[index] ?? 0,
+      (offsets[index] ?? 0) +
+        citedTop(cited) * (zooms[index] ?? 1) -
+        element.clientHeight * CITED_LINE,
+    );
+    latest.current = citedPage;
+    update();
+  }, [cited]);
 
   return (
     <div className="reader-scroll">
@@ -381,8 +416,8 @@ function ScrollPages({
           materialId={materialId}
           number={index + 1}
           size={size}
-          zoom={zoom}
-          scale={scale}
+          zoom={zooms[index] ?? 1}
+          scale={Math.round((zooms[index] ?? 1) * ratio * 20) / 20}
           near={index >= range[0] && index <= range[1]}
           hits={hitsByPage.get(index + 1) ?? []}
           cited={citedPage === index + 1 ? cited : null}
@@ -483,6 +518,18 @@ export function ReaderPage({
       cancelled = true;
     };
   }, [workspaceId, materialId, quote, initialPage, total]);
+
+  // Page by page: the same, scrolling inside the page to the cited passage.
+  useEffect(() => {
+    const area = viewport.current;
+    if (mode !== "page" || !area || !cited || cited.length === 0 || !size) return;
+    const target = area.querySelector<HTMLElement>(".reader-page");
+    if (!target) return;
+    const top =
+      target.getBoundingClientRect().top - area.getBoundingClientRect().top + area.scrollTop;
+    const zoomNow = target.getBoundingClientRect().height / size.height;
+    area.scrollTop = Math.max(0, top + citedTop(cited) * zoomNow - area.clientHeight * CITED_LINE);
+  }, [cited, mode]);
 
   useEffect(() => {
     const element = viewport.current;
@@ -797,8 +844,9 @@ export function ReaderPage({
               workspaceId={workspaceId}
               materialId={materialId}
               pages={doc.pages}
-              zoom={effective}
-              scale={scale}
+              zoom={zoom}
+              fitWidth={(viewportWidth || 800) - 32}
+              ratio={ratio}
               viewport={viewport}
               request={scrollRequest}
               hitsByPage={hitsByPage}
