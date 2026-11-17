@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
@@ -54,6 +54,14 @@ function StatusCell({ material }: { material: Material }) {
 /** How many materials one page of the library shows. */
 const MATERIALS_PER_PAGE = 10;
 
+/** The day and time a material was imported, as the person reads dates (dd/mm/aaaa hh:mm). */
+function importedAt(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
 export function LibraryPage({ workspaceId }: { workspaceId: number }) {
   const { navigate } = useRouter();
   const { state, reload } = useInvoke("material:list", { workspaceId });
@@ -66,8 +74,19 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<OutputOf<"material:search">["hits"] | null>(null);
 
+  // The list comes newest first; the name column can sort it A to Z, Z to A, or back to newest.
+  const [order, setOrder] = useState<"recent" | "asc" | "desc">("recent");
+  const materials = useMemo(() => {
+    const all = state.status === "ready" ? state.data.materials : [];
+    if (order === "recent") return all;
+    const sign = order === "asc" ? 1 : -1;
+    return [...all].sort(
+      (a, b) =>
+        sign * a.title.localeCompare(b.title, "pt-BR", { numeric: true, sensitivity: "base" }),
+    );
+  }, [state, order]);
   const list = usePagedList(
-    state.status === "ready" ? state.data.materials : [],
+    materials,
     MATERIALS_PER_PAGE,
     (material) => `${material.title} ${material.kind} ${material.filename}`,
   );
@@ -211,11 +230,31 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
           <table>
             <thead>
               <tr>
-                <th>{T.materialName}</th>
+                <th
+                  aria-sort={
+                    order === "asc" ? "ascending" : order === "desc" ? "descending" : "none"
+                  }
+                >
+                  <button
+                    type="button"
+                    className="sort-header"
+                    aria-label={T.materialSortByName}
+                    onClick={() => {
+                      setOrder((current) =>
+                        current === "recent" ? "asc" : current === "asc" ? "desc" : "recent",
+                      );
+                      list.setPage(1);
+                    }}
+                  >
+                    {T.materialName}
+                    {order === "asc" ? " ▲" : order === "desc" ? " ▼" : ""}
+                  </button>
+                </th>
                 <th>{T.materialKind}</th>
                 <th>{T.materialPages}</th>
                 <th>{T.materialStatus}</th>
                 <th>{T.materialChunks}</th>
+                <th>{T.materialImportedAt}</th>
                 <th />
               </tr>
             </thead>
@@ -237,6 +276,7 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                     <StatusCell material={material} />
                   </td>
                   <td>{material.chunkCount}</td>
+                  <td>{importedAt(material.createdAt)}</td>
                   <td>
                     {material.status === "indexed" && (
                       <span className="row" style={{ display: "inline-flex", gap: 6 }}>

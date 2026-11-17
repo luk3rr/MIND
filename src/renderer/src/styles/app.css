@@ -423,6 +423,20 @@ th {
 .link:focus-visible {
   outline: 2px solid var(--info);
 }
+/* A column header that sorts: it looks like the other headers and only shows it is a button on hover and focus. */
+.sort-header {
+  all: unset;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+}
+.sort-header:hover {
+  color: var(--fg);
+}
+.sort-header:focus-visible {
+  outline: 2px solid var(--info);
+}
 .search-input {
   flex: 1 1 260px;
   padding: 9px 12px;

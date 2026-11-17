@@ -150,6 +150,79 @@ describe("Library page", () => {
     expect(fake.invoke.mock.calls.filter((c) => c[0] === "material:list").length).toBe(calls);
   });
 
+  it("shows the day and time each material was imported", async () => {
+    openLibrary({
+      materials: [
+        material({ id: 2, title: "novo", createdAt: "2026-03-05T14:30:00.000Z" }),
+        material({ id: 1, title: "velho", createdAt: "not a date" }),
+      ],
+    });
+    await screen.findByRole("table");
+    expect(screen.getByRole("columnheader", { name: "Importado em" })).toBeVisible();
+    const rows = within(screen.getByRole("table")).getAllByRole("row");
+    const cells = (row: HTMLElement) =>
+      within(row)
+        .getAllByRole("cell")
+        .map((c) => c.textContent);
+    // The time follows the local time zone, so the test builds the text the same way.
+    const expected = new Date("2026-03-05T14:30:00.000Z").toLocaleString("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+    expect(expected).toMatch(/^\d{2}\/\d{2}\/\d{4},? \d{2}:\d{2}$/);
+    expect(cells(rows[1] as HTMLElement)).toContain(expected);
+    expect(cells(rows[2] as HTMLElement)).toContain("—");
+  });
+
+  it("sorts the materials by name when the name column is clicked, and back to the newest", async () => {
+    openLibrary({
+      materials: [
+        material({ id: 4, title: "Zeta" }),
+        material({ id: 3, title: "alfa" }),
+        material({ id: 2, title: "Beta 10" }),
+        material({ id: 1, title: "Beta 2" }),
+      ],
+    });
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+    const names = () =>
+      within(screen.getByRole("table"))
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => within(row).getAllByRole("cell")[0]?.textContent);
+    const header = () => screen.getByRole("columnheader", { name: /Material/ });
+    // As loaded: newest first.
+    expect(names()).toEqual(["Zeta", "alfa", "Beta 10", "Beta 2"]);
+    expect(header()).toHaveAttribute("aria-sort", "none");
+    const sort = screen.getByRole("button", { name: /Ordenar por nome/ });
+    await user.click(sort);
+    // A to Z, ignoring capitals and with numbers in order (Beta 2 before Beta 10).
+    expect(names()).toEqual(["alfa", "Beta 2", "Beta 10", "Zeta"]);
+    expect(header()).toHaveAttribute("aria-sort", "ascending");
+    expect(header()).toHaveTextContent("▲");
+    await user.click(sort);
+    expect(names()).toEqual(["Zeta", "Beta 10", "Beta 2", "alfa"]);
+    expect(header()).toHaveAttribute("aria-sort", "descending");
+    await user.click(sort);
+    expect(names()).toEqual(["Zeta", "alfa", "Beta 10", "Beta 2"]);
+    expect(header()).toHaveAttribute("aria-sort", "none");
+  });
+
+  it("goes back to the first page when the order changes, and keeps the search", async () => {
+    const many = Array.from({ length: 12 }, (_, index) =>
+      material({ id: 12 - index, title: `Material ${String(12 - index).padStart(2, "0")}` }),
+    );
+    openLibrary({ materials: many });
+    const user = userEvent.setup();
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: "Próxima" }));
+    expect(screen.getByText("Material 02")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /Ordenar por nome/ }));
+    expect(screen.getByText("Material 01")).toBeVisible();
+    expect(screen.getByText("Material 10")).toBeVisible();
+    expect(screen.queryByText("Material 11")).toBeNull();
+  });
+
   it("asks for confirmation before deleting a material", async () => {
     const fake = openLibrary({ materials: [material()] });
     const user = userEvent.setup();
