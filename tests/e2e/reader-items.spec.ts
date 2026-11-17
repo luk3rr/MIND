@@ -6,8 +6,11 @@
 
 import { expect, test } from "@playwright/test";
 import { join } from "node:path";
-import { launch, newProfile, removeProfile, ROOT } from "./launch.js";
+import { EXECUTABLE, launch, newProfile, removeProfile, ROOT } from "./launch.js";
 import type { Launched } from "./launch.js";
+
+// The scripted model only exists in the unpackaged app, so these tests skip against a package.
+test.skip(Boolean(EXECUTABLE), "uses the offline scripted provider of the unpackaged app");
 
 let current: Launched | undefined;
 const profiles: string[] = [];

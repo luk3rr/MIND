@@ -5,7 +5,7 @@
  */
 
 import { expect, test } from "@playwright/test";
-import { launch, newProfile, removeProfile } from "./launch.js";
+import { EXECUTABLE, launch, newProfile, removeProfile } from "./launch.js";
 import type { Launched } from "./launch.js";
 
 let current: Launched | undefined;
@@ -62,6 +62,8 @@ async function openItems(): Promise<Launched["page"]> {
 }
 
 test("asks the model to fix the text, compares, accepts and saves with Ctrl+Enter (FR-10, FR-11)", async () => {
+  // The scripted model only exists in the unpackaged app.
+  test.skip(Boolean(EXECUTABLE), "uses the offline scripted provider of the unpackaged app");
   const page = await openItems();
   await page.getByRole("button", { name: "Novo item" }).click();
   const panel = page.getByRole("dialog", { name: "Novo cartão" });
