@@ -1000,3 +1000,92 @@ tr.needs-review .btn .pill {
   font-size: 12px;
   color: var(--muted);
 }
+
+.items-head {
+  align-items: center;
+  justify-content: space-between;
+}
+.items-head h1 {
+  margin: 0;
+}
+
+/* A panel on the right edge: it sits over the page but leaves the rest of it readable. */
+.side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(430px, 92vw);
+  z-index: 40;
+  overflow-y: auto;
+  background: var(--panel);
+  color: var(--fg);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: var(--space-4) var(--space-5);
+}
+.side-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+.side-panel-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.side-panel.wide {
+  width: min(620px, 96vw);
+}
+.assist-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.assist-col {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: var(--space-3);
+  background: var(--bg);
+  white-space: pre-wrap;
+}
+.assist-col h4 {
+  margin: 0 0 var(--space-1);
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* The change is shown by more than colour: struck through and underlined. */
+.assist-col del {
+  background: color-mix(in srgb, var(--danger) 25%, transparent);
+  text-decoration: line-through;
+}
+.assist-col ins {
+  background: color-mix(in srgb, var(--success) 25%, transparent);
+  text-decoration: underline;
+}
+
+/* The actions that float beside a passage selected in the reader. */
+.selection-bar {
+  position: fixed;
+  z-index: 45;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.reader.with-panel {
+  margin-right: min(446px, 94vw);
+}

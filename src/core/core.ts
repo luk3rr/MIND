@@ -31,6 +31,10 @@ import { EmbeddingsService } from "./retrieval/embeddings.js";
 import type { Embedder } from "./retrieval/embeddings.js";
 import { UnavailableEmbedder } from "./retrieval/fake-embedder.js";
 import { TransformersEmbedder } from "./retrieval/transformers-embedder.js";
+import { AssistService } from "./assist/service.js";
+import { SelectionGenerator } from "./generation/selection.js";
+import { ImportService } from "./importing/service.js";
+import { ItemAuthoringService } from "./authoring/service.js";
 import { ErrorNotebook } from "./notebook/service.js";
 import { PracticeService } from "./practice/service.js";
 import { StatsService } from "./stats/service.js";
@@ -103,9 +107,17 @@ export interface Core {
   updates: UpdateService;
   queue: JobQueue;
   llm: Llm;
+  /** Asks the model to polish the text of an item the person wrote; never stores anything. */
+  assist: AssistService;
   materials(workspaceId: number): MaterialService;
   generation(workspaceId: number): GenerationService;
   review(workspaceId: number): ReviewService;
+  /** Spreadsheet templates and imports of items. */
+  importing: ImportService;
+  /** Writes drafts from a passage selected in the reader (stores nothing). */
+  selection(workspaceId: number): SelectionGenerator;
+  /** Creates items by hand (not from a generation). */
+  authoring(workspaceId: number): ItemAuthoringService;
   study(workspaceId: number): StudyService;
   /** The study timer of a workspace; one instance per workspace for the life of the core. */
   time(workspaceId: number): TimeService;
@@ -202,6 +214,7 @@ export function createCore(options: CoreOptions): Core {
     updates,
     queue,
     llm,
+    assist: new AssistService(llm),
     time: (workspaceId) => {
       const cached = timers.get(workspaceId);
       if (cached) return cached;
@@ -222,6 +235,9 @@ export function createCore(options: CoreOptions): Core {
     generation: (workspaceId) =>
       new GenerationService(registry.open(workspaceId), queue, llm, options.generationConcurrency),
     review: (workspaceId) => new ReviewService(registry.open(workspaceId), clock),
+    importing: new ImportService(registry, clock),
+    selection: (workspaceId) => new SelectionGenerator(registry.open(workspaceId), llm),
+    authoring: (workspaceId) => new ItemAuthoringService(registry.open(workspaceId), clock),
     notebook: (workspaceId) => new ErrorNotebook(registry.open(workspaceId), clock),
     stats: (workspaceId) =>
       new StatsService(registry.open(workspaceId), {

@@ -158,6 +158,27 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "topics:delete": () => ({}),
     "items:list": () => ({ items: [] }),
     "items:bulk": () => ({ changed: 0, skipped: 0 }),
+    "items:create": () => ({ itemId: 1, topicCreated: false, sourceLinked: false }),
+    "import:template": () => ({ saved: false }),
+    "import:preview": () => ({ cancelled: true }),
+    "import:previewRows": () => ({ rows: [], total: 0 }),
+    "import:commit": () => ({
+      imported: 0,
+      skippedDuplicates: 0,
+      skippedErrors: 0,
+      topicsCreated: 0,
+    }),
+    "import:discard": () => ({}),
+    "selection:estimate": () => ({ estimatedUsd: null, chars: 0 }),
+    "selection:generate": () => ({
+      drafts: [],
+      discarded: { noSource: 0, invalid: 0, duplicate: 0 },
+      costUsd: null,
+    }),
+    "assist:improve": () => {
+      throw new Error("unused");
+    },
+    "source:resolve": () => ({ match: "none", chunkId: null, quote: "x", materialTitle: "m" }),
     "stats:materials": () => ({ materials: [] }),
     "stats:overview": () => {
       throw new Error("unused");

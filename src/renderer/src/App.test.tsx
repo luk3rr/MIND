@@ -208,6 +208,16 @@ describe("Today page", () => {
     expect(await screen.findByRole("heading", { name: "Biblioteca" })).toBeVisible();
   });
 
+  it("offers to study cards written by hand even with no material (FR-3)", async () => {
+    installFakeMind({
+      workspaces: [ws(1, "Estudos")],
+      summary: { materials: 0, cards: 2, questions: 0 },
+    });
+    await ready();
+    expect(await screen.findByRole("button", { name: /^Estudar agora/ })).toBeVisible();
+    expect(screen.queryByText("Nenhum material ainda")).toBeNull();
+  });
+
   it("shows the real counts", async () => {
     installFakeMind({
       workspaces: [ws(1, "Estudos")],

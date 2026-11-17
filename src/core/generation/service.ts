@@ -7,7 +7,8 @@
 import { logger } from "../logging.js";
 
 const log = logger("generation");
-import { and, count, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, notInArray, or, sql } from "drizzle-orm";
+import { SYNTHETIC_RUN_KINDS } from "../db/run-kinds.js";
 import { AppError } from "../contracts/errors.js";
 import type { FieldError } from "../contracts/errors.js";
 import { chunk, generationRun, item, material, topic } from "../db/workspace-schema.js";
@@ -608,7 +609,7 @@ export class GenerationService {
     return this.db
       .select()
       .from(generationRun)
-      .where(ne(generationRun.kind, "notebook"))
+      .where(notInArray(generationRun.kind, [...SYNTHETIC_RUN_KINDS]))
       .orderBy(desc(generationRun.id))
       .limit(limit)
       .all()

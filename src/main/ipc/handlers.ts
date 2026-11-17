@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { templateName } from "../../core/importing/service.js";
 import { logger } from "../../core/logging.js";
 
 const log = logger("settings");
@@ -48,6 +49,8 @@ export interface UiBridge {
   pickFiles(): Promise<string[]>;
   /** Opens the native "save as" dialog; null when cancelled. */
   pickSavePath?(defaultName: string): Promise<string | null>;
+  /** Opens the native dialog for a spreadsheet (`.csv` or `.xlsx`); null when cancelled. */
+  pickImportFile?(): Promise<string | null>;
   /** Opens the native dialog for a backup `.zip`; null when cancelled. */
   pickBackup?(): Promise<string | null>;
   /** Opens (or focuses) the separate reader window of a PDF. */
@@ -185,6 +188,47 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         ...(options !== undefined ? { options } : {}),
         ...(answer !== undefined ? { answer } : {}),
       }),
+    "items:create": ({ workspaceId, draft, topic, source, origin }) =>
+      core.authoring(workspaceId).create({
+        draft,
+        topic: topic ?? null,
+        origin,
+        ...(source ? { source } : {}),
+      }),
+    "import:template": async ({ workspaceId, kind, format }) => {
+      core.registry.open(workspaceId);
+      const path = (await ui.pickSavePath?.(templateName(kind, format))) ?? null;
+      if (path === null) return { saved: false };
+      await core.importing.writeTemplate(kind, format, path);
+      return { saved: true };
+    },
+    "import:preview": async ({ workspaceId, kind }) => {
+      core.registry.open(workspaceId);
+      const path = (await ui.pickImportFile?.()) ?? null;
+      if (path === null) return { cancelled: true as const };
+      return {
+        cancelled: false as const,
+        ...(await core.importing.preview(workspaceId, kind, path)),
+      };
+    },
+    "import:previewRows": ({ workspaceId, token, status, offset, limit }) =>
+      core.importing.rows(workspaceId, token, status, offset, limit),
+    "import:commit": ({ workspaceId, token, includeDuplicates }) =>
+      core.importing.commit(workspaceId, token, includeDuplicates),
+    "import:discard": ({ workspaceId, token }) => {
+      core.importing.discard(workspaceId, token);
+      return {};
+    },
+    "selection:estimate": ({ workspaceId, ...request }) =>
+      core.selection(workspaceId).estimate(request),
+    "selection:generate": ({ workspaceId, ...request }) =>
+      core.selection(workspaceId).generate(request),
+    "assist:improve": async ({ workspaceId, action, instruction, draft, topic, quote }) => {
+      core.registry.open(workspaceId);
+      return core.assist.improve({ action, draft, instruction, topic, quote });
+    },
+    "source:resolve": ({ workspaceId, materialId, page, text }) =>
+      core.authoring(workspaceId).resolveSource({ materialId, page, text }),
     "review:discardApproved": ({ workspaceId, itemId }) => ({
       discarded: core.review(workspaceId).discardApproved(itemId),
     }),

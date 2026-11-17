@@ -20,12 +20,17 @@ import type { FormEvent } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { useHotkeys, useInvoke } from "../hooks.js";
 import { BackLink } from "../components/BackLink.js";
+import { GenerateFromSelection } from "../components/GenerateFromSelection.js";
+import { ItemEditor } from "../components/ItemEditor.js";
+import { SelectionBar, usePassageSelection } from "../components/SelectionBar.js";
 import { T } from "../strings.js";
 import { formatClock, useActivity, useTime } from "../time.js";
 
 type Lines = OutputOf<"reader:text">["lines"];
 type Hits = OutputOf<"reader:search">["hits"];
 
+/** The longest quote an item keeps (the reader can highlight up to this many characters). */
+const MAX_QUOTE = 2000;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.25;
@@ -411,6 +416,9 @@ export function ReaderPage({
   const [viewportWidth, setViewportWidth] = useState(0);
   const viewport = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const [selection, clearSelection] = usePassageSelection(viewport);
+  const [creating, setCreating] = useState<{ page: number; quote: string } | null>(null);
+  const [generating, setGenerating] = useState<{ page: number; text: string } | null>(null);
   const [mode, setMode] = useState<"page" | "scroll">(savedMode);
   const [scrollRequest, setScrollRequest] = useState<{ page: number } | null>({
     page: initialPage ?? 1,
@@ -617,7 +625,10 @@ export function ReaderPage({
   const reading = time?.state?.source === "reading" && time.state.status === "running";
 
   return (
-    <section className="reader" aria-labelledby="reader-title">
+    <section
+      className={creating || generating ? "reader with-panel" : "reader"}
+      aria-labelledby="reader-title"
+    >
       <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
         {back ?? <span />}
         <span className="row">
@@ -798,6 +809,41 @@ export function ReaderPage({
           )}
         </div>
       </div>
+      {selection && !creating && !generating && (
+        <SelectionBar
+          selection={selection}
+          onGenerate={() => {
+            setGenerating({ page: selection.page, text: selection.text });
+            clearSelection();
+          }}
+          onCreate={() => {
+            // The passage is kept in the panel; the selection itself is no longer needed.
+            setCreating({ page: selection.page, quote: selection.text.slice(0, MAX_QUOTE) });
+            clearSelection();
+          }}
+          onDismiss={clearSelection}
+        />
+      )}
+      {generating && (
+        <GenerateFromSelection
+          key={`${generating.page}:${generating.text}`}
+          workspaceId={workspaceId}
+          materialId={materialId}
+          page={generating.page}
+          text={generating.text}
+          onClose={() => setGenerating(null)}
+        />
+      )}
+      {creating && (
+        <ItemEditor
+          key={`${creating.page}:${creating.quote}`}
+          workspaceId={workspaceId}
+          origin="reader"
+          initialSource={{ materialId, page: String(creating.page), quote: creating.quote }}
+          onClose={() => setCreating(null)}
+          onSaved={() => undefined}
+        />
+      )}
       <p className="muted" role="status">
         {T.page} {current} {T.readerOfTotal(total)}
         {reading && time ? ` · ${T.readerReading(formatClock(time.activeSeconds))}` : ""}

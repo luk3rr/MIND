@@ -17,6 +17,10 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
   const study = useInvoke("study:today", { workspaceId });
   const practice = useInvoke("practice:counts", { workspaceId });
   const overview = useInvoke("stats:overview", { workspaceId });
+  // Items written by hand need no material, so the empty state only fits a workspace with neither.
+  const hasContent =
+    state.status === "ready" &&
+    (state.data.materials > 0 || state.data.cards > 0 || state.data.questions > 0);
 
   return (
     <section aria-labelledby="today-title">
@@ -39,7 +43,7 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
           </button>
         </div>
       )}
-      {state.status === "ready" && state.data.materials === 0 && (
+      {state.status === "ready" && !hasContent && (
         <div className="card">
           <h2>{T.todayEmptyTitle}</h2>
           <p className="muted">{T.todayEmptyBody}</p>
@@ -52,7 +56,7 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
           </button>
         </div>
       )}
-      {state.status === "ready" && study.state.status === "ready" && state.data.materials > 0 && (
+      {state.status === "ready" && study.state.status === "ready" && hasContent && (
         <>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <button
@@ -116,7 +120,7 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
           )}
         </>
       )}
-      {state.status === "ready" && state.data.materials > 0 && (
+      {state.status === "ready" && hasContent && (
         <div className="row">
           <div className="card stat">
             <b>{state.data.materials}</b>

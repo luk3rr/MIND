@@ -7,6 +7,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
+import { ImportPanel } from "../components/ImportPanel.js";
+import { ItemEditor } from "../components/ItemEditor.js";
 import { EditItemDialog } from "../components/EditItemDialog.js";
 import { usePersistedFilter } from "../components/FilterSelect.js";
 import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
@@ -35,6 +37,7 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
   const [status, setStatus] = useState<Status>("active");
   const [kind, setKind] = useState("");
   const [materialId, setMaterialId] = useState("");
+  const [origin, setOrigin] = useState("");
   const [topicFilter, setTopicFilter] = usePersistedFilter(
     `mind.filter.${workspaceId}.items-topic`,
   );
@@ -42,6 +45,8 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
   const [bulkTopic, setBulkTopic] = useState("");
   const [editing, setEditing] = useState<Full | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +57,7 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
         (entry) =>
           matchesStatus(entry, status) &&
           (kind === "" || entry.kind === kind) &&
+          (origin === "" || entry.origin === origin) &&
           (materialId === "" || String(entry.materialId) === materialId) &&
           (topicFilter === ""
             ? true
@@ -59,9 +65,9 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
               ? entry.topicId === null
               : String(entry.topicId) === topicFilter),
       ),
-    [all, status, kind, materialId, topicFilter],
+    [all, status, kind, origin, materialId, topicFilter],
   );
-  const filterKey = `${status}|${kind}|${materialId}|${topicFilter}`;
+  const filterKey = `${status}|${kind}|${origin}|${materialId}|${topicFilter}`;
   const list = usePagedList(
     filtered,
     ITEMS_PER_PAGE,
@@ -125,11 +131,21 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
   const pageIds = list.pageItems.map((entry) => entry.id);
   const pageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
   const filtersActive =
-    status !== "active" || kind !== "" || materialId !== "" || topicFilter !== "";
+    status !== "active" || kind !== "" || origin !== "" || materialId !== "" || topicFilter !== "";
 
   return (
     <section aria-labelledby="items-title">
-      <h1 id="items-title">{T.itemsTitle}</h1>
+      <div className="row items-head">
+        <h1 id="items-title">{T.itemsTitle}</h1>
+        <div className="actions">
+          <button type="button" className="btn ghost" onClick={() => setImporting(true)}>
+            {T.importOpen}
+          </button>
+          <button type="button" className="btn" onClick={() => setCreating(true)}>
+            {T.newItem}
+          </button>
+        </div>
+      </div>
       <p className="muted">{T.itemsHint}</p>
       {items.state.status === "loading" && <p role="status">{T.loading}</p>}
       {items.state.status === "error" && (
@@ -161,6 +177,18 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
               <option value="question">{T.kindQuestions}</option>
             </select>
             <select
+              aria-label={T.itemsOrigin}
+              value={origin}
+              onChange={(event) => setOrigin(event.target.value)}
+            >
+              <option value="">{T.itemsOriginAll}</option>
+              {Object.entries(T.itemsOriginLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
               aria-label={T.itemsMaterial}
               value={materialId}
               onChange={(event) => setMaterialId(event.target.value)}
@@ -188,6 +216,7 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
                   setStatus("active");
                   setKind("");
                   setMaterialId("");
+                  setOrigin("");
                   setTopicFilter("");
                 }}
               >
@@ -288,6 +317,8 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
                     <th scope="col">{T.itemsKind}</th>
                     <th scope="col">{T.studyTopic}</th>
                     <th scope="col">{T.itemsMaterial}</th>
+                    <th scope="col">{T.itemsOrigin}</th>
+                    <th scope="col">{T.itemsColumnSource}</th>
                     <th scope="col">{T.itemsColumnStatus}</th>
                     <th scope="col" />
                   </tr>
@@ -313,6 +344,18 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
                         </td>
                         <td>{entry.topic ?? <span className="muted">{T.itemsNoTopic}</span>}</td>
                         <td>{entry.material ?? "—"}</td>
+                        <td>
+                          <span className="pill">
+                            {T.itemsOriginLabels[entry.origin] ?? entry.origin}
+                          </span>
+                        </td>
+                        <td>
+                          {entry.sourceTitle ? (
+                            T.itemsSourceOf(entry.sourceTitle, entry.sourcePage)
+                          ) : (
+                            <span className="muted">{T.itemsNoSource}</span>
+                          )}
+                        </td>
                         <td>{T.itemsStatusLabels[entry.status] ?? entry.status}</td>
                         <td>
                           {entry.status !== "discarded" && (
@@ -344,6 +387,29 @@ export function ItemsPage({ workspaceId }: { workspaceId: number }) {
             </>
           )}
         </>
+      )}
+      {importing && (
+        <ImportPanel
+          workspaceId={workspaceId}
+          onClose={() => setImporting(false)}
+          onImported={reloadAll}
+          onShowImported={() => {
+            // Shows only what was just imported: the other filters would hide part of it.
+            setStatus("active");
+            setKind("");
+            setMaterialId("");
+            setTopicFilter("");
+            setOrigin("import");
+            setImporting(false);
+          }}
+        />
+      )}
+      {creating && (
+        <ItemEditor
+          workspaceId={workspaceId}
+          onClose={() => setCreating(false)}
+          onSaved={reloadAll}
+        />
       )}
       {editing && (
         <EditItemDialog

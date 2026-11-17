@@ -14,8 +14,8 @@ import { pdfSourceOf } from "../reader/source.js";
 import type { PdfSource } from "../reader/source.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 
-const FRONT_PROBLEMS = new Set(["empty_front", "empty_statement", "cloze_without_gap"]);
-const PROBLEM_MESSAGES: Record<string, string> = {
+export const FRONT_PROBLEMS = new Set(["empty_front", "empty_statement", "cloze_without_gap"]);
+export const PROBLEM_MESSAGES: Record<string, string> = {
   empty_front: "A frente do card não pode ficar vazia.",
   empty_back: "O verso do card não pode ficar vazio.",
   cloze_without_gap: "Um card de lacuna precisa de {{c1::termo}} na frente.",
@@ -47,7 +47,7 @@ export interface ItemInfo {
   answer: string | null;
 }
 
-/** One item of the catalog: enough to find, filter and manage it, without its source. */
+/** One item of the catalog: enough to find, filter and manage it, with where it came from. */
 export interface CatalogEntry {
   id: number;
   kind: string;
@@ -61,6 +61,12 @@ export interface CatalogEntry {
   material: string | null;
   edited: boolean;
   createdAt: string;
+  /** How the item came to be: generated, manual, reader, import or error_note. */
+  origin: string;
+  sourceTitle: string;
+  sourcePage: number | null;
+  /** True when "Ver no PDF" can open the cited page. */
+  hasPdf: boolean;
 }
 
 export type BulkAction = "topic" | "discard" | "restore" | "approve";
@@ -177,6 +183,10 @@ export class ReviewService {
           material: row.material,
           edited: info.edited,
           createdAt: info.createdAt,
+          origin: info.origin,
+          sourceTitle: info.sourceTitle,
+          sourcePage: info.sourcePage,
+          hasPdf: info.pdfSource !== null,
         };
       });
   }

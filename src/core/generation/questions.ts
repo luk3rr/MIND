@@ -23,7 +23,7 @@ import type { OptionOut, QuestionOut, QuestionPayload } from "./schemas.js";
 import { topTopics, upsertTopic, withKnownTopics } from "./topics.js";
 import type { KnownTopics } from "./topics.js";
 
-const CERTO_ERRADO_OPTIONS: OptionOut[] = [
+export const CERTO_ERRADO_OPTIONS: OptionOut[] = [
   { key: "C", text: "Certo", why: "" },
   { key: "E", text: "Errado", why: "" },
 ];

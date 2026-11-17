@@ -183,7 +183,9 @@ describe("ReviewService", () => {
       status: "draft",
       material: "Biologia",
       materialId: rig?.materialId,
+      origin: "generated",
     });
+    expect(catalog[0]?.sourceTitle.length).toBeGreaterThan(0);
     expect(catalog[0]?.front.length).toBeGreaterThan(0);
     review.edit(catalog[0]?.id as number, "Frente", "Verso", "Plantas");
     expect(review.catalog()[0]).toMatchObject({ topic: "Plantas", edited: true });

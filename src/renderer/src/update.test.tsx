@@ -46,10 +46,13 @@ describe("new version notice (banner)", () => {
   it("appears when the main process announces a release while the app is open", async () => {
     const { state } = open("/w/1/today");
     await screen.findByRole("heading", { name: "Hoje" });
-    const subscribe = (
-      window.mind.on as unknown as { mock: { calls: [string, (p: unknown) => void][] } }
-    ).mock.calls.filter(([event]) => event === "update:available");
-    expect(subscribe.length).toBeGreaterThan(0);
+    const subscriptions = () =>
+      (
+        window.mind.on as unknown as { mock: { calls: [string, (p: unknown) => void][] } }
+      ).mock.calls.filter(([event]) => event === "update:available");
+    // The banner subscribes in an effect, which under load can run after the page has rendered.
+    await waitFor(() => expect(subscriptions().length).toBeGreaterThan(0));
+    const subscribe = subscriptions();
     state.update = { ...state.update, available: release };
     await act(async () => {
       for (const [, handler] of subscribe) handler(release);

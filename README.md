@@ -14,8 +14,11 @@ questões no estilo de prova e estude tudo com [repetição espaçada](https://s
 
 - **Seu material, sua máquina.** Tudo fica guardado localmente no seu computador. Apenas trechos curtos vão ao provedor de
   IA que você configurar.
-- **Todo item cita a fonte.** Um card ou questão só é mantido se a citação for encontrada no trecho
+- **Todo item gerado cita a fonte.** Um card ou questão gerado só é mantido se a citação for encontrada no trecho
   de onde veio; as questões ainda passam por uma segunda verificação feita por outro modelo.
+- **Crie ou importe os seus próprios itens.** Escreva cards e questões à mão (com ou sem referência a um material),
+  selecione um trecho no leitor para gerar itens só dele, importe planilhas CSV ou XLSX e peça ao modelo para
+  melhorar, corrigir ou ajustar o texto: você compara a proposta com o original e decide o que aceitar.
 - **Estude offline.** Revisão, prática, estatísticas e biblioteca funcionam sem internet. Só geração,
   verificação e chat precisam dela.
 - **Consulte o original e acompanhe o seu tempo.** Abra o PDF original no próprio app e vá direto à página citada por um card ou questão.
@@ -63,8 +66,14 @@ Aplicativos instalados → MIND**; a desinstalação também preserva os seus da
    curto para experimentar.
 4. Em **Gerar**, escolha o material, o tipo (cards ou questões) e a quantidade; o custo estimado
    aparece antes de começar. Revise os rascunhos e aprove os que quiser.
-5. **Estude** a fila do dia e **Pratique** questões.
-6. Acompanhe o progresso em **Estatísticas**, revise os erros em **Erros**, treine os pontos fracos
+5. Em **Itens**, use **Novo item** para escrever um card ou uma questão (a fonte é opcional) e **Importar…** para
+   trazer itens de uma planilha: baixe o template de cards ou de questões (CSV ou XLSX), preencha uma linha por item,
+   confira a prévia, com os erros e as duplicadas apontados linha a linha, e confirme. Nada é gravado antes da
+   confirmação. Ao ler um PDF, selecione um trecho para **Gerar itens** dele (a quantidade e o assunto são opcionais)
+   ou **Criar item** com o trecho já como fonte. O botão **Melhorar com IA** do editor propõe um texto melhor, sem
+   alterar nada até você aceitar.
+6. **Estude** a fila do dia e **Pratique** questões.
+7. Acompanhe o progresso em **Estatísticas**, revise os erros em **Erros**, treine os pontos fracos
    a partir de **Hoje** e pergunte ao **Chat** sobre o seu próprio material.
 
 > A busca semântica opcional (tela do Chat) baixa uma vez um modelo multilíngue pequeno (cerca de 130 MB) e o executa no seu computador.

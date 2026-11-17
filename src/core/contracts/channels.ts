@@ -154,6 +154,95 @@ const itemInfo = z.object({
   answer: z.string().nullable(),
 });
 
+/** A card written by hand. Emptiness is checked by the service so each field gets its own message. */
+const cardDraft = z
+  .object({
+    kind: z.literal("card"),
+    subtype: z.enum(["qa", "cloze", "compare", "true_false"]),
+    front: z.string().max(5000),
+    back: z.string().max(5000),
+  })
+  .strict();
+
+/**
+ * A question written by hand. The service checks the cross-field rules (letters, answer, texts)
+ * so each field gets its own message; here only the sizes are limited.
+ */
+const questionDraft = z
+  .object({
+    kind: z.literal("question"),
+    subtype: z.enum(["certo_errado", "multiple_choice"]),
+    statement: z.string().max(5000),
+    /** Empty for certo_errado; 2 to 5 alternatives (A to E) for multiple_choice. */
+    options: z
+      .array(
+        z
+          .object({
+            key: z.string().max(2),
+            text: z.string().max(2000),
+            why: z.string().max(2000),
+          })
+          .strict(),
+      )
+      .max(5),
+    /** "C" or "E" for certo_errado, an alternative key otherwise. */
+    answer: z.string().max(2),
+    explanation: z.string().max(2000),
+  })
+  .strict();
+
+const itemDraft = z.discriminatedUnion("kind", [cardDraft, questionDraft]);
+
+/**
+ * Where an item points to. The page is null for materials that have none (text, web pages). The
+ * quote is capped at what the PDF reader can highlight (see `reader:locate`).
+ */
+const sourceIn = z
+  .object({
+    materialId: z.number().int().positive(),
+    page: z.number().int().min(1).nullable(),
+    quote: z.string().min(1).max(2000),
+  })
+  .strict();
+
+/** One row of the preview of an import. */
+const previewRow = z.object({
+  /** The position in the file, counting the header as line 1. */
+  line: z.number().int(),
+  status: z.enum(["valid", "error", "duplicate"]),
+  /** The front of the card or the statement of the question, cut to 200 characters. */
+  text: z.string(),
+  topic: z.string().nullable(),
+  topicIsNew: z.boolean(),
+  /** Why the row is an error or a duplicate, in Portuguese; null for a valid row. */
+  problem: z.string().nullable(),
+});
+
+const previewTotals = z.object({
+  rows: z.number().int(),
+  valid: z.number().int(),
+  errors: z.number().int(),
+  duplicates: z.number().int(),
+});
+
+/** A passage selected in the reader and what to write from it; the model decides what is left out. */
+const selectionRequest = z
+  .object({
+    workspaceId,
+    materialId: z.number().int().positive(),
+    page: z.number().int().min(1).nullable(),
+    text: z.string().max(8000),
+    kind: z.enum(["card", "question"]),
+    quantity: z.number().int().min(1).max(20).optional(),
+    subject: z.string().max(200).optional(),
+  })
+  .strict();
+
+const selectionEstimate = z.object({
+  estimatedUsd: z.number().nullable(),
+  chars: z.number().int(),
+});
+
 const reviewResult = z.object({
   approved: z.number().int(),
   discarded: z.number().int(),
@@ -559,6 +648,11 @@ export const channels = {
           material: z.string().nullable(),
           edited: z.boolean(),
           createdAt: z.string(),
+          /** How the item came to be: generated, manual, reader, import or error_note. */
+          origin: z.string(),
+          sourceTitle: z.string(),
+          sourcePage: z.number().int().nullable(),
+          hasPdf: z.boolean(),
         }),
       ),
     }),
@@ -574,6 +668,137 @@ export const channels = {
       })
       .strict(),
     output: z.object({ changed: z.number().int(), skipped: z.number().int() }),
+  },
+  "items:create": {
+    input: z
+      .object({
+        workspaceId,
+        draft: itemDraft,
+        topic: z.string().max(200).nullable().optional(),
+        source: sourceIn.optional(),
+        origin: z.enum(["manual", "reader"]),
+      })
+      .strict(),
+    output: z.object({
+      itemId: z.number().int(),
+      topicCreated: z.boolean(),
+      /** False when the item has no source or its quote could not be placed in the material. */
+      sourceLinked: z.boolean(),
+    }),
+  },
+  "import:template": {
+    input: z
+      .object({
+        workspaceId,
+        kind: z.enum(["card", "question"]),
+        format: z.enum(["csv", "xlsx"]),
+      })
+      .strict(),
+    /** False when the person cancelled the "save as" dialog. */
+    output: z.object({ saved: z.boolean() }),
+  },
+  "import:preview": {
+    input: z.object({ workspaceId, kind: z.enum(["card", "question"]) }).strict(),
+    output: z.discriminatedUnion("cancelled", [
+      z.object({ cancelled: z.literal(true) }),
+      z.object({
+        cancelled: z.literal(false),
+        /** Identifies the preview that waits for a confirmation; valid for 15 minutes. */
+        token: z.string(),
+        fileName: z.string(),
+        totals: previewTotals,
+        /** Topics of the file that do not exist yet and will be created. */
+        newTopics: z.array(z.string()),
+        /** The first rows; `import:previewRows` returns the others. */
+        rows: z.array(previewRow),
+        truncated: z.boolean(),
+      }),
+    ]),
+  },
+  "import:previewRows": {
+    input: z
+      .object({
+        workspaceId,
+        token: z.string().max(100),
+        status: z.enum(["all", "valid", "error", "duplicate"]),
+        offset: z.number().int().min(0),
+        limit: z.number().int().min(1).max(500),
+      })
+      .strict(),
+    output: z.object({ rows: z.array(previewRow), total: z.number().int() }),
+  },
+  "import:commit": {
+    input: z
+      .object({
+        workspaceId,
+        token: z.string().max(100),
+        /** Line numbers of the duplicates to import anyway; the other duplicates are left out. */
+        includeDuplicates: z.array(z.number().int().min(1)).max(5000),
+      })
+      .strict(),
+    output: z.object({
+      imported: z.number().int(),
+      skippedDuplicates: z.number().int(),
+      skippedErrors: z.number().int(),
+      topicsCreated: z.number().int(),
+    }),
+  },
+  "import:discard": {
+    input: z.object({ workspaceId, token: z.string().max(100) }).strict(),
+    output: z.object({}).strict(),
+  },
+  "selection:estimate": { input: selectionRequest, output: selectionEstimate },
+  "selection:generate": {
+    input: selectionRequest,
+    output: z.object({
+      drafts: z.array(
+        z.object({
+          draft: itemDraft,
+          topic: z.string().nullable(),
+          /** The part of the passage that supports the item; becomes its source when saved. */
+          quote: z.string(),
+        }),
+      ),
+      discarded: z.object({
+        noSource: z.number().int(),
+        invalid: z.number().int(),
+        duplicate: z.number().int(),
+      }),
+      costUsd: z.number().nullable(),
+    }),
+  },
+  "assist:improve": {
+    input: z
+      .object({
+        workspaceId,
+        action: z.enum(["improve", "fix", "adjust"]),
+        /** What the person wants; required for "adjust". */
+        instruction: z.string().max(500).optional(),
+        draft: itemDraft,
+        topic: z.string().max(200).nullable().optional(),
+        /** The passage the item is based on, when it has a source. */
+        quote: z.string().max(2000).optional(),
+      })
+      .strict(),
+    output: z.object({ proposal: itemDraft, costUsd: z.number().nullable() }),
+  },
+  "source:resolve": {
+    input: z
+      .object({
+        workspaceId,
+        materialId: z.number().int().positive(),
+        page: z.number().int().min(1).nullable(),
+        text: z.string().min(1).max(8000),
+      })
+      .strict(),
+    output: z.object({
+      /** "full": the text is in the material; "partial": only its beginning is; "none": not found. */
+      match: z.enum(["full", "partial", "none"]),
+      chunkId: z.number().int().nullable(),
+      /** The text the item would keep as its quote (the matched part, or the text as given). */
+      quote: z.string(),
+      materialTitle: z.string(),
+    }),
   },
   "review:discardApproved": {
     input: z.object({ workspaceId, itemId: z.number().int().positive() }).strict(),

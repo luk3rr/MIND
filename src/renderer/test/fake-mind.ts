@@ -52,6 +52,40 @@ export interface FakeState {
   items: FakeItem[];
   /** Makes the next generation requests fail with this error on one field. */
   generationError?: { field: string; message: string };
+  /**
+   * What choosing a file for import gives: the rows of the preview, or an error, or a cancelled
+   * dialog. `discarded` collects the tokens the window threw away.
+   */
+  importFile?: {
+    fileName?: string;
+    rows?: OutputOf<"import:previewRows">["rows"];
+    newTopics?: string[];
+    error?: { code: ErrorInfo["code"]; message: string };
+    cancel?: boolean;
+    gate?: Promise<void>;
+  };
+  discarded?: string[];
+  /** The confirmations the window sent, newest last; `commitError` makes the next one fail. */
+  commits?: { token: string; includeDuplicates: number[] }[];
+  commitError?: { code: ErrorInfo["code"]; message: string };
+  commitGate?: Promise<void>;
+  /** The templates the person saved, newest last; `cancelTemplate` makes the dialog return nothing. */
+  templates?: { kind: "card" | "question"; format: "csv" | "xlsx" }[];
+  cancelTemplate?: boolean;
+  /** What generating from a passage answers: drafts, or an error. Defaults to two cards. */
+  selection?: {
+    drafts?: OutputOf<"selection:generate">["drafts"];
+    discarded?: OutputOf<"selection:generate">["discarded"];
+    error?: { code: ErrorInfo["code"]; message: string };
+    gate?: Promise<void>;
+  };
+  /** What "improve with the model" answers: a proposal, or an error. Defaults to a marked copy. */
+  assist?: {
+    proposal?: OutputOf<"assist:improve">["proposal"];
+    error?: { code: ErrorInfo["code"]; message: string; field?: string };
+    /** Holds the answer until the test calls it, to see the waiting state. */
+    gate?: Promise<void>;
+  };
   /** What the Items screen lists; the bulk actions change it. */
   catalog?: OutputOf<"items:list">["items"];
   estimateUsd: number | null;
@@ -522,6 +556,202 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       }
       case "items:list":
         return ok({ items: [...(state.catalog ?? [])] });
+      case "items:create": {
+        const input = payload as InputOf<"items:create">;
+        const { draft } = input;
+        const text = draft.kind === "card" ? draft.front : draft.statement;
+        const textField = draft.kind === "card" ? "front" : "statement";
+        if (!text.trim()) {
+          return failure(
+            "VALIDATION_ERROR",
+            draft.kind === "card"
+              ? "A frente do card não pode ficar vazia."
+              : "O enunciado da questão não pode ficar vazio.",
+            textField,
+          );
+        }
+        if (draft.kind === "card" && !draft.back.trim()) {
+          return failure("VALIDATION_ERROR", "O verso do card não pode ficar vazio.", "back");
+        }
+        if (draft.kind === "question") {
+          if (!draft.explanation.trim()) {
+            return failure("VALIDATION_ERROR", "A explicação não pode ficar vazia.", "explanation");
+          }
+          const blank = draft.options.findIndex((o) => !o.why.trim());
+          if (blank >= 0) {
+            return failure(
+              "VALIDATION_ERROR",
+              "Informe o motivo desta alternativa.",
+              `options.${blank}.why`,
+            );
+          }
+        }
+        const itemId = state.nextId++;
+        const name = input.topic?.trim() || null;
+        const owner = input.source
+          ? state.materials.find((m) => m.id === input.source?.materialId)
+          : undefined;
+        const linked = input.source
+          ? state.chunks.some(
+              (c) =>
+                c.materialId === input.source?.materialId &&
+                c.text.includes(input.source.quote.trim()),
+            )
+          : false;
+        state.catalog = [
+          ...(state.catalog ?? []),
+          {
+            id: itemId,
+            kind: draft.kind,
+            subtype: draft.subtype,
+            front: text.trim(),
+            back: draft.kind === "card" ? draft.back.trim() : draft.explanation.trim(),
+            status: "approved",
+            topicId: name === null ? null : 99,
+            topic: name,
+            materialId: null,
+            material: null,
+            edited: false,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            origin: input.origin,
+            sourceTitle: owner?.title ?? "",
+            sourcePage: input.source?.page ?? null,
+            hasPdf: linked && owner?.kind === "pdf",
+          },
+        ];
+        return ok({ itemId, topicCreated: name !== null, sourceLinked: linked });
+      }
+      case "import:template": {
+        const input = payload as InputOf<"import:template">;
+        if (state.cancelTemplate) return ok({ saved: false });
+        (state.templates ??= []).push({ kind: input.kind, format: input.format });
+        return ok({ saved: true });
+      }
+      case "import:preview": {
+        await state.importFile?.gate;
+        if (state.importFile?.cancel) return ok({ cancelled: true });
+        const failed = state.importFile?.error;
+        if (failed) return failure(failed.code, failed.message);
+        const rows = state.importFile?.rows ?? [];
+        const count = (status: string) => rows.filter((row) => row.status === status).length;
+        return ok({
+          cancelled: false,
+          token: "tok-1",
+          fileName: state.importFile?.fileName ?? "cartoes.csv",
+          totals: {
+            rows: rows.length,
+            valid: count("valid"),
+            errors: count("error"),
+            duplicates: count("duplicate"),
+          },
+          newTopics: state.importFile?.newTopics ?? [],
+          rows: rows.slice(0, 500),
+          truncated: rows.length > 500,
+        });
+      }
+      case "import:previewRows": {
+        const input = payload as InputOf<"import:previewRows">;
+        const all = (state.importFile?.rows ?? []).filter(
+          (row) => input.status === "all" || row.status === input.status,
+        );
+        return ok({ rows: all.slice(input.offset, input.offset + input.limit), total: all.length });
+      }
+      case "import:commit": {
+        const input = payload as InputOf<"import:commit">;
+        await state.commitGate;
+        if (state.commitError) return failure(state.commitError.code, state.commitError.message);
+        (state.commits ??= []).push({
+          token: input.token,
+          includeDuplicates: [...input.includeDuplicates],
+        });
+        const rows = state.importFile?.rows ?? [];
+        const included = rows.filter(
+          (row) =>
+            row.status === "valid" ||
+            (row.status === "duplicate" && input.includeDuplicates.includes(row.line)),
+        );
+        const topics = new Set(included.filter((row) => row.topicIsNew).map((row) => row.topic));
+        return ok({
+          imported: included.length,
+          skippedDuplicates:
+            rows.filter((row) => row.status === "duplicate").length -
+            included.filter((row) => row.status === "duplicate").length,
+          skippedErrors: rows.filter((row) => row.status === "error").length,
+          topicsCreated: topics.size,
+        });
+      }
+      case "import:discard": {
+        (state.discarded ??= []).push((payload as InputOf<"import:discard">).token);
+        return ok({});
+      }
+      case "selection:estimate": {
+        const input = payload as InputOf<"selection:estimate">;
+        return ok({ estimatedUsd: state.estimateUsd, chars: input.text.length });
+      }
+      case "selection:generate": {
+        const input = payload as InputOf<"selection:generate">;
+        await state.selection?.gate;
+        const failed = state.selection?.error;
+        if (failed) return failure(failed.code, failed.message);
+        const quote = input.text.trim().slice(0, 30);
+        const count = input.quantity ?? 2;
+        const drafts =
+          state.selection?.drafts ??
+          Array.from({ length: count }, (_, index) => ({
+            draft:
+              input.kind === "card"
+                ? ({
+                    kind: "card",
+                    subtype: "qa",
+                    front: `Pergunta ${index + 1} sobre ${input.subject ?? "o trecho"}?`,
+                    back: `Resposta ${index + 1}.`,
+                  } as const)
+                : ({
+                    kind: "question",
+                    subtype: "certo_errado",
+                    statement: `Afirmação ${index + 1} sobre ${input.subject ?? "o trecho"}.`,
+                    options: [],
+                    answer: "C",
+                    explanation: `Porque ${index + 1}.`,
+                  } as const),
+            topic: input.subject ?? "Tópico",
+            quote,
+          }));
+        return ok({
+          drafts,
+          discarded: state.selection?.discarded ?? { noSource: 0, invalid: 0, duplicate: 0 },
+          costUsd: 0.002,
+        });
+      }
+      case "assist:improve": {
+        const input = payload as InputOf<"assist:improve">;
+        await state.assist?.gate;
+        const failed = state.assist?.error;
+        if (failed) return failure(failed.code, failed.message, failed.field);
+        if (state.assist?.proposal) return ok({ proposal: state.assist.proposal, costUsd: 0.001 });
+        const { draft } = input;
+        return ok({
+          proposal:
+            draft.kind === "card"
+              ? { ...draft, front: `${draft.front} (revisado)` }
+              : { ...draft, statement: `${draft.statement} (revisado)` },
+          costUsd: 0.001,
+        });
+      }
+      case "source:resolve": {
+        const input = payload as InputOf<"source:resolve">;
+        const found = state.materials.find((m) => m.id === input.materialId);
+        if (!found) return failure("MATERIAL_NOT_FOUND", "Material não encontrado.");
+        const hit = state.chunks.find(
+          (c) => c.materialId === input.materialId && c.text.includes(input.text.trim()),
+        );
+        return ok({
+          match: hit ? "full" : "none",
+          chunkId: hit?.id ?? null,
+          quote: input.text.trim(),
+          materialTitle: found.title,
+        });
+      }
       case "items:bulk": {
         const input = payload as InputOf<"items:bulk">;
         const fits = (status: string): boolean =>

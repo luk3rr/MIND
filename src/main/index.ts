@@ -193,6 +193,17 @@ if (!app.requestSingleInstanceLock()) {
             : await dialog.showSaveDialog(options);
           return result.canceled || !result.filePath ? null : result.filePath;
         },
+        pickImportFile: async () => {
+          const options = {
+            defaultPath: app.getPath("documents"),
+            properties: ["openFile"] as "openFile"[],
+            filters: [{ name: "Planilhas", extensions: ["csv", "xlsx"] }],
+          };
+          const result = mainWindow
+            ? await dialog.showOpenDialog(mainWindow, options)
+            : await dialog.showOpenDialog(options);
+          return result.canceled ? null : (result.filePaths[0] ?? null);
+        },
         pickBackup: async () => {
           const options = {
             properties: ["openFile"] as "openFile"[],

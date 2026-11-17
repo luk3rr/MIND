@@ -18,6 +18,7 @@ import Database from "better-sqlite3";
 import yauzl from "yauzl";
 import yazl from "yazl";
 import { afterEach, describe, expect, it } from "vitest";
+import { ItemAuthoringService } from "../authoring/service.js";
 import { applyMigrations } from "../db/migrate.js";
 import { workspaceMigrations } from "../db/migrations.js";
 import {
@@ -181,6 +182,103 @@ describe("exportWorkspace and importWorkspace (FR-22)", () => {
       .prepare("SELECT count(*) AS n FROM chunk_fts WHERE chunk_fts MATCH 'mitocôndria'")
       .get() as { n: number };
     expect(found.n).toBe(1);
+  });
+
+  it("takes items written by hand, from the reader and imported, with their runs and sources (NFR-9)", async () => {
+    const registry = newRegistry();
+    const source = populated(registry);
+    const workspace = registry.open(source);
+    const authoring = new ItemAuthoringService(workspace);
+    const chunkId = workspace.connection.db.select().from(chunk).all()[0]?.id ?? 0;
+    const materialId = workspace.connection.db.select().from(material).all()[0]?.id ?? 0;
+    authoring.create({
+      draft: { kind: "card", subtype: "qa", front: "Feito à mão?", back: "Sim." },
+      topic: "Célula",
+      origin: "manual",
+    });
+    authoring.create({
+      draft: {
+        kind: "question",
+        subtype: "multiple_choice",
+        statement: "Qual organela produz energia?",
+        options: [
+          { key: "A", text: "Mitocôndria", why: "Respira." },
+          { key: "B", text: "Ribossomo", why: "Faz proteínas." },
+        ],
+        answer: "A",
+        explanation: "Respira.",
+      },
+      topic: null,
+      origin: "manual",
+    });
+    authoring.create({
+      draft: { kind: "card", subtype: "qa", front: "Do leitor?", back: "Sim." },
+      topic: null,
+      origin: "reader",
+      source: { materialId, page: 1, quote: "A mitocôndria produz energia." },
+    });
+    authoring.createMany(
+      [
+        {
+          draft: { kind: "card", subtype: "cloze", front: "A {{c1::mito}} respira.", back: "" },
+          topic: "Nova",
+        },
+      ],
+      "import",
+    );
+    const dir = tempDir();
+    const archive = await exportWorkspace(registry, source, join(dir, "backup.zip"), {
+      appVersion: "1.0.0",
+    });
+    const restored = registry.open((await importWorkspace(registry, archive)).id);
+    const { db } = restored.connection;
+    const items = db.select().from(item).all();
+    expect(items.map((row) => [row.kind, row.origin, row.status])).toEqual([
+      ["card", "manual", "approved"],
+      ["question", "manual", "approved"],
+      ["card", "reader", "approved"],
+      ["card", "import", "approved"],
+    ]);
+    expect(JSON.parse(items[1]?.payloadJson ?? "{}")).toMatchObject({ answer: "A" });
+    expect(items[2]).toMatchObject({
+      chunkId,
+      sourceTitle: "Aula",
+      sourcePage: 1,
+      quote: "A mitocôndria produz energia.",
+    });
+    expect(items[0]?.topicId).not.toBeNull();
+    expect(
+      db
+        .select()
+        .from(topic)
+        .all()
+        .map((t) => t.name)
+        .sort(),
+    ).toEqual(["Célula", "Nova"]);
+    expect(
+      db
+        .select()
+        .from(generationRun)
+        .all()
+        .map((run) => run.kind)
+        .sort(),
+    ).toEqual(["import", "manual", "reader"]);
+    // New items of the restored workspace reuse those runs instead of making a second one.
+    new ItemAuthoringService(restored).create({
+      draft: { kind: "card", subtype: "qa", front: "Mais um?", back: "Sim." },
+      topic: null,
+      origin: "manual",
+    });
+    expect(
+      db
+        .select()
+        .from(generationRun)
+        .all()
+        .filter((run) => run.kind === "manual"),
+    ).toHaveLength(1);
+    // And the items are the same ones the review screens list.
+    const listed = restored.connection.db.select().from(item).all().length;
+    expect(listed).toBe(5);
   });
 
   it("writes a consistent snapshot of the database", async () => {

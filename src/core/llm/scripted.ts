@@ -124,6 +124,70 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
     });
     return { questions };
   });
+  // Items from a passage selected in the reader: the passage is the last quoted block.
+  const passageOf = (messages: readonly { content: string }[]): string =>
+    /Passage:\n"""\n([\s\S]*?)\n"""\s*$/.exec(messages.at(-1)?.content ?? "")?.[1] ?? "";
+  provider.script("SelectionCards", (messages: readonly { content: string }[]) => {
+    const prompt = messages.at(-1)?.content ?? "";
+    const passage = passageOf(messages);
+    const count = Number(/Create exactly (\d+) flashcards/.exec(prompt)?.[1] ?? 2);
+    const subject = /Subject requested by the student: ([^\n.]*)/.exec(prompt)?.[1]?.trim();
+    const words = passage.split(/\s+/).slice(0, 4).join(" ");
+    return {
+      cards: Array.from({ length: count }, (_, index) => ({
+        subtype: "qa",
+        front: `O que o trecho diz sobre ${subject ?? words} (${index + 1})?`,
+        back: `Veja o trecho: ${words}.`,
+        topic: subject ?? "Trecho selecionado",
+        quote: passage.slice(0, 60),
+      })),
+    };
+  });
+  provider.script("SelectionQuestions", (messages: readonly { content: string }[]) => {
+    const prompt = messages.at(-1)?.content ?? "";
+    const passage = passageOf(messages);
+    const count = Number(/Create exactly (\d+) questions/.exec(prompt)?.[1] ?? 2);
+    const words = passage.split(/\s+/).slice(0, 4).join(" ");
+    return {
+      questions: Array.from({ length: count }, (_, index) => ({
+        subtype: "certo_errado",
+        statement: `${words} aparece no trecho selecionado (${index + 1}).`,
+        options: [],
+        answer: "C",
+        explanation: "O trecho confirma a afirmação.",
+        topic: "Trecho selecionado",
+        quote: passage.slice(0, 60),
+      })),
+    };
+  });
+  // Help with the text of an item: the answer repeats the item with a marker, so a run can see it.
+  provider.script("AssistCard", (messages: readonly { content: string }[]) => {
+    const item = /Item:\n"""\nfront: ([\s\S]*?)\nback: ([\s\S]*?)\n"""\s*$/.exec(
+      messages.at(-1)?.content ?? "",
+    );
+    return { front: `${item?.[1] ?? ""} (revisado)`, back: item?.[2] ?? "" };
+  });
+  provider.script("AssistQuestion", (messages: readonly { content: string }[]) => {
+    // The item is rendered one field per line: statement, options (A) text [why: ...]), answer, explanation.
+    const block = /Item:\n"""\n([\s\S]*?)\n"""\s*$/.exec(messages.at(-1)?.content ?? "")?.[1] ?? "";
+    const lines = block.split("\n");
+    const field = (name: string): string =>
+      lines.find((line) => line.startsWith(`${name}: `))?.slice(name.length + 2) ?? "";
+    const options = lines
+      .map((line) => /^([A-E])\) (.*) \[why: (.*)\]$/.exec(line))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map((match) => ({
+        key: match[1] as string,
+        text: match[2] as string,
+        why: match[3] as string,
+      }));
+    return {
+      statement: `${field("statement")} (revisado)`,
+      options,
+      answer: field("answer"),
+      explanation: field("explanation"),
+    };
+  });
   provider.script("ChatAnswer", (messages: readonly { content: string }[]) => {
     const prompt = messages.at(-1)?.content ?? "";
     const question = /Question: ([\s\S]*)$/.exec(prompt)?.[1]?.trim() ?? "";
