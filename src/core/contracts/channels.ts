@@ -534,6 +534,8 @@ export const channels = {
       materials: z.number().int().nonnegative(),
       cards: z.number().int().nonnegative(),
       questions: z.number().int().nonnegative(),
+      /** Answers whose feedback is ready and not seen yet. */
+      pendingFeedback: z.number().int().nonnegative(),
     }),
   },
   "material:list": {
@@ -981,6 +983,22 @@ export const channels = {
       feedback: feedback.nullable(),
       /** When the feedback becomes visible; null while it waits for the end of the block. */
       releaseAt: z.string().nullable(),
+    }),
+  },
+  "practice:releaseAbandoned": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ released: z.number().int().nonnegative() }),
+  },
+  "practice:pendingCount": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({ count: z.number().int().nonnegative() }),
+  },
+  "practice:openFeedback": {
+    input: z.object({ workspaceId, limit: z.number().int().min(1).max(200).optional() }).strict(),
+    output: z.object({
+      entries: z.array(feedback),
+      /** Feedback that was ready but did not fit in `limit`. */
+      remaining: z.number().int().nonnegative(),
     }),
   },
   "practice:releaseBlock": {

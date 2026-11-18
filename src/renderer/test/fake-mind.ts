@@ -62,7 +62,10 @@ export type FakeFeedback = NonNullable<OutputOf<"practice:answer">["feedback"]>;
 export interface FakeState {
   workspaces: Workspace[];
   route: string | null;
-  summary: OutputOf<"today:summary"> | ErrorInfo;
+  summary:
+    (Omit<OutputOf<"today:summary">, "pendingFeedback"> & { pendingFeedback?: number }) | ErrorInfo;
+  /** Feedback that is ready and not seen yet; the pending screen opens and empties it. */
+  pendingFeedback?: FakeFeedback[];
   nextId: number;
   materials: FakeMaterial[];
   chunks: FakeChunk[];
@@ -1029,11 +1032,16 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           answer: input.answer,
         };
         state.attemptsGiven = [...(state.attemptsGiven ?? []), given];
-        const delayed = (state.practiceSettings?.feedback ?? "immediate") !== "immediate";
+        const mode = state.practiceSettings?.feedback ?? "immediate";
         return ok({
           attemptId: given.attemptId,
-          feedback: delayed ? null : fakeFeedback(state, given),
-          releaseAt: delayed ? null : "2026-03-10T10:00:00.000Z",
+          feedback: mode === "immediate" ? fakeFeedback(state, given) : null,
+          releaseAt:
+            mode === "immediate"
+              ? "2026-03-10T10:00:00.000Z"
+              : mode === "next_day"
+                ? "2026-03-11T04:00:00.000Z"
+                : null,
         });
       }
       case "practice:releaseBlock": {
@@ -1354,7 +1362,23 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         });
         return ok(state.time);
       case "today:summary":
-        return "code" in state.summary ? { ok: false, error: state.summary } : ok(state.summary);
+        return "code" in state.summary
+          ? { ok: false, error: state.summary }
+          : ok({
+              ...state.summary,
+              pendingFeedback: state.summary.pendingFeedback ?? state.pendingFeedback?.length ?? 0,
+            });
+      case "practice:pendingCount":
+        return ok({ count: state.pendingFeedback?.length ?? 0 });
+      case "practice:releaseAbandoned":
+        return ok({ released: 0 });
+      case "practice:openFeedback": {
+        const input = payload as InputOf<"practice:openFeedback">;
+        const all = state.pendingFeedback ?? [];
+        const entries = all.slice(0, input.limit ?? 200);
+        state.pendingFeedback = all.slice(entries.length);
+        return ok({ entries, remaining: state.pendingFeedback.length });
+      }
     }
   });
 

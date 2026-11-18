@@ -26,6 +26,18 @@ export function TodayPage({ workspaceId }: { workspaceId: number }) {
     <section aria-labelledby="today-title">
       <h1 id="today-title">{T.today}</h1>
       <TimerCard workspaceId={workspaceId} />
+      {state.status === "ready" && state.data.pendingFeedback > 0 && (
+        <div className="card row" role="status" style={{ alignItems: "center" }}>
+          <strong>{T.todayPending(state.data.pendingFeedback)}</strong>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => navigate(`${sectionPath(workspaceId, "study")}/feedback`)}
+          >
+            {T.todaySeeFeedback}
+          </button>
+        </div>
+      )}
       {state.status === "loading" && (
         <div className="row" role="status" aria-label={T.loading}>
           <div className="skeleton" />

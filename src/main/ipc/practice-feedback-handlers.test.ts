@@ -38,7 +38,7 @@ async function dispatcher() {
     createHandlers(opened.core, { lastRoute: null }, { pickFiles: () => Promise.resolve([]) }),
     { error: () => undefined },
   );
-  return { dispatch, workspaceId: opened.workspaceId, ids, core: opened.core };
+  return { dispatch, workspaceId: opened.workspaceId, ids, core: opened.core, clock };
 }
 
 describe("practice channels with delayed feedback (FR-7, FR-8, NFR-7)", () => {
@@ -117,6 +117,89 @@ describe("practice channels with delayed feedback (FR-7, FR-8, NFR-7)", () => {
     expect(await dispatch("practice:counts", { workspaceId })).toMatchObject({
       ok: true,
       data: { answeredToday: 1, correctToday: 1 },
+    });
+  });
+});
+
+describe("pending feedback channels (FR-9, FR-10)", () => {
+  async function answeredNextDay() {
+    const setup = await dispatcher();
+    const { dispatch, workspaceId, ids, clock } = setup;
+    await dispatch("practice:saveSettings", { workspaceId, feedback: "next_day" });
+    clock.set("2026-03-10T22:00:00.000Z");
+    const first = await dispatch("practice:answer", { workspaceId, itemId: ids[0], answer: "B" });
+    expect(first).toMatchObject({
+      ok: true,
+      data: { feedback: null, releaseAt: "2026-03-11T04:00:00.000Z" },
+    });
+    await dispatch("practice:answer", { workspaceId, itemId: ids[1], answer: "A" });
+    return setup;
+  }
+
+  it("counts the ready feedback in Today and in the pending count, after the turn of the day", async () => {
+    const { dispatch, workspaceId, clock } = await answeredNextDay();
+    expect(await dispatch("practice:pendingCount", { workspaceId })).toEqual({
+      ok: true,
+      data: { count: 0 },
+    });
+    clock.set("2026-03-11T05:00:00.000Z");
+    expect(await dispatch("practice:pendingCount", { workspaceId })).toEqual({
+      ok: true,
+      data: { count: 2 },
+    });
+    expect(await dispatch("today:summary", { workspaceId })).toMatchObject({
+      ok: true,
+      data: { pendingFeedback: 2 },
+    });
+  });
+
+  it("opens the feedback once and marks it as seen", async () => {
+    const { dispatch, workspaceId, clock } = await answeredNextDay();
+    clock.set("2026-03-11T05:00:00.000Z");
+    const opened = await dispatch("practice:openFeedback", { workspaceId });
+    expect(opened).toMatchObject({
+      ok: true,
+      data: {
+        entries: [
+          { answer: "B", correct: false },
+          { answer: "A", correct: true },
+        ],
+        remaining: 0,
+      },
+    });
+    expect(await dispatch("practice:pendingCount", { workspaceId })).toMatchObject({
+      data: { count: 0 },
+    });
+    expect(await dispatch("practice:openFeedback", { workspaceId })).toMatchObject({
+      data: { entries: [] },
+    });
+  });
+
+  it("limits what it opens and reports the rest", async () => {
+    const { dispatch, workspaceId, clock } = await answeredNextDay();
+    clock.set("2026-03-11T05:00:00.000Z");
+    expect(await dispatch("practice:openFeedback", { workspaceId, limit: 1 })).toMatchObject({
+      ok: true,
+      data: { remaining: 1 },
+    });
+    for (const limit of [0, 201]) {
+      expect(await dispatch("practice:openFeedback", { workspaceId, limit })).toMatchObject({
+        ok: false,
+        error: { code: "VALIDATION_ERROR" },
+      });
+    }
+  });
+
+  it("releases the answers of an abandoned block", async () => {
+    const { dispatch, workspaceId, ids } = await dispatcher();
+    await dispatch("practice:saveSettings", { workspaceId, feedback: "block" });
+    await dispatch("practice:answer", { workspaceId, itemId: ids[0], answer: "A" });
+    expect(await dispatch("practice:releaseAbandoned", { workspaceId })).toEqual({
+      ok: true,
+      data: { released: 1 },
+    });
+    expect(await dispatch("practice:pendingCount", { workspaceId })).toMatchObject({
+      data: { count: 1 },
     });
   });
 });

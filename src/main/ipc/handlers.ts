@@ -97,7 +97,10 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       return { cancelled: false, workspace: await importWorkspace(core.registry, path) };
     },
     "workspace:rename": ({ id, name }) => core.registry.rename(id, name),
-    "today:summary": ({ workspaceId }) => todaySummary(core.registry.open(workspaceId)),
+    "today:summary": ({ workspaceId }) => ({
+      ...todaySummary(core.registry.open(workspaceId)),
+      pendingFeedback: core.practice(workspaceId).pendingCount(),
+    }),
     "material:list": ({ workspaceId }) => ({ materials: core.materials(workspaceId).listViews() }),
     "material:import": async ({ workspaceId }) => {
       const service = core.materials(workspaceId);
@@ -321,6 +324,14 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         releaseAt: result.releaseAt,
       };
     },
+    "practice:releaseAbandoned": ({ workspaceId }) => ({
+      released: core.practice(workspaceId).releaseAbandoned(),
+    }),
+    "practice:pendingCount": ({ workspaceId }) => ({
+      count: core.practice(workspaceId).pendingCount(),
+    }),
+    "practice:openFeedback": ({ workspaceId, limit }) =>
+      core.practice(workspaceId).openFeedback(limit),
     "practice:releaseBlock": ({ workspaceId, attemptIds }) => ({
       entries: core.practice(workspaceId).releaseBlock(attemptIds),
     }),

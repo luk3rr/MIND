@@ -20,6 +20,8 @@ export type Route =
       chunkId?: number;
       /** The practice sub-screen of Study (`/w/:id/study/practice`). */
       practice?: boolean;
+      /** The feedback that is ready and not seen yet (`/w/:id/study/feedback`). */
+      pendingFeedback?: boolean;
       /** The PDF reader of a material (`/w/:id/library/:materialId/read?page=N`). */
       reader?: boolean;
       /** The page the reader opens on. */
@@ -49,13 +51,14 @@ export function parseRoute(path: string): Route {
   const [pathname = "", query] = path.split("?");
   const [empty, prefix, workspace, section, material, action, ...extra] = pathname.split("/");
   const practice = section === "study" && material === "practice";
+  const pendingFeedback = section === "study" && material === "feedback";
   const reader = action === "read";
   const valid =
     empty === "" &&
     prefix === "w" &&
     isNumber(workspace) &&
     SECTION_SLUGS.includes(section as SectionSlug) &&
-    (material === undefined || isNumber(material) || practice) &&
+    (material === undefined || isNumber(material) || practice || pendingFeedback) &&
     (action === undefined || (reader && section === "library" && isNumber(material))) &&
     extra.length === 0;
   const params = parseQuery(query);
@@ -81,8 +84,11 @@ export function parseRoute(path: string): Route {
     name: "section",
     workspaceId: Number(workspace),
     section: section as SectionSlug,
-    ...(material !== undefined && !practice ? { detailId: Number(material) } : {}),
+    ...(material !== undefined && !practice && !pendingFeedback
+      ? { detailId: Number(material) }
+      : {}),
     ...(practice ? { practice: true } : {}),
+    ...(pendingFeedback ? { pendingFeedback: true } : {}),
     ...(reader ? { reader: true } : {}),
     ...(page !== undefined ? { page: Number(page) } : {}),
     ...(quote !== undefined ? { quote } : {}),

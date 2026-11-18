@@ -15,3 +15,8 @@ export const systemClock: Clock = { now: () => new Date() };
 export function isoNow(clock: Clock = systemClock): string {
   return clock.now().toISOString();
 }
+
+/** A clock that runs ahead of the system clock by `hours`; end-to-end runs use it to cross a day change. */
+export function shiftedClock(hours: number, base: Clock = systemClock): Clock {
+  return { now: () => new Date(base.now().getTime() + hours * 3_600_000) };
+}

@@ -7,6 +7,7 @@
 import { logLevel, parseLogLevel, setLogLevel } from "../core/logging.js";
 import { app, BrowserWindow, dialog, screen, session, shell } from "electron";
 import { join } from "node:path";
+import { shiftedClock } from "../core/clock.js";
 import { createCore } from "../core/index.js";
 import { scriptedCardProvider } from "../core/llm/scripted.js";
 import { installFileLog } from "./log-file.js";
@@ -159,6 +160,10 @@ if (!app.requestSingleInstanceLock()) {
       // Offline end-to-end runs only; a packaged app always talks to the real provider.
       ...(process.env["MIND_E2E_FAKE_LLM"] === "1" && !app.isPackaged
         ? { provider: scriptedCardProvider() }
+        : {}),
+      // End-to-end runs of the unpackaged app can move the clock ahead to cross the day change.
+      ...(!app.isPackaged && Number(process.env["MIND_E2E_CLOCK_SHIFT_HOURS"]) > 0
+        ? { clock: shiftedClock(Number(process.env["MIND_E2E_CLOCK_SHIFT_HOURS"])) }
         : {}),
       createReaderWorker,
       appVersion: app.getVersion(),

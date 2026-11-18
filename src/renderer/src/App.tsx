@@ -14,6 +14,7 @@ import { ReviewPage } from "./pages/ReviewPage.js";
 import { ChatPage } from "./pages/ChatPage.js";
 import { ItemsPage } from "./pages/ItemsPage.js";
 import { ErrorsPage } from "./pages/ErrorsPage.js";
+import { PendingFeedbackPage } from "./pages/PendingFeedbackPage.js";
 import { PracticePage } from "./pages/PracticePage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { StatsPage } from "./pages/StatsPage.js";
@@ -98,8 +99,11 @@ function Screen() {
           <ReviewPage workspaceId={route.workspaceId} runId={route.detailId} />
         )}
         {route.section === "items" && <ItemsPage workspaceId={route.workspaceId} />}
-        {route.section === "study" && !route.practice && (
+        {route.section === "study" && !route.practice && !route.pendingFeedback && (
           <StudyPage workspaceId={route.workspaceId} />
+        )}
+        {route.section === "study" && route.pendingFeedback && (
+          <PendingFeedbackPage workspaceId={route.workspaceId} />
         )}
         {route.section === "study" && route.practice && (
           <PracticePage workspaceId={route.workspaceId} />

@@ -68,7 +68,7 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "update:openRelease": () => ({}),
     "reader:openWindow": () => ({}),
     "material:openOriginal": () => ({}),
-    "today:summary": () => ({ materials: 0, cards: 0, questions: 0 }),
+    "today:summary": () => ({ materials: 0, cards: 0, questions: 0, pendingFeedback: 0 }),
     "material:list": () => ({ materials: [] }),
     "material:import": () => ({ materials: [], errors: [] }),
     "material:importUrl": () => {
@@ -140,6 +140,9 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       interleave: false,
     }),
     "practice:releaseBlock": () => ({ entries: [] }),
+    "practice:releaseAbandoned": () => ({ released: 0 }),
+    "practice:pendingCount": () => ({ count: 0 }),
+    "practice:openFeedback": () => ({ entries: [], remaining: 0 }),
     "practice:facets": () => ({
       topics: [],
       materials: [],

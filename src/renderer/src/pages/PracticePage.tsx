@@ -28,7 +28,7 @@ interface Entry {
   mixKey: string | null;
   chosen: string | null;
   /** The answer given, once there is one; its feedback may still be waiting for the block. */
-  answered: { answer: string; attemptId: number } | null;
+  answered: { answer: string; attemptId: number; releaseAt: string | null } | null;
   feedback: Feedback | null;
   cardMessage: string | null;
 }
@@ -110,6 +110,11 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
   );
 
   // A new filter or the redo option starts the session over.
+  // Feedback of a block left unfinished is released when the practice opens again.
+  useEffect(() => {
+    void window.mind.invoke("practice:releaseAbandoned", { workspaceId });
+  }, [workspaceId]);
+
   const restart = useCallback((): void => {
     generation.current += 1;
     setDeck([]);
@@ -147,7 +152,11 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
         if (!response.ok) setError(response.error.message);
         else {
           update(at, {
-            answered: { answer, attemptId: response.data.attemptId },
+            answered: {
+              answer,
+              attemptId: response.data.attemptId,
+              releaseAt: response.data.releaseAt,
+            },
             feedback: response.data.feedback,
           });
         }
@@ -155,7 +164,10 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
   };
 
   /** Answers given in this session whose feedback still waits for the end of the block. */
-  const waiting = deck.filter((candidate) => candidate.answered && !candidate.feedback);
+  const waiting = deck.filter(
+    (candidate) =>
+      candidate.answered && !candidate.feedback && candidate.answered.releaseAt === null,
+  );
 
   /** Releases the feedback of the waiting answers and shows it, ending the block. */
   const releaseBlock = (): void => {
@@ -171,7 +183,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
         const byAttempt = new Map(response.data.entries.map((entry) => [entry.attemptId, entry]));
         setDeck((current) =>
           current.map((candidate) =>
-            candidate.answered && !candidate.feedback
+            candidate.answered && !candidate.feedback && candidate.answered.releaseAt === null
               ? { ...candidate, feedback: byAttempt.get(candidate.answered.attemptId) ?? null }
               : candidate,
           ),
@@ -374,7 +386,11 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
           )}
           {entry.answered && !entry.feedback && (
             <div role="status" className="stack">
-              <p className="muted">{T.practiceRegistered}</p>
+              <p className="muted">
+                {entry.answered.releaseAt === null
+                  ? T.practiceRegistered
+                  : T.practiceRegisteredNextDay}
+              </p>
               <div className="row">
                 <button
                   type="button"
@@ -387,9 +403,11 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                 <button type="button" className="btn" onClick={forward}>
                   {T.practiceNext}
                 </button>
-                <button type="button" className="btn ghost" onClick={releaseBlock}>
-                  {T.practiceSeeFeedbackNow}
-                </button>
+                {entry.answered.releaseAt === null && (
+                  <button type="button" className="btn ghost" onClick={releaseBlock}>
+                    {T.practiceSeeFeedbackNow}
+                  </button>
+                )}
               </div>
             </div>
           )}

@@ -106,18 +106,23 @@ export function MakeCard({
 export function FeedbackList({
   workspaceId,
   entries,
+  title = T.feedbackBlockTitle,
+  backLabel = T.feedbackBack,
   onBack,
   onNewBlock,
 }: {
   workspaceId: number;
   entries: Feedback[];
+  title?: string;
+  backLabel?: string;
   onBack: () => void;
-  onNewBlock: () => void;
+  /** Starts another block; left out where there is no block to start (the pending screen). */
+  onNewBlock?: () => void;
 }) {
   const right = entries.filter((entry) => entry.correct).length;
   return (
     <section className="card stack" aria-labelledby="feedback-block-title">
-      <h2 id="feedback-block-title">{T.feedbackBlockTitle}</h2>
+      <h2 id="feedback-block-title">{title}</h2>
       <p role="status">
         <strong>{T.feedbackScore(right, entries.length)}</strong>
       </p>
@@ -157,11 +162,13 @@ export function FeedbackList({
       </ol>
       <div className="actions">
         <button type="button" className="btn ghost" onClick={onBack}>
-          {T.feedbackBack}
+          {backLabel}
         </button>
-        <button type="button" className="btn" onClick={onNewBlock}>
-          {T.feedbackNewBlock}
-        </button>
+        {onNewBlock && (
+          <button type="button" className="btn" onClick={onNewBlock}>
+            {T.feedbackNewBlock}
+          </button>
+        )}
       </div>
     </section>
   );

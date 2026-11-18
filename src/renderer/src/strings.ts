@@ -273,6 +273,19 @@ export const T = {
   mixByMaterial: "Material",
   practiceRegistered: "Resposta registrada. O gabarito e o comentário aparecem ao fim do bloco.",
   practiceSeeFeedbackNow: "Ver o feedback agora",
+  practiceRegisteredNextDay:
+    "Resposta registrada. O gabarito fica disponível amanhã, a partir das 4h.",
+  pendingTitle: "Feedback pendente",
+  pendingIntro: (count: number) =>
+    `${count} ${count === 1 ? "resposta liberada" : "respostas liberadas"}. Abrir esta tela marca ${count === 1 ? "a resposta" : "as respostas"} como ${count === 1 ? "vista" : "vistas"}.`,
+  pendingListTitle: "Respostas liberadas",
+  pendingEmpty: "Você não tem respostas aguardando feedback.",
+  pendingMore: (count: number) =>
+    `Ainda há ${count} ${count === 1 ? "resposta" : "respostas"} com feedback pronto. Abra a tela de novo para ver.`,
+  todayPending: (count: number) =>
+    `${count} ${count === 1 ? "resposta aguarda feedback" : "respostas aguardam feedback"}.`,
+  todaySeeFeedback: "Ver feedback",
+  pendingBackToday: "Voltar a Hoje",
   feedbackBlockTitle: "Feedback do bloco",
   feedbackScore: (right: number, total: number) =>
     `${right} de ${total} ${total === 1 ? "certa" : "certas"}`,
