@@ -32,6 +32,8 @@ import {
   systemOffset,
 } from "./scheduler.js";
 import type { CardSchedule, TzOffset } from "./scheduler.js";
+import { mixKeyOf, pick } from "./interleave.js";
+import type { MixOptions } from "./interleave.js";
 
 export const LEARNING_STATES = [1, 3];
 export const DEFAULTS = {
@@ -108,7 +110,12 @@ export interface StudyFacets {
 export interface StudyCard {
   item: ItemInfo;
   schedule: CardSchedule | null;
+  /** The group of the card in a mixed queue, to continue the rotation from; null otherwise. */
+  mixKey: string | null;
 }
+
+/** The most candidates of one part of the queue the rotation looks at. */
+export const MAX_MIX_CANDIDATES = 5000;
 
 export interface TodayCounts {
   learning: number;
@@ -351,6 +358,7 @@ export class StudyService {
     filter?: StudyFilter,
     extraNew = 0,
     early = false,
+    mix?: MixOptions,
   ): StudyCard[] {
     const end = dayEnd(now, this.offset).toISOString();
     // With `early` the person asked not to wait: learning cards due later today count as due.
@@ -358,9 +366,41 @@ export class StudyService {
     const wanted = filterConditions(filter, this.db);
     const cards: StudyCard[] = [];
     const seen = new Set<number>();
+    // In a mixed queue the rotation continues from the key of the card shown before.
+    let lastKey = mix?.afterKey ?? null;
+    const keyed = (row: { topicId: number | null; materialId: number | null }): string =>
+      mix ? mixKeyOf(mix.by, row) : "";
     const take = (states: readonly number[], cutoff: string): void => {
       const remaining = limit - cards.length;
       if (remaining <= 0) return;
+      if (mix) {
+        const pool = this.db
+          .select({
+            state: cardState,
+            topicId: item.topicId,
+            materialId: generationRun.materialId,
+          })
+          .from(cardState)
+          .innerJoin(item, eq(item.id, cardState.itemId))
+          .leftJoin(generationRun, eq(generationRun.id, item.runId))
+          .where(and(...wanted, inArray(cardState.state, [...states]), lte(cardState.due, cutoff)))
+          .orderBy(asc(cardState.due))
+          .limit(MAX_MIX_CANDIDATES)
+          .all()
+          .filter((row) => !seen.has(row.state.itemId));
+        while (cards.length < limit && pool.length > 0) {
+          const chosen = pick(pool, keyed, lastKey) as (typeof pool)[number];
+          pool.splice(pool.indexOf(chosen), 1);
+          seen.add(chosen.state.itemId);
+          lastKey = keyed(chosen);
+          cards.push({
+            item: this.review.get(chosen.state.itemId),
+            schedule: this.scheduleOf(chosen.state),
+            mixKey: lastKey,
+          });
+        }
+        return;
+      }
       const rows = this.db
         .select({ state: cardState })
         .from(cardState)
@@ -373,7 +413,11 @@ export class StudyService {
         if (cards.length >= limit) break;
         if (seen.has(state.itemId)) continue;
         seen.add(state.itemId);
-        cards.push({ item: this.review.get(state.itemId), schedule: this.scheduleOf(state) });
+        cards.push({
+          item: this.review.get(state.itemId),
+          schedule: this.scheduleOf(state),
+          mixKey: null,
+        });
       }
     };
     take(LEARNING_STATES, due);
@@ -381,14 +425,33 @@ export class StudyService {
     const allowance = this.settings().newPerDay + extraNew - this.newStudiedToday(this.today(now));
     const room = Math.min(limit - cards.length, allowance);
     if (room > 0) {
-      const fresh = this.db
-        .select()
-        .from(item)
-        .where(and(...this.unseen(filter)))
-        .orderBy(asc(item.approvedAt), asc(item.id))
-        .limit(room)
-        .all();
-      for (const row of fresh) cards.push({ item: this.review.get(row.id), schedule: null });
+      if (mix) {
+        const pool = this.db
+          .select({ id: item.id, topicId: item.topicId, materialId: generationRun.materialId })
+          .from(item)
+          .leftJoin(generationRun, eq(generationRun.id, item.runId))
+          .where(and(...this.unseen(filter)))
+          .orderBy(asc(item.approvedAt), asc(item.id))
+          .limit(MAX_MIX_CANDIDATES)
+          .all();
+        for (let slot = 0; slot < room && pool.length > 0; slot += 1) {
+          const chosen = pick(pool, keyed, lastKey) as (typeof pool)[number];
+          pool.splice(pool.indexOf(chosen), 1);
+          lastKey = keyed(chosen);
+          cards.push({ item: this.review.get(chosen.id), schedule: null, mixKey: lastKey });
+        }
+      } else {
+        const fresh = this.db
+          .select()
+          .from(item)
+          .where(and(...this.unseen(filter)))
+          .orderBy(asc(item.approvedAt), asc(item.id))
+          .limit(room)
+          .all();
+        for (const row of fresh) {
+          cards.push({ item: this.review.get(row.id), schedule: null, mixKey: null });
+        }
+      }
     }
     return cards;
   }
@@ -398,8 +461,9 @@ export class StudyService {
     filter?: StudyFilter,
     extraNew = 0,
     early = false,
+    mix?: MixOptions,
   ): StudyCard | null {
-    return this.queue(1, now, filter, extraNew, early)[0] ?? null;
+    return this.queue(1, now, filter, extraNew, early, mix)[0] ?? null;
   }
 
   /**
@@ -479,7 +543,11 @@ export class StudyService {
   /** A specific card with its current state (used after an undo). */
   card(itemId: number): StudyCard {
     const row = this.db.select().from(cardState).where(eq(cardState.itemId, itemId)).get();
-    return { item: this.review.get(itemId), schedule: row ? this.scheduleOf(row) : null };
+    return {
+      item: this.review.get(itemId),
+      schedule: row ? this.scheduleOf(row) : null,
+      mixKey: null,
+    };
   }
 
   previews(card: StudyCard, now: Date = this.clock.now()): Record<Rating, string> {
