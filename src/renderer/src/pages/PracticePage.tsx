@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { FilterSelect, parseFilter, usePersistedFilter } from "../components/FilterSelect.js";
 import { ItemActions } from "../components/ItemActions.js";
+import { MixControl, useMix } from "../components/MixControl.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 import { StudyTabs } from "../components/StudyTabs.js";
 import { useHotkeys, useInvoke } from "../hooks.js";
@@ -23,6 +24,8 @@ type Result = OutputOf<"practice:answer">;
 /** A question of this session with what the person did on it, so they can leave and come back. */
 interface Entry {
   question: Question;
+  /** The group of the question in a mixed queue, so the rotation continues from it. */
+  mixKey: string | null;
   chosen: string | null;
   result: Result | null;
   cardMessage: string | null;
@@ -39,6 +42,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
     `mind.filter.${workspaceId}.study-questions`,
   );
   const filter = parseFilter(filterValue);
+  const mix = useMix(workspaceId, filter !== undefined);
   const [redo, setRedo] = useState(false);
   const [deck, setDeck] = useState<Entry[]>([]);
   // `index === deck.length` is the end of the queue.
@@ -65,6 +69,9 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
           redo,
           ...(filter ? { filter } : {}),
           ...(exclude.length > 0 ? { exclude } : {}),
+          ...(mix.request
+            ? { mix: { by: mix.request.by, afterKey: shown.at(-1)?.mixKey ?? null } }
+            : {}),
         })
         .then((response) => {
           if (mine !== generation.current) return;
@@ -78,7 +85,13 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
           if (response.data.question) {
             setDeck([
               ...shown,
-              { question: response.data.question, chosen: null, result: null, cardMessage: null },
+              {
+                question: response.data.question,
+                mixKey: response.data.mixKey,
+                chosen: null,
+                result: null,
+                cardMessage: null,
+              },
             ]);
             setIndex(from);
           } else {
@@ -88,7 +101,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
         });
     },
     // `filter` is derived from `filterValue`; the value is the dependency.
-    [workspaceId, redo, filterValue],
+    [workspaceId, redo, filterValue, mix.on, mix.by],
   );
 
   // A new filter or the redo option starts the session over.
@@ -209,6 +222,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
           kind="questions"
         />
       )}
+      <MixControl mix={mix} />
       {counts && (
         <p className="muted">
           {T.practiceCounts(counts.unseen, counts.retry)} ·{" "}

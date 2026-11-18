@@ -12,6 +12,7 @@ import { T } from "../strings.js";
 import { useActivity } from "../time.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
 import { FilterSelect, parseFilter, usePersistedFilter } from "../components/FilterSelect.js";
+import { MixControl, useMix } from "../components/MixControl.js";
 import { StudyTabs } from "../components/StudyTabs.js";
 import { sectionPath, useRouter } from "../router.js";
 import { ItemActions } from "../components/ItemActions.js";
@@ -44,6 +45,9 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
     `mind.filter.${workspaceId}.study-cards`,
   );
   const filter = parseFilter(filterValue);
+  const mix = useMix(workspaceId, filter !== undefined);
+  // The group of the card shown, so the rotation of a mixed queue continues from it.
+  const mixKey = useRef<string | null>(null);
   const [next, setNext] = useState<Next | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +67,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
         ...(filter ? { filter } : {}),
         ...(extraNew > 0 ? { extraNew } : {}),
         ...(early ? { early } : {}),
+        ...(mix.request ? { mix: { by: mix.request.by, afterKey: mixKey.current } } : {}),
       })
       .then((result) => {
         if (!result.ok) {
@@ -70,6 +75,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
           return;
         }
         setError(null);
+        mixKey.current = result.data.mixKey;
         setNext(result.data);
         if (!keepRevealed) {
           setRevealed(false);
@@ -78,7 +84,11 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
       });
   };
 
-  useEffect(() => load(), [workspaceId, filterValue, extraNew, early]);
+  // A new filter or a change of the mix starts the rotation over.
+  useEffect(() => {
+    mixKey.current = null;
+  }, [workspaceId, filterValue, mix.on, mix.by]);
+  useEffect(() => load(), [workspaceId, filterValue, extraNew, early, mix.on, mix.by]);
 
   // While cards wait for their time, the countdown follows the clock and the card comes back
   // by itself when the time arrives.
@@ -137,6 +147,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
           onChange={setFilterValue}
         />
       )}
+      <MixControl mix={mix} />
       {error && (
         <p className="alert" role="alert">
           {error}

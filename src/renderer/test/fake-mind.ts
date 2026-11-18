@@ -8,6 +8,7 @@ import { vi } from "vitest";
 import type { MindApi } from "../../core/contracts/api.js";
 import type { ChannelName, ErrorInfo, InputOf, OutputOf } from "../../core/contracts/index.js";
 import { ok } from "../../core/contracts/index.js";
+import { pick } from "../../core/study/interleave.js";
 import type { Result } from "../../core/contracts/index.js";
 
 interface Workspace {
@@ -38,6 +39,11 @@ export const DEFAULT_PRACTICE_SETTINGS: FakePracticeSettings = {
   confidence: false,
   interleave: false,
 };
+/** The rotation key the fake gives a topic: stable, so a test can predict the order. */
+export function fakeMixKey(topic: string | null): string {
+  if (topic === null) return "none";
+  return `t:${[...topic].reduce((total, letter) => (total * 31 + letter.charCodeAt(0)) % 100_000, 7)}`;
+}
 export type FakeStudyCard = NonNullable<OutputOf<"study:next">["card"]>;
 export type FakeErrorEntry = OutputOf<"errors:list">["entries"][number];
 export type FakeTopic = OutputOf<"topics:list">["topics"][number];
@@ -874,13 +880,23 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
               card: null,
               counts: studyCounts(state),
               waiting: { count: state.waitingCards.cards.length, due: state.waitingCards.due },
+              mixKey: null,
             });
           }
         }
+        const { mix } = payload as InputOf<"study:next">;
+        if (mix) {
+          const chosen = pick(state.studyQueue, (card) => fakeMixKey(card.topic), mix.afterKey);
+          if (chosen) {
+            state.studyQueue = [chosen, ...state.studyQueue.filter((card) => card !== chosen)];
+          }
+        }
+        const shown = state.studyQueue[0] ?? null;
         return ok({
-          card: state.studyQueue[0] ?? null,
+          card: shown,
           counts: studyCounts(state),
           waiting: null,
+          mixKey: mix && shown ? fakeMixKey(shown.topic) : null,
         });
       }
       case "study:rate": {
@@ -944,13 +960,19 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       }
       case "practice:next": {
         const input = payload as InputOf<"practice:next">;
-        const question =
-          state.questions.find(
-            (q) =>
-              !(input.exclude ?? []).includes(q.item.id) &&
-              (input.filter?.subtype === undefined || q.item.subtype === input.filter.subtype),
-          ) ?? null;
-        return ok({ question, counts: practiceCounts(state) });
+        const open = state.questions.filter(
+          (q) =>
+            !(input.exclude ?? []).includes(q.item.id) &&
+            (input.filter?.subtype === undefined || q.item.subtype === input.filter.subtype),
+        );
+        const question = input.mix
+          ? pick(open, (q) => fakeMixKey(q.item.topic), input.mix.afterKey)
+          : (open[0] ?? null);
+        return ok({
+          question,
+          counts: practiceCounts(state),
+          mixKey: input.mix && question ? fakeMixKey(question.item.topic) : null,
+        });
       }
       case "practice:answer": {
         const input = payload as InputOf<"practice:answer">;

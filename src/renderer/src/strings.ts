@@ -264,6 +264,13 @@ export const T = {
   practiceInterleaveLabel: "Misturar tópicos por padrão",
   practiceInterleaveHint:
     "Deixa a opção de misturar tópicos já marcada em Estudar e Praticar. Desligado por padrão.",
+  mixLabel: "Misturar tópicos",
+  mixHint: "Alterna os assuntos em vez de estudá-los em bloco, sem mudar a prioridade da fila.",
+  mixDisabledHint:
+    "Desabilitada com um filtro de tópico ou material ativo. Escolha “Tudo” para misturar.",
+  mixByLabel: "Alternar por",
+  mixByTopic: "Tópico",
+  mixByMaterial: "Material",
   practiceRestoreDefaults: "Restaurar padrões das práticas",
   practiceSettingsSave: "Salvar práticas",
   practiceSettingsSaved: "Configurações das práticas salvas.",
