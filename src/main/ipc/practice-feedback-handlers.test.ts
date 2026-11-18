@@ -264,3 +264,62 @@ describe("confidence and calibration channels (FR-16, FR-17, FR-19)", () => {
     }
   });
 });
+
+describe("pre-test channels (FR-1..FR-5)", () => {
+  async function pretestSetup() {
+    const setup = await dispatcher();
+    const { dispatch, workspaceId } = setup;
+    const list = (await dispatch("material:list", { workspaceId })) as {
+      data: { materials: { id: number; pretestEligible: number }[] };
+    };
+    return { ...setup, materialId: list.data.materials[0]?.id as number, list };
+  }
+
+  it("counts the eligible questions of each material on the list", async () => {
+    const { list } = await pretestSetup();
+    expect(list.data.materials[0]?.pretestEligible).toBe(3);
+  });
+
+  it("starts a round without the key and records answers without telling the result", async () => {
+    const { dispatch, workspaceId, materialId } = await pretestSetup();
+    const started = (await dispatch("pretest:start", { workspaceId, materialId, count: 2 })) as {
+      ok: true;
+      data: { roundId: string; questions: { id: number }[] };
+    };
+    expect(started.ok).toBe(true);
+    expect(JSON.stringify(started)).not.toContain('"why"');
+    const { roundId, questions } = started.data;
+    const reply = await dispatch("pretest:answer", {
+      workspaceId,
+      roundId,
+      itemId: questions[0]?.id,
+      answer: "B",
+    });
+    expect(reply).toEqual({ ok: true, data: {} });
+    expect(await dispatch("pretest:summary", { workspaceId, roundId })).toMatchObject({
+      ok: true,
+      data: { total: 1, correct: 0, entries: [{ answer: "B", correctKey: "A" }] },
+    });
+    expect(await dispatch("practice:counts", { workspaceId })).toMatchObject({
+      data: { answeredToday: 0, unseen: 3 },
+    });
+  });
+
+  it("refuses bad counts, unknown materials and unknown rounds", async () => {
+    const { dispatch, workspaceId, materialId } = await pretestSetup();
+    expect(await dispatch("pretest:start", { workspaceId, materialId, count: 0 })).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+    expect(
+      await dispatch("pretest:start", { workspaceId, materialId: 999, count: 1 }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "MATERIAL_NOT_FOUND" },
+    });
+    expect(await dispatch("pretest:summary", { workspaceId, roundId: "none" })).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+  });
+});

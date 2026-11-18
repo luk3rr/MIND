@@ -14,6 +14,7 @@ import { ReviewPage } from "./pages/ReviewPage.js";
 import { ChatPage } from "./pages/ChatPage.js";
 import { ItemsPage } from "./pages/ItemsPage.js";
 import { ErrorsPage } from "./pages/ErrorsPage.js";
+import { PretestPage } from "./pages/PretestPage.js";
 import { PendingFeedbackPage } from "./pages/PendingFeedbackPage.js";
 import { PracticePage } from "./pages/PracticePage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
@@ -78,14 +79,27 @@ function Screen() {
             {...(route.quote !== undefined ? { quote: route.quote } : {})}
           />
         )}
-        {route.section === "library" && route.detailId !== undefined && !route.reader && (
-          <MaterialPreviewPage
-            key={`${route.detailId}-${route.chunkId ?? ""}`}
-            workspaceId={route.workspaceId}
-            materialId={route.detailId}
-            {...(route.chunkId !== undefined ? { chunkId: route.chunkId } : {})}
-          />
-        )}
+        {route.section === "library" &&
+          route.detailId !== undefined &&
+          route.pretest &&
+          route.count !== undefined && (
+            <PretestPage
+              workspaceId={route.workspaceId}
+              materialId={route.detailId}
+              count={route.count}
+            />
+          )}
+        {route.section === "library" &&
+          route.detailId !== undefined &&
+          !route.reader &&
+          !route.pretest && (
+            <MaterialPreviewPage
+              key={`${route.detailId}-${route.chunkId ?? ""}`}
+              workspaceId={route.workspaceId}
+              materialId={route.detailId}
+              {...(route.chunkId !== undefined ? { chunkId: route.chunkId } : {})}
+            />
+          )}
         {route.section === "generate" && route.detailId === undefined && (
           <GeneratePage
             workspaceId={route.workspaceId}

@@ -18,7 +18,13 @@ interface Workspace {
 }
 
 export type ProviderState = FakeState["provider"];
-export type FakeMaterial = OutputOf<"material:list">["materials"][number];
+export type FakeMaterial = Omit<
+  OutputOf<"material:list">["materials"][number],
+  "pretestEligible"
+> & {
+  /** Questions a pre-test of the material could use; 0 unless a test says otherwise. */
+  pretestEligible?: number;
+};
 type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
 /** A run as a test seeds it; the fake adds the number of pending drafts from the items. */
 export type FakeRun = Omit<OutputOf<"generation:list">["runs"][number], "pending">;
@@ -131,6 +137,13 @@ export interface FakeState {
   answerKeys: Record<number, string>;
   /** The answers given in practice, so a block can be released later. */
   attemptsGiven?: {
+    attemptId: number;
+    itemId: number;
+    answer: string;
+    confidence?: number | undefined;
+  }[];
+  /** The answers of the pre-test round in progress. */
+  pretestGiven?: {
     attemptId: number;
     itemId: number;
     answer: string;
@@ -452,7 +465,12 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         return ok({});
       }
       case "material:list":
-        return ok({ materials: [...state.materials] });
+        return ok({
+          materials: state.materials.map((m) => ({
+            ...m,
+            pretestEligible: m.pretestEligible ?? 0,
+          })),
+        });
       case "material:import":
         state.materials = [...state.importResult.materials, ...state.materials];
         return ok(state.importResult);
@@ -1393,6 +1411,49 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             topics: [],
           },
         );
+      case "pretest:start": {
+        const input = payload as InputOf<"pretest:start">;
+        if (state.questions.length === 0) {
+          return failure("VALIDATION_ERROR", "Este material não tem questões.", "count");
+        }
+        state.pretestGiven = [];
+        return ok({
+          roundId: "round-1",
+          available: state.questions.length,
+          questions: state.questions.slice(0, input.count).map((q) => ({
+            id: q.item.id,
+            statement: q.item.front,
+            subtype: q.item.subtype,
+            topic: q.item.topic,
+            options: q.item.options.map(({ key, text }) => ({ key, text })),
+          })),
+        });
+      }
+      case "pretest:answer": {
+        const input = payload as InputOf<"pretest:answer">;
+        if (state.practiceSettings?.confidence && input.confidence === undefined) {
+          return failure("VALIDATION_ERROR", "Informe o quanto você está seguro.", "confidence");
+        }
+        const given = state.pretestGiven ?? [];
+        state.pretestGiven = [
+          ...given,
+          {
+            attemptId: given.length + 1,
+            itemId: input.itemId,
+            answer: input.answer,
+            confidence: input.confidence,
+          },
+        ];
+        return ok({});
+      }
+      case "pretest:summary": {
+        const entries = (state.pretestGiven ?? []).map((given) => fakeFeedback(state, given));
+        return ok({
+          total: entries.length,
+          correct: entries.filter((entry) => entry.correct).length,
+          entries,
+        });
+      }
       case "practice:pendingCount":
         return ok({ count: state.pendingFeedback?.length ?? 0 });
       case "practice:releaseAbandoned":

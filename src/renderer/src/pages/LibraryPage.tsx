@@ -10,7 +10,8 @@ import type { OutputOf } from "../../../core/contracts/index.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
 import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
-import { materialPath, useRouter, readerPath } from "../router.js";
+import { materialPath, pretestPath, useRouter, readerPath } from "../router.js";
+import { Dialog } from "../components/Dialog.js";
 import { T } from "../strings.js";
 import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
@@ -70,6 +71,7 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
   const [openError, setOpenError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Material | null>(null);
   const [toRename, setToRename] = useState<Material | null>(null);
+  const [pretestFor, setPretestFor] = useState<Material | null>(null);
   const [askUrl, setAskUrl] = useState(false);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<OutputOf<"material:search">["hits"] | null>(null);
@@ -303,6 +305,16 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                         <button
                           type="button"
                           className="btn ghost"
+                          aria-label={T.openActionLabel(T.pretestAction, material.title)}
+                          disabled={material.pretestEligible === 0}
+                          title={material.pretestEligible === 0 ? T.pretestDisabledHint : undefined}
+                          onClick={() => setPretestFor(material)}
+                        >
+                          {T.pretestAction}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn ghost"
                           aria-label={T.openActionLabel(
                             material.kind === "pdf" ? T.openInSystem : T.openOriginal,
                             material.title,
@@ -350,6 +362,16 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
           }}
         />
       )}
+      {pretestFor && (
+        <PretestDialog
+          material={pretestFor}
+          onClose={() => setPretestFor(null)}
+          onStart={(count) => {
+            setPretestFor(null);
+            navigate(pretestPath(workspaceId, pretestFor.id, count));
+          }}
+        />
+      )}
       {toRename && (
         <PromptDialog
           title={T.renameMaterialTitle}
@@ -383,5 +405,61 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
         />
       )}
     </section>
+  );
+}
+
+/** Asks how many questions the pre-test of a material should have. */
+function PretestDialog({
+  material,
+  onClose,
+  onStart,
+}: {
+  material: Material;
+  onClose: () => void;
+  onStart: (count: number) => void;
+}) {
+  const [text, setText] = useState(String(Math.min(10, material.pretestEligible)));
+  const [error, setError] = useState<string | null>(null);
+  const submit = (event: FormEvent): void => {
+    event.preventDefault();
+    const count = Number(text);
+    if (!/^\d+$/.test(text.trim()) || count < 1 || count > 20) {
+      setError(T.pretestCountError);
+      return;
+    }
+    onStart(count);
+  };
+  return (
+    <Dialog title={T.pretestDialogTitle(material.title)} onClose={onClose}>
+      <form onSubmit={submit} noValidate className="stack">
+        <p className="muted">{T.pretestDialogIntro}</p>
+        <div className="field">
+          <label htmlFor="pretest-count">{T.pretestCountLabel}</label>
+          <input
+            id="pretest-count"
+            inputMode="numeric"
+            value={text}
+            aria-describedby="pretest-count-hint"
+            onChange={(event) => setText(event.target.value)}
+          />
+          <p id="pretest-count-hint" className="muted">
+            {T.pretestEligible(material.pretestEligible)}. {T.pretestOnlyUnanswered}
+          </p>
+          {error && (
+            <p role="alert" className="alert">
+              {error}
+            </p>
+          )}
+        </div>
+        <div className="actions">
+          <button type="button" className="btn ghost" onClick={onClose}>
+            {T.cancel}
+          </button>
+          <button type="submit" className="btn">
+            {T.pretestStart}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

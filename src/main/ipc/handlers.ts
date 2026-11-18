@@ -101,7 +101,15 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       ...todaySummary(core.registry.open(workspaceId)),
       pendingFeedback: core.practice(workspaceId).pendingCount(),
     }),
-    "material:list": ({ workspaceId }) => ({ materials: core.materials(workspaceId).listViews() }),
+    "material:list": ({ workspaceId }) => {
+      const pretest = core.pretest(workspaceId);
+      return {
+        materials: core
+          .materials(workspaceId)
+          .listViews()
+          .map((view) => ({ ...view, pretestEligible: pretest.eligibleCount(view.id) })),
+      };
+    },
     "material:import": async ({ workspaceId }) => {
       const service = core.materials(workspaceId);
       const materials = [];
@@ -333,6 +341,16 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     }),
     "practice:openFeedback": ({ workspaceId, limit }) =>
       core.practice(workspaceId).openFeedback(limit),
+    "pretest:start": ({ workspaceId, materialId, count }) =>
+      core.pretest(workspaceId).start(materialId, count),
+    "pretest:answer": ({ workspaceId, roundId, itemId, answer, seconds, confidence }) => {
+      core.pretest(workspaceId).answer(roundId, itemId, answer, {
+        ...(seconds !== undefined ? { seconds } : {}),
+        ...(confidence !== undefined ? { confidence } : {}),
+      });
+      return {};
+    },
+    "pretest:summary": ({ workspaceId, roundId }) => core.pretest(workspaceId).summary(roundId),
     "practice:releaseBlock": ({ workspaceId, attemptIds }) => ({
       entries: core.practice(workspaceId).releaseBlock(attemptIds),
     }),

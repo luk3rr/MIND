@@ -296,6 +296,26 @@ export const T = {
   calibrationFlagHint:
     "Excesso de confiança: o acerto de “Tenho certeza” ficou abaixo de 80% (ou o de “Acho que sei” abaixo de 60%), com pelo menos 5 respostas no nível.",
   calibrationTopics: "Tópicos com mais respostas seguras erradas",
+  pretestAction: "Pré-teste",
+  pretestDisabledHint: "Gere e aprove questões deste material para fazer um pré-teste.",
+  pretestDialogTitle: (title: string) => `Pré-teste: ${title}`,
+  pretestDialogIntro:
+    "Responda questões deste material antes de estudá-lo. O gabarito aparece só no fim, e a rodada não conta nas estatísticas.",
+  pretestCountLabel: "Quantas questões? (1 a 20)",
+  pretestEligible: (count: number) =>
+    `${count} ${count === 1 ? "questão elegível" : "questões elegíveis"} neste material`,
+  pretestOnlyUnanswered: "Só entram questões aprovadas que você ainda não respondeu na prática.",
+  pretestCountError: "Use um número de 1 a 20.",
+  pretestStart: "Começar",
+  pretestBanner:
+    "Você ainda não estudou este material, então errar aqui é esperado. Esta rodada não conta nas estatísticas nem no caderno de erros.",
+  pretestEnd: "Encerrar",
+  pretestSummaryTitle: "Resumo do pré-teste",
+  pretestSummaryNote: "Fora das estatísticas: estas respostas não contam como prática.",
+  pretestReadMaterial: "Abrir o material",
+  pretestBackLibrary: "Voltar à Biblioteca",
+  pretestLimit: (available: number) =>
+    `Só há ${available} ${available === 1 ? "questão elegível" : "questões elegíveis"}; a rodada usa ${available === 1 ? "ela" : "todas"}.`,
   practiceRegisteredNextDay:
     "Resposta registrada. O gabarito fica disponível amanhã, a partir das 4h.",
   pendingTitle: "Feedback pendente",

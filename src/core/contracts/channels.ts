@@ -540,7 +540,14 @@ export const channels = {
   },
   "material:list": {
     input: z.object({ workspaceId }).strict(),
-    output: z.object({ materials: z.array(materialInfo) }),
+    output: z.object({
+      materials: z.array(
+        materialInfo.extend({
+          /** Approved questions of the material never answered in practice: what a pre-test can use. */
+          pretestEligible: z.number().int().nonnegative(),
+        }),
+      ),
+    }),
   },
   "material:import": {
     input: z.object({ workspaceId }).strict(),
@@ -1001,6 +1008,37 @@ export const channels = {
       entries: z.array(feedback),
       /** Feedback that was ready but did not fit in `limit`. */
       remaining: z.number().int().nonnegative(),
+    }),
+  },
+  "pretest:start": {
+    input: z
+      .object({ workspaceId, materialId: z.number().int().positive(), count: z.number().int() })
+      .strict(),
+    output: z.object({
+      roundId: z.string().min(1).max(64),
+      questions: z.array(questionView),
+      available: z.number().int().nonnegative(),
+    }),
+  },
+  "pretest:answer": {
+    input: z
+      .object({
+        workspaceId,
+        roundId: z.string().min(1).max(64),
+        itemId: z.number().int().positive(),
+        answer: z.string().max(8),
+        seconds: z.number().min(0).max(86_400).optional(),
+        confidence: z.number().int().min(1).max(3).optional(),
+      })
+      .strict(),
+    output: z.object({}).strict(),
+  },
+  "pretest:summary": {
+    input: z.object({ workspaceId, roundId: z.string().min(1).max(64) }).strict(),
+    output: z.object({
+      total: z.number().int().nonnegative(),
+      correct: z.number().int().nonnegative(),
+      entries: z.array(feedback),
     }),
   },
   "practice:releaseBlock": {

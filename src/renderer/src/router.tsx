@@ -24,6 +24,10 @@ export type Route =
       pendingFeedback?: boolean;
       /** The PDF reader of a material (`/w/:id/library/:materialId/read?page=N`). */
       reader?: boolean;
+      /** A pre-test round of a material (`/w/:id/library/:materialId/pretest?count=N`). */
+      pretest?: boolean;
+      /** How many questions the pre-test round has. */
+      count?: number;
       /** The page the reader opens on. */
       page?: number;
       /** A passage to highlight on that page. */
@@ -53,13 +57,15 @@ export function parseRoute(path: string): Route {
   const practice = section === "study" && material === "practice";
   const pendingFeedback = section === "study" && material === "feedback";
   const reader = action === "read";
+  const pretest = action === "pretest";
   const valid =
     empty === "" &&
     prefix === "w" &&
     isNumber(workspace) &&
     SECTION_SLUGS.includes(section as SectionSlug) &&
     (material === undefined || isNumber(material) || practice || pendingFeedback) &&
-    (action === undefined || (reader && section === "library" && isNumber(material))) &&
+    (action === undefined ||
+      ((reader || pretest) && section === "library" && isNumber(material))) &&
     extra.length === 0;
   const params = parseQuery(query);
   const chunk = params?.get("chunk") ?? undefined;
@@ -67,7 +73,8 @@ export function parseRoute(path: string): Route {
   const subtype = params?.get("subtype") ?? undefined;
   const page = params?.get("page") ?? undefined;
   const quote = params?.get("quote") ?? undefined;
-  const allowed = reader ? ["page", "quote"] : ["chunk", "topic", "subtype"];
+  const count = params?.get("count") ?? undefined;
+  const allowed = reader ? ["page", "quote"] : pretest ? ["count"] : ["chunk", "topic", "subtype"];
   const queryValid =
     query === undefined ||
     (params !== null &&
@@ -78,8 +85,12 @@ export function parseRoute(path: string): Route {
         (page !== undefined && quote.length >= 1 && quote.length <= MAX_QUOTE)) &&
       (topic === undefined || (isNumber(topic) && section === "generate")) &&
       (subtype === undefined || (topic !== undefined && /^[a-z_0-9]{1,30}$/.test(subtype))) &&
-      (reader ? page !== undefined : chunk !== undefined || topic !== undefined));
-  if (!valid || !queryValid) return { name: "unknown" };
+      (reader
+        ? page !== undefined
+        : pretest
+          ? count !== undefined && isNumber(count) && Number(count) >= 1 && Number(count) <= 20
+          : chunk !== undefined || topic !== undefined));
+  if (!valid || !queryValid || (pretest && count === undefined)) return { name: "unknown" };
   return {
     name: "section",
     workspaceId: Number(workspace),
@@ -90,6 +101,8 @@ export function parseRoute(path: string): Route {
     ...(practice ? { practice: true } : {}),
     ...(pendingFeedback ? { pendingFeedback: true } : {}),
     ...(reader ? { reader: true } : {}),
+    ...(pretest ? { pretest: true } : {}),
+    ...(count !== undefined && pretest ? { count: Number(count) } : {}),
     ...(page !== undefined ? { page: Number(page) } : {}),
     ...(quote !== undefined ? { quote } : {}),
     ...(chunk !== undefined ? { chunkId: Number(chunk) } : {}),
@@ -111,6 +124,11 @@ export function trainPath(workspaceId: number, topicId: number, subtype?: string
 export function materialPath(workspaceId: number, materialId: number, chunkId?: number): string {
   const base = `/w/${workspaceId}/library/${materialId}`;
   return chunkId === undefined ? base : `${base}?chunk=${chunkId}`;
+}
+
+/** A pre-test round of a material with `count` questions. */
+export function pretestPath(workspaceId: number, materialId: number, count: number): string {
+  return `/w/${workspaceId}/library/${materialId}/pretest?count=${count}`;
 }
 
 /** The longest quote a reader route carries. */
