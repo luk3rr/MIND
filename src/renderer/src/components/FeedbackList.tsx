@@ -12,6 +12,23 @@ import { SeeInPdf } from "./SeeInPdf.js";
 
 export type Feedback = NonNullable<OutputOf<"practice:answer">["feedback"]>;
 
+/** What the student said about their confidence and, when it clashed with the result, a notice. */
+function ConfidenceNote({ entry }: { entry: Feedback }) {
+  if (entry.confidence === null) return null;
+  const label = T.confidenceLevels[String(entry.confidence)] ?? "";
+  return (
+    <p className="muted">
+      {T.confidenceGiven(label)}
+      {!entry.correct && entry.confidence === 3 && (
+        <>
+          {" "}
+          <span className="pill warn">{T.confidenceDivergence}</span>
+        </>
+      )}
+    </p>
+  );
+}
+
 /** The result of one answer: what was chosen, the key, the comment and where it comes from. */
 export function FeedbackEntry({
   workspaceId,
@@ -30,6 +47,7 @@ export function FeedbackEntry({
       <p className={entry.correct ? "ok" : "alert"}>
         {entry.correct ? T.practiceCorrect : T.practiceWrong} {T.practiceRight}: {entry.correctKey}
       </p>
+      <ConfidenceNote entry={entry} />
       <p>
         <MathText text={entry.explanation} />
       </p>
@@ -140,6 +158,7 @@ export function FeedbackList({
             <p className="muted">
               {T.feedbackYourAnswer}: {entry.answer} · {T.practiceRight}: {entry.correctKey}
             </p>
+            <ConfidenceNote entry={entry} />
             <p>
               <MathText text={entry.explanation} />
             </p>

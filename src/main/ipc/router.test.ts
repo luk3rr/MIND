@@ -139,6 +139,15 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       confidence: false,
       interleave: false,
     }),
+    "stats:calibration": () => ({
+      hasData: false,
+      levels: [
+        { level: 1, answers: 0, correct: 0, rate: null, flag: null },
+        { level: 2, answers: 0, correct: 0, rate: null, flag: null },
+        { level: 3, answers: 0, correct: 0, rate: null, flag: null },
+      ],
+      topics: [],
+    }),
     "practice:releaseBlock": () => ({ entries: [] }),
     "practice:releaseAbandoned": () => ({ released: 0 }),
     "practice:pendingCount": () => ({ count: 0 }),

@@ -273,6 +273,29 @@ export const T = {
   mixByMaterial: "Material",
   practiceRegistered: "Resposta registrada. O gabarito e o comentário aparecem ao fim do bloco.",
   practiceSeeFeedbackNow: "Ver o feedback agora",
+  confidenceQuestion: "Quão seguro você está?",
+  confidenceLevels: {
+    "1": "Chute",
+    "2": "Acho que sei",
+    "3": "Tenho certeza",
+  } as Record<string, string>,
+  confidenceNeeded: "Escolha o quanto você está seguro para responder.",
+  confidenceGiven: (label: string) => `Confiança: ${label}`,
+  confidenceDivergence: "Você tinha marcado “Tenho certeza”",
+  calibrationTitle: "Calibração",
+  calibrationIntro:
+    "Compara quão seguro você estava com o quanto acertou, nas questões dos últimos 30 dias. O pré-teste não entra aqui.",
+  calibrationEmpty:
+    "Ainda não há respostas com confiança. Ligue “Perguntar a confiança antes de responder” em Configurações e responda algumas questões.",
+  calibrationLevel: "Confiança",
+  calibrationAnswers: "Respostas",
+  calibrationAccuracy: "Acerto",
+  calibrationOverconfident: "excesso de confiança",
+  calibrationExpected: "como esperado",
+  calibrationFew: "poucas respostas",
+  calibrationFlagHint:
+    "Excesso de confiança: o acerto de “Tenho certeza” ficou abaixo de 80% (ou o de “Acho que sei” abaixo de 60%), com pelo menos 5 respostas no nível.",
+  calibrationTopics: "Tópicos com mais respostas seguras erradas",
   practiceRegisteredNextDay:
     "Resposta registrada. O gabarito fica disponível amanhã, a partir das 4h.",
   pendingTitle: "Feedback pendente",

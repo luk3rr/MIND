@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { FilterSelect, parseFilter, usePersistedFilter } from "../components/FilterSelect.js";
+import { ConfidencePicker } from "../components/ConfidencePicker.js";
+import type { Confidence } from "../components/ConfidencePicker.js";
 import { FeedbackEntry, FeedbackList } from "../components/FeedbackList.js";
 import type { Feedback } from "../components/FeedbackList.js";
 import { ItemActions } from "../components/ItemActions.js";
@@ -27,6 +29,8 @@ interface Entry {
   /** The group of the question in a mixed queue, so the rotation continues from it. */
   mixKey: string | null;
   chosen: string | null;
+  /** How sure the student said they were, when the workspace asks for it. */
+  confidence: Confidence | null;
   /** The answer given, once there is one; its feedback may still be waiting for the block. */
   answered: { answer: string; attemptId: number; releaseAt: string | null } | null;
   feedback: Feedback | null;
@@ -45,6 +49,9 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
   );
   const filter = parseFilter(filterValue);
   const mix = useMix(workspaceId, filter !== undefined);
+  const practiceSettings = useInvoke("practice:settings", { workspaceId });
+  const askConfidence =
+    practiceSettings.state.status === "ready" && practiceSettings.state.data.settings.confidence;
   const [redo, setRedo] = useState(false);
   const [deck, setDeck] = useState<Entry[]>([]);
   // `index === deck.length` is the end of the queue.
@@ -93,6 +100,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                 question: response.data.question,
                 mixKey: response.data.mixKey,
                 chosen: null,
+                confidence: null,
                 answered: null,
                 feedback: null,
                 cardMessage: null,
@@ -139,6 +147,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
 
   const submit = (answer: string | null = entry?.chosen ?? null): void => {
     if (!entry || !answer || entry.answered) return;
+    if (askConfidence && entry.confidence === null) return;
     const at = index;
     const seconds = Math.round(((performance.now() - shownAt.current) / 1000) * 10) / 10;
     void window.mind
@@ -147,6 +156,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
         itemId: entry.question.item.id,
         answer,
         seconds,
+        ...(askConfidence && entry.confidence !== null ? { confidence: entry.confidence } : {}),
       })
       .then((response) => {
         if (!response.ok) setError(response.error.message);
@@ -366,12 +376,18 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
               );
             })}
           </div>
+          {!entry.answered && askConfidence && (
+            <ConfidencePicker
+              value={entry.confidence}
+              onChange={(level) => update(index, { confidence: level })}
+            />
+          )}
           {!entry.answered && (
             <div className="row" style={{ alignItems: "center" }}>
               <button
                 type="button"
                 className="btn"
-                disabled={entry.chosen === null}
+                disabled={entry.chosen === null || (askConfidence && entry.confidence === null)}
                 onClick={() => submit()}
               >
                 {T.practiceAnswer}

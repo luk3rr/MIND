@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { ChartBlock, TOOLTIP, shortDay } from "../components/ChartBlock.js";
+import { CalibrationStats } from "../components/CalibrationStats.js";
 import { TimeStats } from "../components/TimeStats.js";
 import { MaterialProgress } from "../components/MaterialProgress.js";
 import { WeakTopics } from "../components/WeakTopics.js";
@@ -239,6 +240,8 @@ export function StatsPage({ workspaceId }: { workspaceId: number }) {
           </ChartBlock>
 
           <TimeStats workspaceId={workspaceId} />
+
+          <CalibrationStats workspaceId={workspaceId} />
 
           <MaterialProgress workspaceId={workspaceId} />
 

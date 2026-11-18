@@ -67,6 +67,7 @@ export const CHANNEL_NAMES = [
   "topics:merge",
   "topics:delete",
   "stats:overview",
+  "stats:calibration",
   "stats:materials",
   "workspace:export",
   "workspace:import",

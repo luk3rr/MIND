@@ -975,6 +975,8 @@ export const channels = {
         itemId: z.number().int().positive(),
         answer: z.string().max(8),
         seconds: z.number().min(0).max(86_400).optional(),
+        /** How sure the student is: 1 a guess, 2 think so, 3 certain; required when it is asked. */
+        confidence: z.number().int().min(1).max(3).optional(),
       })
       .strict(),
     output: z.object({
@@ -1094,6 +1096,27 @@ export const channels = {
           priority: z.number(),
           suggested: z.boolean(),
         }),
+      ),
+    }),
+  },
+  "stats:calibration": {
+    input: z.object({ workspaceId, days: z.number().int().min(1).max(365).optional() }).strict(),
+    output: z.object({
+      /** False until some answer in the window has a confidence. */
+      hasData: z.boolean(),
+      levels: z
+        .array(
+          z.object({
+            level: z.number().int().min(1).max(3),
+            answers: z.number().int().nonnegative(),
+            correct: z.number().int().nonnegative(),
+            rate: z.number().nullable(),
+            flag: z.enum(["overconfident"]).nullable(),
+          }),
+        )
+        .length(3),
+      topics: z.array(
+        z.object({ topicId: z.number().int(), name: z.string(), confidentWrong: z.number().int() }),
       ),
     }),
   },

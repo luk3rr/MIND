@@ -130,7 +130,14 @@ export interface FakeState {
   questions: FakeQuestion[];
   answerKeys: Record<number, string>;
   /** The answers given in practice, so a block can be released later. */
-  attemptsGiven?: { attemptId: number; itemId: number; answer: string }[];
+  attemptsGiven?: {
+    attemptId: number;
+    itemId: number;
+    answer: string;
+    confidence?: number | undefined;
+  }[];
+  /** What Statistics shows for calibration. */
+  calibration?: OutputOf<"stats:calibration">;
   answeredToday: number;
   errorEntries: FakeErrorEntry[];
   topicList: FakeTopic[];
@@ -271,7 +278,7 @@ export function idleTime(overrides: Partial<FakeTime> = {}): FakeTime {
 /** The feedback the fake gives for an answer, from the question fixture. */
 function fakeFeedback(
   state: FakeState,
-  given: { attemptId: number; itemId: number; answer: string },
+  given: { attemptId: number; itemId: number; answer: string; confidence?: number | undefined },
 ): FakeFeedback {
   const found = state.questions.find((q) => q.item.id === given.itemId);
   const key = state.answerKeys[given.itemId] ?? "A";
@@ -284,7 +291,7 @@ function fakeFeedback(
     correctKey: key,
     explanation: "Comentário da questão.",
     options: found?.item.options ?? [],
-    confidence: null,
+    confidence: given.confidence ?? null,
     answeredAt: "2026-03-10T10:00:00.000Z",
     sourceTitle: found?.item.sourceTitle ?? "",
     sourcePage: found?.item.sourcePage ?? null,
@@ -1025,11 +1032,15 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         const input = payload as InputOf<"practice:answer">;
         const found = state.questions.find((q) => q.item.id === input.itemId);
         if (!found) return failure("ITEM_NOT_FOUND", "Não existe questão.");
+        if (state.practiceSettings?.confidence && input.confidence === undefined) {
+          return failure("VALIDATION_ERROR", "Informe o quanto você está seguro.", "confidence");
+        }
         state.answeredToday += 1;
         const given = {
           attemptId: state.answeredToday,
           itemId: input.itemId,
           answer: input.answer,
+          confidence: input.confidence,
         };
         state.attemptsGiven = [...(state.attemptsGiven ?? []), given];
         const mode = state.practiceSettings?.feedback ?? "immediate";
@@ -1368,6 +1379,20 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
               ...state.summary,
               pendingFeedback: state.summary.pendingFeedback ?? state.pendingFeedback?.length ?? 0,
             });
+      case "stats:calibration":
+        return ok(
+          state.calibration ?? {
+            hasData: false,
+            levels: [1, 2, 3].map((level) => ({
+              level,
+              answers: 0,
+              correct: 0,
+              rate: null,
+              flag: null,
+            })),
+            topics: [],
+          },
+        );
       case "practice:pendingCount":
         return ok({ count: state.pendingFeedback?.length ?? 0 });
       case "practice:releaseAbandoned":

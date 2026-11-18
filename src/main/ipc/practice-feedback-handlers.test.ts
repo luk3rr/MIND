@@ -203,3 +203,64 @@ describe("pending feedback channels (FR-9, FR-10)", () => {
     });
   });
 });
+
+describe("confidence and calibration channels (FR-16, FR-17, FR-19)", () => {
+  it("asks for the confidence once the question is on, with the field at fault", async () => {
+    const { dispatch, workspaceId, ids } = await dispatcher();
+    await dispatch("practice:saveSettings", { workspaceId, confidence: true });
+    const missing = await dispatch("practice:answer", { workspaceId, itemId: ids[0], answer: "A" });
+    expect(missing).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR", fields: [{ field: "confidence" }] },
+    });
+    const given = await dispatch("practice:answer", {
+      workspaceId,
+      itemId: ids[0],
+      answer: "B",
+      confidence: 3,
+    });
+    expect(given).toMatchObject({
+      ok: true,
+      data: { feedback: { confidence: 3, correct: false } },
+    });
+  });
+
+  it("rejects a confidence outside 1 to 3", async () => {
+    const { dispatch, workspaceId, ids } = await dispatcher();
+    for (const confidence of [0, 4, 1.5]) {
+      expect(
+        await dispatch("practice:answer", { workspaceId, itemId: ids[0], answer: "A", confidence }),
+      ).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+    }
+  });
+
+  it("reports confidence against accuracy by level", async () => {
+    const { dispatch, workspaceId, ids } = await dispatcher();
+    const empty = await dispatch("stats:calibration", { workspaceId });
+    expect(empty).toMatchObject({ ok: true, data: { hasData: false, topics: [] } });
+    await dispatch("practice:answer", { workspaceId, itemId: ids[0], answer: "A", confidence: 3 });
+    await dispatch("practice:answer", { workspaceId, itemId: ids[1], answer: "B", confidence: 1 });
+    const result = await dispatch("stats:calibration", { workspaceId, days: 30 });
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        hasData: true,
+        levels: [
+          { level: 1, answers: 1, correct: 0 },
+          { level: 2, answers: 0 },
+          { level: 3, answers: 1, correct: 1, rate: 1 },
+        ],
+      },
+    });
+  });
+
+  it("rejects a window that is not 1 to 365 days", async () => {
+    const { dispatch, workspaceId } = await dispatcher();
+    for (const days of [0, 366, 2.5]) {
+      expect(await dispatch("stats:calibration", { workspaceId, days })).toMatchObject({
+        ok: false,
+        error: { code: "VALIDATION_ERROR" },
+      });
+    }
+  });
+});

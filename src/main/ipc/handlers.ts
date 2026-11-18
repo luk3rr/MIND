@@ -312,10 +312,11 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         mixKey: question?.mixKey ?? null,
       };
     },
-    "practice:answer": ({ workspaceId, itemId, answer, seconds }) => {
+    "practice:answer": ({ workspaceId, itemId, answer, seconds, confidence }) => {
       const practice = core.practice(workspaceId);
       const result = practice.answer(itemId, answer, {
         ...(seconds !== undefined ? { seconds } : {}),
+        ...(confidence !== undefined ? { confidence } : {}),
       });
       return {
         attemptId: result.attemptId,
@@ -362,6 +363,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "stats:materials": ({ workspaceId }) => ({
       materials: core.stats(workspaceId).materialStats(),
     }),
+    "stats:calibration": ({ workspaceId, days }) => core.stats(workspaceId).calibration(days),
     "stats:overview": ({ workspaceId }) => {
       const stats = core.stats(workspaceId);
       return {
