@@ -43,7 +43,7 @@ test("creates items from a passage selected in the PDF and goes back to it (FR-5
   await page.getByRole("button", { name: "Biblioteca", exact: true }).click();
   await page.getByRole("button", { name: "Importar arquivo" }).click();
   await expect(page.getByRole("table").getByText("Indexado")).toBeVisible({ timeout: 20_000 });
-  await page.getByRole("button", { name: /^Ler / }).click();
+  await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible({ timeout: 10_000 });
 
   // Selecting a line of the page with the mouse (triple click) shows the actions next to it.

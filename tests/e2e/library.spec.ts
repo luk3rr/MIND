@@ -123,7 +123,8 @@ test("deletes a material after confirmation", async () => {
   await chooseFiles(current, [PDF("long.pdf")]);
   await page.getByRole("button", { name: "Importar arquivo" }).click();
   await expect(page.getByRole("table").getByText("Indexado")).toBeVisible({ timeout: 20_000 });
-  await page.getByRole("button", { name: "Excluir" }).click();
+  await page.getByRole("button", { name: /^Mais ações/ }).click();
+  await page.getByRole("menuitem", { name: "Excluir" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Excluir" }).click();
   await expect(page.getByText("Nenhum material ainda")).toBeVisible();
 });

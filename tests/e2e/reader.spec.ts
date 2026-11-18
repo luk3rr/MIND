@@ -59,7 +59,7 @@ test("reads the original PDF in the app: pages, text layer and search (US-8, US-
   await page.getByRole("button", { name: "Importar arquivo" }).click();
   await expect(page.getByRole("table").getByText("Indexado")).toBeVisible({ timeout: 20_000 });
 
-  await page.getByRole("button", { name: /^Ler / }).click();
+  await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   const image = page.getByRole("img", { name: "Página 1" });
   await expect(image).toBeVisible({ timeout: 10_000 });
   expect(await image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(
@@ -111,14 +111,14 @@ test("remembers the last page read and resumes it (US-13)", async () => {
   profiles.push(dir);
   current = await launch(dir);
   await prepare(current, [PDF]);
-  await current.page.getByRole("button", { name: /^Ler / }).click();
+  await current.page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(current.page.getByRole("img", { name: "Página 1" })).toBeVisible();
   await current.page.getByRole("button", { name: "Próxima página" }).first().click();
   await current.page.getByRole("button", { name: "Próxima página" }).first().click();
   await expect(current.page.getByRole("img", { name: "Página 3" })).toBeVisible();
   await current.page.waitForTimeout(1200);
   await current.page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
-  await current.page.getByRole("button", { name: /^Ler / }).click();
+  await current.page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(current.page.getByRole("img", { name: "Página 3" })).toBeVisible({
     timeout: 10_000,
   });
@@ -131,7 +131,7 @@ test("shows the first page of a 100-page PDF within 2 s and turns pages quickly 
   const { page } = current;
   await prepare(current, [BIG]);
   const started = Date.now();
-  await page.getByRole("button", { name: /^Ler / }).click();
+  await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible({ timeout: 10_000 });
   const first = Date.now() - started;
   const turns: number[] = [];
@@ -152,7 +152,7 @@ test("reads a 100-page PDF in continuous scroll mode and draws only the nearby p
   current = await launch(dir);
   const { page } = current;
   await prepare(current, [BIG]);
-  await page.getByRole("button", { name: /^Ler / }).click();
+  await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible({ timeout: 10_000 });
   await page.getByRole("button", { name: "Rolagem contínua" }).click();
   await expect(page.locator(".reader-scroll")).toBeVisible();
@@ -177,7 +177,7 @@ test("reads a 100-page PDF in continuous scroll mode and draws only the nearby p
 
   // The mode is remembered: the reader opens scrolling next time.
   await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
-  await page.getByRole("button", { name: /^Ler / }).click();
+  await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(page.getByRole("button", { name: "Rolagem contínua" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -191,7 +191,7 @@ test("See in PDF lands on the cited page when the reader is in scroll mode", asy
   const { page } = current;
   await prepare(current, [PDF]);
   // Choose the continuous scroll once; it is remembered for the next openings.
-  await page.getByRole("button", { name: /^Ler / }).click();
+  await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible();
   await page.getByRole("button", { name: "Rolagem contínua" }).click();
   await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
@@ -273,7 +273,7 @@ test("lands on the cited page in continuous scroll even when the pages have diff
   current = await launch(dir);
   const { page } = current;
   await prepare(current, [file]);
-  await page.getByRole("button", { name: /^Ler / }).click();
+  await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible();
   await page.getByRole("button", { name: "Rolagem contínua" }).click();
   await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
@@ -322,7 +322,7 @@ for (const mode of ["scroll", "page"] as const) {
     const { page } = current;
     await prepare(current, [file]);
     if (mode === "scroll") {
-      await page.getByRole("button", { name: /^Ler / }).click();
+      await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
       await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible();
       await page.getByRole("button", { name: "Rolagem contínua" }).click();
       await page.getByRole("button", { name: "Voltar à Biblioteca" }).click();
