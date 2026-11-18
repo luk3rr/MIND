@@ -126,6 +126,7 @@ export function FeedbackList({
   entries,
   title = T.feedbackBlockTitle,
   backLabel = T.feedbackBack,
+  allowMakeCard = true,
   onBack,
   onNewBlock,
 }: {
@@ -133,6 +134,8 @@ export function FeedbackList({
   entries: Feedback[];
   title?: string;
   backLabel?: string;
+  /** False where a mistake must not become a card (the pre-test summary). */
+  allowMakeCard?: boolean;
   onBack: () => void;
   /** Starts another block; left out where there is no block to start (the pending screen). */
   onNewBlock?: () => void;
@@ -175,7 +178,9 @@ export function FeedbackList({
                 </>
               )}
             </blockquote>
-            {!entry.correct && <MakeCard workspaceId={workspaceId} itemId={entry.itemId} />}
+            {allowMakeCard && !entry.correct && (
+              <MakeCard workspaceId={workspaceId} itemId={entry.itemId} />
+            )}
           </li>
         ))}
       </ol>

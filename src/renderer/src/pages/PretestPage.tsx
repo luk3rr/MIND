@@ -179,6 +179,7 @@ export function PretestPage({
             entries={summary.entries}
             title={T.pretestSummaryTitle}
             backLabel={T.pretestBackLibrary}
+            allowMakeCard={false}
             onBack={() => navigate(sectionPath(workspaceId, "library"))}
           />
           <div className="actions">

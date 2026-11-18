@@ -120,6 +120,7 @@ describe("a pre-test round (FR-3, FR-5, FR-6)", () => {
     const list = await screen.findByRole("region", { name: "Resumo do pré-teste" });
     expect(within(list).getByText("1 de 2 certas")).toBeInTheDocument();
     expect(within(list).getAllByText("Comentário da questão.")).toHaveLength(2);
+    expect(within(list).queryByRole("button", { name: "Virar card" })).not.toBeInTheDocument();
     expect(state.pretestGiven).toHaveLength(2);
   });
 
