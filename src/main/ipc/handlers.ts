@@ -282,6 +282,12 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "study:undo": ({ workspaceId }) => ({ itemId: core.study(workspaceId).undo() }),
     "study:saveSettings": ({ workspaceId, ...changes }) =>
       core.study(workspaceId).updateSettings(changes),
+    "practice:settings": ({ workspaceId }) => {
+      const settings = core.practiceSettings(workspaceId);
+      return { settings: settings.get(), defaults: settings.defaults() };
+    },
+    "practice:saveSettings": ({ workspaceId, ...changes }) =>
+      core.practiceSettings(workspaceId).set(changes),
     "practice:next": ({ workspaceId, filter, redo, exclude }) => {
       const practice = core.practice(workspaceId);
       return {

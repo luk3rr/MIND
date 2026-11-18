@@ -54,6 +54,8 @@ export const CHANNEL_NAMES = [
   "practice:answer",
   "practice:counts",
   "practice:facets",
+  "practice:settings",
+  "practice:saveSettings",
   "errors:list",
   "errors:makeCard",
   "topics:list",

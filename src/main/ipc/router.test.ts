@@ -130,6 +130,15 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "practice:answer": () => {
       throw new Error("unused");
     },
+    "practice:settings": () => {
+      const defaults = { feedback: "immediate" as const, confidence: false, interleave: false };
+      return { settings: defaults, defaults };
+    },
+    "practice:saveSettings": () => ({
+      feedback: "immediate" as const,
+      confidence: false,
+      interleave: false,
+    }),
     "practice:facets": () => ({
       topics: [],
       materials: [],

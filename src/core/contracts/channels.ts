@@ -19,6 +19,13 @@ const route = z
 
 const workspaceId = z.number().int().positive();
 const workspaceName = z.string().max(500);
+/** When the answer to a practice question is shown. */
+const feedbackMode = z.enum(["immediate", "block", "next_day"]);
+const practiceSettings = z.object({
+  feedback: feedbackMode,
+  confidence: z.boolean(),
+  interleave: z.boolean(),
+});
 /** Where a card or question can be checked in the original PDF (absent when it cannot). */
 const pdfSource = z
   .object({ materialId: z.number().int(), page: z.number().int(), quote: z.string() })
@@ -937,6 +944,25 @@ export const channels = {
     output: practiceCounts,
   },
   "practice:facets": { input: z.object({ workspaceId }).strict(), output: studyFacets },
+  "practice:settings": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({
+      settings: practiceSettings,
+      /** What "restore defaults" goes back to. */
+      defaults: practiceSettings,
+    }),
+  },
+  "practice:saveSettings": {
+    input: z
+      .object({
+        workspaceId,
+        feedback: feedbackMode.optional(),
+        confidence: z.boolean().optional(),
+        interleave: z.boolean().optional(),
+      })
+      .strict(),
+    output: practiceSettings,
+  },
   "errors:list": {
     input: z.object({ workspaceId, topicId: z.number().int().positive().optional() }).strict(),
     output: z.object({
