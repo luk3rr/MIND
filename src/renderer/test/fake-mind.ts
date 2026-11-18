@@ -51,7 +51,13 @@ export type FakeOverview = OutputOf<"stats:overview">;
 export type FakeReply = OutputOf<"chat:ask">;
 export type FakeEmbeddings = OutputOf<"embeddings:status">;
 export type FakeTime = OutputOf<"time:state">;
-export type FakeQuestion = NonNullable<OutputOf<"practice:next">["question"]>;
+/** A question of the fake workspace, with everything: the window only gets the view of it. */
+export interface FakeQuestion {
+  item: FakeItem;
+  attempts: number;
+  lastCorrect: boolean | null;
+}
+export type FakeFeedback = NonNullable<OutputOf<"practice:answer">["feedback"]>;
 
 export interface FakeState {
   workspaces: Workspace[];
@@ -120,6 +126,8 @@ export interface FakeState {
   /** Questions the practice queue serves; answering one removes it. */
   questions: FakeQuestion[];
   answerKeys: Record<number, string>;
+  /** The answers given in practice, so a block can be released later. */
+  attemptsGiven?: { attemptId: number; itemId: number; answer: string }[];
   answeredToday: number;
   errorEntries: FakeErrorEntry[];
   topicList: FakeTopic[];
@@ -257,6 +265,31 @@ export function idleTime(overrides: Partial<FakeTime> = {}): FakeTime {
 }
 
 /** An in-memory `window.mind` that behaves like the real core for the channels the UI uses. */
+/** The feedback the fake gives for an answer, from the question fixture. */
+function fakeFeedback(
+  state: FakeState,
+  given: { attemptId: number; itemId: number; answer: string },
+): FakeFeedback {
+  const found = state.questions.find((q) => q.item.id === given.itemId);
+  const key = state.answerKeys[given.itemId] ?? "A";
+  return {
+    attemptId: given.attemptId,
+    itemId: given.itemId,
+    statement: found?.item.front ?? "",
+    correct: given.answer === key,
+    answer: given.answer,
+    correctKey: key,
+    explanation: "Comentário da questão.",
+    options: found?.item.options ?? [],
+    confidence: null,
+    answeredAt: "2026-03-10T10:00:00.000Z",
+    sourceTitle: found?.item.sourceTitle ?? "",
+    sourcePage: found?.item.sourcePage ?? null,
+    quote: found?.item.quote ?? "",
+    pdfSource: found?.item.pdfSource ?? null,
+  };
+}
+
 export function installFakeMind(initial: Partial<FakeState> = {}) {
   // Study screens remember their filter in localStorage; every test starts without one.
   try {
@@ -354,7 +387,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
   const invoke = vi.fn(async (channel: ChannelName, payload: unknown): Promise<Result<unknown>> => {
     switch (channel) {
       case "window:getState":
-        return ok({ route: state.route, contractVersion: 1 });
+        return ok({ route: state.route, contractVersion: 2 });
       case "window:setLastRoute":
         state.route = (payload as InputOf<"window:setLastRoute">).route;
         return ok({});
@@ -965,13 +998,24 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             !(input.exclude ?? []).includes(q.item.id) &&
             (input.filter?.subtype === undefined || q.item.subtype === input.filter.subtype),
         );
-        const question = input.mix
+        const found = input.mix
           ? pick(open, (q) => fakeMixKey(q.item.topic), input.mix.afterKey)
           : (open[0] ?? null);
+        const question = found && {
+          item: {
+            id: found.item.id,
+            statement: found.item.front,
+            subtype: found.item.subtype,
+            topic: found.item.topic,
+            options: found.item.options.map(({ key, text }) => ({ key, text })),
+          },
+          attempts: found.attempts,
+          lastCorrect: found.lastCorrect,
+        };
         return ok({
           question,
           counts: practiceCounts(state),
-          mixKey: input.mix && question ? fakeMixKey(question.item.topic) : null,
+          mixKey: input.mix && found ? fakeMixKey(found.item.topic) : null,
         });
       }
       case "practice:answer": {
@@ -979,14 +1023,29 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         const found = state.questions.find((q) => q.item.id === input.itemId);
         if (!found) return failure("ITEM_NOT_FOUND", "Não existe questão.");
         state.answeredToday += 1;
-        const key = state.answerKeys[input.itemId] ?? "A";
-        return ok({
-          correct: input.answer === key,
-          answer: input.answer,
-          correctKey: key,
-          explanation: "Comentário da questão.",
-          options: found.item.options,
+        const given = {
           attemptId: state.answeredToday,
+          itemId: input.itemId,
+          answer: input.answer,
+        };
+        state.attemptsGiven = [...(state.attemptsGiven ?? []), given];
+        const delayed = (state.practiceSettings?.feedback ?? "immediate") !== "immediate";
+        return ok({
+          attemptId: given.attemptId,
+          feedback: delayed ? null : fakeFeedback(state, given),
+          releaseAt: delayed ? null : "2026-03-10T10:00:00.000Z",
+        });
+      }
+      case "practice:releaseBlock": {
+        const input = payload as InputOf<"practice:releaseBlock">;
+        const entries = input.attemptIds.map((id) =>
+          (state.attemptsGiven ?? []).find((given) => given.attemptId === id),
+        );
+        if (entries.some((entry) => entry === undefined)) {
+          return failure("VALIDATION_ERROR", "Resposta não encontrada.", "attemptIds");
+        }
+        return ok({
+          entries: entries.map((entry) => fakeFeedback(state, entry as NonNullable<typeof entry>)),
         });
       }
       case "practice:counts":

@@ -114,9 +114,16 @@ test("creates a multiple choice question and practises it (FR-2, FR-3)", async (
     .getByRole("row")
     .filter({ hasText: "Qual organela produz ATP?" });
   await expect(row.getByText("Manual")).toBeVisible();
+  // The question reaches practice without its key; the stored item has the origin and the key.
   const next = await page.evaluate(() => window.mind.invoke("practice:next", { workspaceId: 1 }));
   expect(next).toMatchObject({
     ok: true,
-    data: { question: { item: { origin: "manual", answer: "A" } } },
+    data: { question: { item: { statement: expect.any(String) } } },
   });
+  const itemId = (next as { data: { question: { item: { id: number } } } }).data.question.item.id;
+  const stored = await page.evaluate(
+    (id) => window.mind.invoke("review:get", { workspaceId: 1, itemId: id }),
+    itemId,
+  );
+  expect(stored).toMatchObject({ ok: true, data: { item: { origin: "manual", answer: "A" } } });
 });

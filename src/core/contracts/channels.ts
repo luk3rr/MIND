@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { ChannelName } from "./channel-names.js";
 
 /** Bumped whenever a channel changes in an incompatible way; checked at startup. */
-export const CONTRACT_VERSION = 1;
+export const CONTRACT_VERSION = 2;
 
 const route = z
   .string()
@@ -166,6 +166,33 @@ const itemInfo = z.object({
   approvedAt: z.string().nullable(),
   options: z.array(z.object({ key: z.string(), text: z.string(), why: z.string() })),
   answer: z.string().nullable(),
+});
+
+/** A question as the window sees it before answering: no answer key, comment or quote. */
+const questionView = z.object({
+  id: z.number().int(),
+  statement: z.string(),
+  subtype: z.string(),
+  topic: z.string().nullable(),
+  options: z.array(z.object({ key: z.string(), text: z.string() })),
+});
+
+/** What is revealed about an answer once its feedback is released. */
+const feedback = z.object({
+  attemptId: z.number().int(),
+  itemId: z.number().int(),
+  statement: z.string(),
+  correct: z.boolean(),
+  answer: z.string(),
+  correctKey: z.string(),
+  explanation: z.string(),
+  options: z.array(z.object({ key: z.string(), text: z.string(), why: z.string() })),
+  confidence: z.number().int().min(1).max(3).nullable(),
+  answeredAt: z.string(),
+  sourceTitle: z.string(),
+  sourcePage: z.number().int().nullable(),
+  quote: z.string(),
+  pdfSource,
 });
 
 /** A card written by hand. Emptiness is checked by the service so each field gets its own message. */
@@ -928,7 +955,11 @@ export const channels = {
       .strict(),
     output: z.object({
       question: z
-        .object({ item: itemInfo, attempts: z.number().int(), lastCorrect: z.boolean().nullable() })
+        .object({
+          item: questionView,
+          attempts: z.number().int(),
+          lastCorrect: z.boolean().nullable(),
+        })
         .nullable(),
       counts: practiceCounts,
       /** The group of the question shown, to send back as `afterKey` in the next call. */
@@ -945,13 +976,18 @@ export const channels = {
       })
       .strict(),
     output: z.object({
-      correct: z.boolean(),
-      answer: z.string(),
-      correctKey: z.string(),
-      explanation: z.string(),
-      options: z.array(z.object({ key: z.string(), text: z.string(), why: z.string() })),
       attemptId: z.number().int(),
+      /** The feedback, or null while it waits for the end of the block. */
+      feedback: feedback.nullable(),
+      /** When the feedback becomes visible; null while it waits for the end of the block. */
+      releaseAt: z.string().nullable(),
     }),
+  },
+  "practice:releaseBlock": {
+    input: z
+      .object({ workspaceId, attemptIds: z.array(z.number().int().positive()).min(1).max(100) })
+      .strict(),
+    output: z.object({ entries: z.array(feedback) }),
   },
   "practice:counts": {
     input: z.object({ workspaceId, filter: studyFilter.optional() }).strict(),

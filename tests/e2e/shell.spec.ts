@@ -77,7 +77,7 @@ test("answers typed IPC calls and rejects invalid ones (FR-31)", async () => {
   const { page } = current;
   expect(await page.evaluate(() => window.mind.invoke("window:getState", {}))).toEqual({
     ok: true,
-    data: { route: null, contractVersion: 1 },
+    data: { route: null, contractVersion: 2 },
   });
   const invalid = await page.evaluate(() =>
     window.mind.invoke("window:setLastRoute", { route: "https://evil.example" }),

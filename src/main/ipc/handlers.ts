@@ -9,6 +9,7 @@ import { logger } from "../../core/logging.js";
 
 const log = logger("settings");
 import { CONTRACT_VERSION } from "../../core/contracts/index.js";
+import { questionView } from "../../core/practice/service.js";
 import type { OutputOf } from "../../core/contracts/index.js";
 import type { Core } from "../../core/core.js";
 import { todaySummary } from "../../core/today/summary.js";
@@ -298,12 +299,31 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         ...(exclude ? { exclude } : {}),
         ...(mix ? { mix } : {}),
       });
-      return { question, counts: practice.counts(filter), mixKey: question?.mixKey ?? null };
+      return {
+        question: question && {
+          item: questionView(question.item),
+          attempts: question.attempts,
+          lastCorrect: question.lastCorrect,
+        },
+        counts: practice.counts(filter),
+        mixKey: question?.mixKey ?? null,
+      };
     },
-    "practice:answer": ({ workspaceId, itemId, answer, seconds }) =>
-      core.practice(workspaceId).answer(itemId, answer, {
+    "practice:answer": ({ workspaceId, itemId, answer, seconds }) => {
+      const practice = core.practice(workspaceId);
+      const result = practice.answer(itemId, answer, {
         ...(seconds !== undefined ? { seconds } : {}),
-      }),
+      });
+      return {
+        attemptId: result.attemptId,
+        // The correction leaves the core only when the feedback is already visible.
+        feedback: result.seen ? (practice.feedback([result.attemptId])[0] ?? null) : null,
+        releaseAt: result.releaseAt,
+      };
+    },
+    "practice:releaseBlock": ({ workspaceId, attemptIds }) => ({
+      entries: core.practice(workspaceId).releaseBlock(attemptIds),
+    }),
     "practice:facets": ({ workspaceId }) => core.study(workspaceId).facets("question"),
     "practice:counts": ({ workspaceId, filter }) => core.practice(workspaceId).counts(filter),
     "errors:list": ({ workspaceId, topicId }) => {

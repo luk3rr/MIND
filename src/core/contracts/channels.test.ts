@@ -23,6 +23,6 @@ describe("contracts", () => {
     expect(schema.safeParse({ route: "/w/1/study" }).success).toBe(true);
     expect(schema.safeParse({ route: "w/1" }).success).toBe(false);
     expect(schema.safeParse({ route: "//evil.example" }).success).toBe(false);
-    expect(CONTRACT_VERSION).toBe(1);
+    expect(CONTRACT_VERSION).toBe(2);
   });
 });

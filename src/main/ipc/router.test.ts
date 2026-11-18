@@ -139,6 +139,7 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       confidence: false,
       interleave: false,
     }),
+    "practice:releaseBlock": () => ({ entries: [] }),
     "practice:facets": () => ({
       topics: [],
       materials: [],

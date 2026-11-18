@@ -172,7 +172,7 @@ describe("practice channels", () => {
     expect(next).toMatchObject({
       ok: true,
       data: {
-        question: { attempts: 0, lastCorrect: null, item: { kind: "question" } },
+        question: { attempts: 0, lastCorrect: null, item: { statement: expect.any(String) } },
         counts: { unseen: 2 },
       },
     });
@@ -181,7 +181,7 @@ describe("practice channels", () => {
       await dispatch("practice:answer", { workspaceId, itemId, answer: "A", seconds: 8 }),
     ).toMatchObject({
       ok: true,
-      data: { correct: true, correctKey: "A" },
+      data: { feedback: { correct: true, correctKey: "A" } },
     });
     expect(await dispatch("practice:answer", { workspaceId, itemId, answer: "Z" })).toMatchObject({
       ok: false,
