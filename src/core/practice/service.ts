@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
@@ -18,6 +18,8 @@ import type { TzOffset } from "../study/scheduler.js";
 import { mixKeyOf, pick } from "../study/interleave.js";
 import type { MixOptions } from "../study/interleave.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
+import { releaseFor } from "./feedback-policy.js";
+import { PracticeSettings } from "./settings.js";
 
 export interface PracticeQuestion {
   item: ItemInfo;
@@ -35,6 +37,48 @@ export interface AnswerResult {
   explanation: string;
   options: { key: string; text: string; why: string }[];
   attemptId: number;
+  /** When the feedback becomes visible; null while it waits for the end of the block. */
+  releaseAt: string | null;
+  /** True when the feedback is shown together with the answer (the immediate mode). */
+  seen: boolean;
+}
+
+/** A question as the window sees it before answering: no answer key, comment or quote. */
+export interface QuestionView {
+  id: number;
+  statement: string;
+  subtype: string;
+  topic: string | null;
+  options: { key: string; text: string }[];
+}
+
+/** What is revealed about an answer once its feedback is released. */
+export interface Feedback {
+  attemptId: number;
+  itemId: number;
+  statement: string;
+  correct: boolean;
+  answer: string;
+  correctKey: string;
+  explanation: string;
+  options: { key: string; text: string; why: string }[];
+  confidence: number | null;
+  answeredAt: string;
+  sourceTitle: string;
+  sourcePage: number | null;
+  quote: string;
+  pdfSource: ItemInfo["pdfSource"];
+}
+
+/** The part of a question the window may see before it is answered. */
+export function questionView(info: ItemInfo): QuestionView {
+  return {
+    id: info.id,
+    statement: info.front,
+    subtype: info.subtype,
+    topic: info.topic,
+    options: info.options.map((option) => ({ key: option.key, text: option.text })),
+  };
 }
 
 export interface PracticeCounts {
@@ -238,6 +282,7 @@ export class PracticeService {
       ]);
     }
     const correct = answer === payload.answer;
+    const release = releaseFor(new PracticeSettings(this.workspace).get().feedback, moment);
     const created = this.db
       .insert(attempt)
       .values({
@@ -247,6 +292,8 @@ export class PracticeService {
         seconds: options.seconds ?? null,
         answeredAt: moment.toISOString(),
         day: studyDay(moment, this.offset),
+        releaseAt: release.releaseAt,
+        seenAt: release.seen ? release.releaseAt : null,
       })
       .returning()
       .get();
@@ -257,6 +304,65 @@ export class PracticeService {
       explanation: payload.explanation,
       options: payload.options,
       attemptId: created.id,
+      releaseAt: release.releaseAt,
+      seen: release.seen,
     };
+  }
+
+  /** The feedback of the given answers, in the order asked; an unknown answer is refused. */
+  feedback(attemptIds: readonly number[]): Feedback[] {
+    const rows = this.db
+      .select()
+      .from(attempt)
+      .where(inArray(attempt.id, [...attemptIds]))
+      .all();
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return attemptIds.map((id) => {
+      const row = byId.get(id);
+      if (!row) {
+        throw new AppError("VALIDATION_ERROR", "Resposta não encontrada.", [
+          { field: "attemptIds", message: `Não existe resposta com id ${id}.` },
+        ]);
+      }
+      const info = this.review.get(row.itemId);
+      return {
+        attemptId: row.id,
+        itemId: row.itemId,
+        statement: info.front,
+        correct: row.correct,
+        answer: row.answer,
+        correctKey: info.answer ?? "",
+        explanation: info.back,
+        options: info.options,
+        confidence: row.confidence,
+        answeredAt: row.answeredAt,
+        sourceTitle: info.sourceTitle,
+        sourcePage: info.sourcePage,
+        quote: info.quote,
+        pdfSource: info.pdfSource,
+      };
+    });
+  }
+
+  /**
+   * Releases the feedback of a block: the given answers that were waiting become visible and are
+   * marked as seen, and their feedback is returned in the order asked.
+   */
+  releaseBlock(attemptIds: readonly number[], now: Date = this.clock.now()): Feedback[] {
+    const entries = this.feedback(attemptIds);
+    const moment = now.toISOString();
+    this.workspace.connection.sqlite.transaction(() => {
+      this.db
+        .update(attempt)
+        .set({ releaseAt: moment })
+        .where(and(inArray(attempt.id, [...attemptIds]), isNull(attempt.releaseAt)))
+        .run();
+      this.db
+        .update(attempt)
+        .set({ seenAt: moment })
+        .where(and(inArray(attempt.id, [...attemptIds]), isNull(attempt.seenAt)))
+        .run();
+    })();
+    return entries;
   }
 }
