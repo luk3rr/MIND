@@ -38,6 +38,7 @@ import { ItemAuthoringService } from "./authoring/service.js";
 import { ErrorNotebook } from "./notebook/service.js";
 import { PracticeService } from "./practice/service.js";
 import { PracticeSettings } from "./practice/settings.js";
+import { PretestService } from "./practice/pretest.js";
 import { StatsService } from "./stats/service.js";
 import { TopicService } from "./stats/topics.js";
 import { StudyService } from "./study/service.js";
@@ -129,6 +130,8 @@ export interface Core {
   practice(workspaceId: number): PracticeService;
   /** The study practices (feedback timing, confidence, mixing) a workspace has turned on. */
   practiceSettings(workspaceId: number): PracticeSettings;
+  /** Pre-test rounds of a material, kept apart from practice. */
+  pretest(workspaceId: number): PretestService;
   notebook(workspaceId: number): ErrorNotebook;
   stats(workspaceId: number): StatsService;
   topics(workspaceId: number): TopicService;
@@ -249,6 +252,11 @@ export function createCore(options: CoreOptions): Core {
       }),
     topics: (workspaceId) => new TopicService(registry.open(workspaceId)),
     practiceSettings: (workspaceId) => new PracticeSettings(registry.open(workspaceId)),
+    pretest: (workspaceId) =>
+      new PretestService(registry.open(workspaceId), {
+        clock,
+        ...(options.tzOffset ? { offset: options.tzOffset } : {}),
+      }),
     practice: (workspaceId) =>
       new PracticeService(registry.open(workspaceId), {
         clock,
