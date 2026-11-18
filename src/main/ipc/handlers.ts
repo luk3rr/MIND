@@ -244,11 +244,13 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         facets: study.facets(),
       };
     },
-    "study:next": ({ workspaceId, filter, extraNew, early }) => {
+    "study:next": ({ workspaceId, filter, extraNew, early, mix }) => {
       const study = core.study(workspaceId);
-      const next = study.nextCard(undefined, filter, extraNew ?? 0, early ?? false);
+      const next = study.nextCard(undefined, filter, extraNew ?? 0, early ?? false, mix);
       const counts = study.counts(undefined, filter, extraNew ?? 0);
-      if (!next) return { card: null, counts, waiting: study.waiting(undefined, filter) };
+      if (!next) {
+        return { card: null, counts, waiting: study.waiting(undefined, filter), mixKey: null };
+      }
       const sides = cardSides(next.item.subtype, next.item.front, next.item.back);
       const previews = study.previews(next);
       return {
@@ -271,6 +273,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         },
         counts,
         waiting: null,
+        mixKey: next.mixKey,
       };
     },
     "study:rate": ({ workspaceId, itemId, rating, durationMs }) => {
@@ -288,15 +291,14 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     },
     "practice:saveSettings": ({ workspaceId, ...changes }) =>
       core.practiceSettings(workspaceId).set(changes),
-    "practice:next": ({ workspaceId, filter, redo, exclude }) => {
+    "practice:next": ({ workspaceId, filter, redo, exclude, mix }) => {
       const practice = core.practice(workspaceId);
-      return {
-        question: practice.nextQuestion(filter, {
-          ...(redo !== undefined ? { redo } : {}),
-          ...(exclude ? { exclude } : {}),
-        }),
-        counts: practice.counts(filter),
-      };
+      const question = practice.nextQuestion(filter, {
+        ...(redo !== undefined ? { redo } : {}),
+        ...(exclude ? { exclude } : {}),
+        ...(mix ? { mix } : {}),
+      });
+      return { question, counts: practice.counts(filter), mixKey: question?.mixKey ?? null };
     },
     "practice:answer": ({ workspaceId, itemId, answer, seconds }) =>
       core.practice(workspaceId).answer(itemId, answer, {

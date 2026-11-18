@@ -19,6 +19,13 @@ const route = z
 
 const workspaceId = z.number().int().positive();
 const workspaceName = z.string().max(500);
+/** Mix a queue: alternate its topics or materials, continuing after the key of the last item. */
+const mixRequest = z
+  .object({
+    by: z.enum(["topic", "material"]),
+    afterKey: z.string().max(40).nullable(),
+  })
+  .strict();
 /** When the answer to a practice question is shown. */
 const feedbackMode = z.enum(["immediate", "block", "next_day"]);
 const practiceSettings = z.object({
@@ -848,6 +855,8 @@ export const channels = {
         extraNew: z.number().int().min(0).max(500).optional(),
         /** Study the cards that are due later today now, without waiting for their time. */
         early: z.boolean().optional(),
+        /** Alternate the topics or materials of the queue instead of studying them in blocks. */
+        mix: mixRequest.optional(),
       })
       .strict(),
     output: z.object({
@@ -873,6 +882,8 @@ export const channels = {
       counts: studyCounts,
       /** Cards that come back later today (not due yet): how many and when the first is due. */
       waiting: z.object({ count: z.number().int(), due: z.string() }).nullable(),
+      /** The group of the card shown, to send back as `afterKey` in the next call. */
+      mixKey: z.string().nullable(),
     }),
   },
   "study:rate": {
@@ -912,6 +923,7 @@ export const channels = {
         filter: studyFilter.optional(),
         redo: z.boolean().optional(),
         exclude: z.array(z.number().int().positive()).max(1000).optional(),
+        mix: mixRequest.optional(),
       })
       .strict(),
     output: z.object({
@@ -919,6 +931,8 @@ export const channels = {
         .object({ item: itemInfo, attempts: z.number().int(), lastCorrect: z.boolean().nullable() })
         .nullable(),
       counts: practiceCounts,
+      /** The group of the question shown, to send back as `afterKey` in the next call. */
+      mixKey: z.string().nullable(),
     }),
   },
   "practice:answer": {

@@ -8,13 +8,15 @@ import { and, asc, count, eq } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
-import { attempt, item } from "../db/workspace-schema.js";
+import { attempt, generationRun, item } from "../db/workspace-schema.js";
 import { ReviewService } from "../review/service.js";
 import type { ItemInfo } from "../review/service.js";
 import { filterConditions } from "../study/service.js";
 import type { StudyFilter } from "../study/service.js";
 import { studyDay, systemOffset } from "../study/scheduler.js";
 import type { TzOffset } from "../study/scheduler.js";
+import { mixKeyOf, pick } from "../study/interleave.js";
+import type { MixOptions } from "../study/interleave.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 
 export interface PracticeQuestion {
@@ -22,6 +24,8 @@ export interface PracticeQuestion {
   attempts: number;
   /** Null while the question has never been answered. */
   lastCorrect: boolean | null;
+  /** The group of the question in a mixed queue, to continue the rotation from; null otherwise. */
+  mixKey: string | null;
 }
 
 export interface AnswerResult {
@@ -96,7 +100,7 @@ export class PracticeService {
   queue(
     limit = 20,
     filter?: StudyFilter,
-    options: { redo?: boolean; exclude?: readonly number[] } = {},
+    options: { redo?: boolean; exclude?: readonly number[]; mix?: MixOptions } = {},
   ): PracticeQuestion[] {
     const approved = this.db
       .select()
@@ -117,21 +121,51 @@ export class PracticeService {
       else if (options.redo) right.push([seen.lastId, row]);
     }
     const byAttempt = (a: [number, unknown], b: [number, unknown]): number => a[0] - b[0];
-    const ordered = [
-      ...unseen,
-      ...wrong.sort(byAttempt).map(([, row]) => row),
-      ...right.sort(byAttempt).map(([, row]) => row),
-    ];
-    return ordered.slice(0, limit).map((row) => ({
+    const sorted = {
+      wrong: wrong.sort(byAttempt).map(([, row]) => row),
+      right: right.sort(byAttempt).map(([, row]) => row),
+    };
+    const view = (row: (typeof unseen)[number], mixKey: string | null): PracticeQuestion => ({
       item: this.review.get(row.id),
       attempts: history.get(row.id)?.attempts ?? 0,
       lastCorrect: history.get(row.id)?.correct ?? null,
-    }));
+      mixKey,
+    });
+    const { mix } = options;
+    if (!mix) {
+      const ordered = [...unseen, ...sorted.wrong, ...sorted.right];
+      return ordered.slice(0, limit).map((row) => view(row, null));
+    }
+    // A mixed queue keeps the parts in order and rotates the groups inside each of them.
+    const materials =
+      mix.by === "material"
+        ? new Map(
+            this.db
+              .select({ id: generationRun.id, materialId: generationRun.materialId })
+              .from(generationRun)
+              .all()
+              .map((run) => [run.id, run.materialId]),
+          )
+        : new Map<number, number | null>();
+    const keyed = (row: (typeof unseen)[number]): string =>
+      mixKeyOf(mix.by, { topicId: row.topicId, materialId: materials.get(row.runId) ?? null });
+    const chosen: PracticeQuestion[] = [];
+    let lastKey = mix.afterKey;
+    for (const part of [unseen, sorted.wrong, sorted.right]) {
+      const pool = [...part];
+      while (chosen.length < limit && pool.length > 0) {
+        const next = pick(pool, keyed, lastKey) as (typeof pool)[number];
+        pool.splice(pool.indexOf(next), 1);
+        lastKey = keyed(next);
+        chosen.push(view(next, lastKey));
+      }
+    }
+    return chosen;
   }
 
   nextQuestion(
     filter?: StudyFilter,
-    options: { redo?: boolean; exclude?: readonly number[] } = {},
+    options: { redo?: boolean; exclude?: readonly number[]; mix?: MixOptions } = {},
   ): PracticeQuestion | null {
     return this.queue(1, filter, options)[0] ?? null;
   }
@@ -142,7 +176,12 @@ export class PracticeService {
       throw new AppError("ITEM_NOT_FOUND", `Não existe questão com id ${itemId}.`);
     }
     const seen = this.history().get(itemId);
-    return { item: found, attempts: seen?.attempts ?? 0, lastCorrect: seen?.correct ?? null };
+    return {
+      item: found,
+      attempts: seen?.attempts ?? 0,
+      lastCorrect: seen?.correct ?? null,
+      mixKey: null,
+    };
   }
 
   counts(filter?: StudyFilter, now: Date = this.clock.now()): PracticeCounts {
