@@ -166,10 +166,7 @@ Consequência: o risco R-6 (escopo largo) passa a ser tratado só por sequenciam
 | 2 | Feedback postergado (imediato, fim do bloco, dia seguinte) | Must | No escopo |
 | 3 | Intercalação (Estudar e Praticar) | Must | No escopo |
 | 4 | Calibração nas questões | Must | No escopo |
-| 5 | Calibração nos cards | Could | Backlog, intent futura |
-| 6 | Rastreio de leitura e sugestão automática de pré-teste | Could | Backlog, intent futura |
-| 7 | Geração: digitar a resposta do card antes de revelar | Could | Backlog, intent futura |
-| 8 | Reflexão ao fim da sessão | Could | Backlog, intent futura |
+| 5 a 10 | Calibração nos cards, rastreio de leitura, digitar a resposta do card, reflexão ao fim da sessão, reabrir o relatório do pré-teste e comparar o pré-teste com o desempenho posterior | Could | Movidos para `.aidlc/backlog.md` (BL-1 a BL-6) |
 
 ### Assumptions & open questions
 

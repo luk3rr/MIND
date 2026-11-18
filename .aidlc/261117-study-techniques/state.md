@@ -1,13 +1,13 @@
 # AI-DLC State — study-techniques
 
 - Intent: 261117-study-techniques
-- Status: IN_PROGRESS
+- Status: COMPLETE
 - Profile: mvp   Depth: Standard   Tests: Standard
 - Project type: brownfield   Repos: ~/Projects/MIND
 - Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous (esqueleto UNIT-1 aprovado em 2026-11-18; checkpoints comuns dispensados; falhas e ações irreversíveis ainda param) iteration=unit-major
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-18; Units com fluxo de tela somam `xvfb-run -a pnpm e2e`; pnpm em ~/.local/share/pnpm/bin)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction COMPLETE (UNIT-1 a UNIT-7 verificadas); falta a revisão do usuário e commits dos arquivos de docs   Updated: 2026-11-19T16:00:00-03:00
+- Current: phase=construction COMPLETE (verificação PASS); intent finalizada em 2026-11-18   Updated: 2026-11-18T18:00:00-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
