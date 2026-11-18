@@ -355,6 +355,8 @@ export const T = {
   feedbackRight: "Certa",
   feedbackWrong: "Errada",
   feedbackYourAnswer: "Você",
+  feedbackChosen: "Sua resposta",
+  feedbackChosenKey: "Sua resposta e gabarito",
   feedbackNewBlock: "Começar novo bloco",
   feedbackBack: "Voltar às questões",
   practiceRestoreDefaults: "Restaurar padrões das práticas",

@@ -276,6 +276,28 @@ describe("the saved pre-test rounds", () => {
     await screen.findByRole("region", { name: "Resumo do pré-teste" });
   };
 
+  it("shows every alternative in the summary, marking the chosen one and the key", async () => {
+    open("/w/1/library/1/pretest?count=1", {
+      materials: [material(1)],
+      questions: [question(1)],
+    });
+    const user = userEvent.setup();
+    await screen.findByText("Enunciado 1?");
+    await user.click(screen.getByRole("radio", { name: /^B ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    const list = await screen.findByRole("region", { name: "Resumo do pré-teste" });
+    const [a, b] = within(within(list).getAllByRole("list")[1] as HTMLElement).getAllByRole(
+      "listitem",
+    );
+    expect(a).toHaveTextContent("Alternativa A");
+    expect(a).toHaveTextContent("Gabarito");
+    expect(a).toHaveClass("right");
+    expect(a).toHaveTextContent("Porque A");
+    expect(b).toHaveTextContent("Alternativa B");
+    expect(b).toHaveTextContent("Sua resposta");
+    expect(b).toHaveClass("wrong");
+  });
+
   it("keeps the summary when the student goes to the PDF and comes back", async () => {
     const withPdf = question(1);
     withPdf.item.pdfSource = { materialId: 1, page: 2, quote: "citação 1" };

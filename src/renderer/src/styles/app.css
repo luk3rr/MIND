@@ -539,6 +539,9 @@ mark {
   border-radius: 10px;
   cursor: pointer;
 }
+.option.static {
+  cursor: default;
+}
 .option:hover:not([disabled]) {
   background: var(--panel-2);
 }

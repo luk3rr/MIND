@@ -29,6 +29,57 @@ function ConfidenceNote({ entry }: { entry: Feedback }) {
   );
 }
 
+/**
+ * The alternatives of a question after the answer: the one chosen and the key are marked with a
+ * label (not only a color) and each alternative says why it is right or wrong. Without
+ * alternatives it falls back to a single line with the two letters.
+ */
+function AnswerOptions({ entry }: { entry: Feedback }) {
+  if (entry.options.length === 0) {
+    return (
+      <p className="muted">
+        {T.feedbackYourAnswer}: {entry.answer} · {T.practiceRight}: {entry.correctKey}
+      </p>
+    );
+  }
+  return (
+    <ul className="stack" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      {entry.options.map((option) => {
+        const isKey = option.key === entry.correctKey;
+        const isChosen = option.key === entry.answer;
+        const mark =
+          isKey && isChosen
+            ? T.feedbackChosenKey
+            : isKey
+              ? T.practiceRight
+              : isChosen
+                ? T.feedbackChosen
+                : null;
+        return (
+          <li
+            key={option.key}
+            className={`option static${isKey ? " right" : ""}${isChosen && !isKey ? " wrong" : ""}`}
+          >
+            <strong>{option.key}</strong> · <MathText text={option.text} />
+            {mark && (
+              <>
+                {" "}
+                <span className={`pill ${isKey ? "ok" : "bad"}`}>{mark}</span>
+              </>
+            )}
+            {option.why && (
+              <span className="muted">
+                {" "}
+                — <MathText text={option.why} />
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** The result of one answer: what was chosen, the key, the comment and where it comes from. */
 export function FeedbackEntry({
   workspaceId,
@@ -158,9 +209,7 @@ export function FeedbackList({
                 <MathText text={entry.statement} />
               </strong>
             </p>
-            <p className="muted">
-              {T.feedbackYourAnswer}: {entry.answer} · {T.practiceRight}: {entry.correctKey}
-            </p>
+            <AnswerOptions entry={entry} />
             <ConfidenceNote entry={entry} />
             <p>
               <MathText text={entry.explanation} />
