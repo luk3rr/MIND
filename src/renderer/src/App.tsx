@@ -52,7 +52,7 @@ function Screen() {
   if (standalone && route.name === "section" && route.detailId !== undefined) {
     return (
       <TimeProvider workspaceId={route.workspaceId} pauseOnLeave={false}>
-        <main id="main" className="content" tabIndex={-1}>
+        <main id="main" className="content reader-window" tabIndex={-1}>
           <ReaderPage
             standalone
             workspaceId={route.workspaceId}

@@ -673,142 +673,158 @@ export function ReaderPage({
 
   return (
     <section
-      className={creating || generating ? "reader with-panel" : "reader"}
+      className={`reader${standalone ? " standalone" : ""}${creating || generating ? " with-panel" : ""}`}
       aria-labelledby="reader-title"
     >
-      <div className="row" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        {back ?? <span />}
-        <span className="row">
-          {!standalone && (
-            <button type="button" className="btn ghost" onClick={openWindow}>
-              <SquareArrowOutUpRight size={14} aria-hidden="true" /> {T.openNewWindow}
-            </button>
-          )}
-          <button type="button" className="btn ghost" onClick={openOriginal}>
-            <ExternalLink size={14} aria-hidden="true" /> {T.openInSystem}
-          </button>
-        </span>
-      </div>
-      <h1 id="reader-title">{doc.title}</h1>
-      <div className="reader-tools" role="toolbar" aria-label="Controles do leitor">
-        <div className="group">
-          <button
-            type="button"
-            className="btn ghost"
-            aria-label={T.readerPrev}
-            onClick={() => goTo(current - 1)}
-            disabled={current <= 1}
-          >
-            <ChevronLeft size={16} aria-hidden="true" />
-          </button>
-          <form
-            className="group"
-            onSubmit={(event) => {
-              event.preventDefault();
-              goTo(Number(pageDraft ?? current));
-              setPageDraft(null);
-            }}
-          >
-            <input
-              aria-label={T.readerGoTo}
-              className="reader-page-input"
-              inputMode="numeric"
-              value={pageDraft ?? String(current)}
-              onChange={(event) => setPageDraft(event.target.value)}
-              onBlur={() => setPageDraft(null)}
-            />
-            <span className="muted">{T.readerOfTotal(total)}</span>
-          </form>
-          <button
-            type="button"
-            className="btn ghost"
-            aria-label={T.readerNext}
-            onClick={() => goTo(current + 1)}
-            disabled={current >= total}
-          >
-            <ChevronRight size={16} aria-hidden="true" />
-          </button>
-        </div>
-        <div className="group">
-          <button
-            type="button"
-            className="btn ghost"
-            aria-label={T.readerZoomOut}
-            onClick={() => zoomBy(-ZOOM_STEP)}
-          >
-            <ZoomOut size={16} aria-hidden="true" />
-          </button>
-          <span className="muted zoom-label" aria-live="polite">
-            {Math.round(effective * 100)}%
-          </span>
-          <button
-            type="button"
-            className="btn ghost"
-            aria-label={T.readerZoomIn}
-            onClick={() => zoomBy(ZOOM_STEP)}
-          >
-            <ZoomIn size={16} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="btn ghost"
-            aria-label={T.readerFitWidth}
-            onClick={() => setZoom("fit")}
-          >
-            <Maximize2 size={16} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="btn ghost"
-            aria-label={T.readerScrollMode}
-            aria-pressed={mode === "scroll"}
-            title={T.readerScrollMode}
-            onClick={() => changeMode(mode === "scroll" ? "page" : "scroll")}
-          >
-            <Rows3 size={16} aria-hidden="true" />
-          </button>
-        </div>
-        <form className="group" role="search" onSubmit={search}>
-          <input
-            ref={searchInput}
-            className="search-input"
-            aria-label={T.readerSearch}
-            placeholder={T.readerSearch}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          <button type="submit" className="btn ghost" aria-label={T.readerSearchGo}>
-            <Search size={16} aria-hidden="true" />
-          </button>
-        </form>
-        {hits !== null && (
-          <span className="group" role="status">
-            {hits.length === 0 ? (
-              T.readerNoHits
-            ) : (
-              <>
-                {T.readerHitOf(hitIndex + 1, hits.length)}
-                {truncated ? ` · ${T.readerHitsLimit}` : ""}
-                <button
-                  type="button"
-                  className="btn ghost"
-                  aria-label={T.readerPrev}
-                  onClick={() => moveHit(-1)}
-                >
-                  <ChevronLeft size={14} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="btn ghost"
-                  aria-label={T.readerNext}
-                  onClick={() => moveHit(1)}
-                >
-                  <ChevronRight size={14} aria-hidden="true" />
-                </button>
-              </>
+      {/* In a separate window the title, the controls and the actions share one row, so the
+          page gets the height. */}
+      <div className="reader-head">
+        <div
+          className="row reader-actions"
+          style={{ alignItems: "center", justifyContent: "space-between" }}
+        >
+          {back ?? <span />}
+          <span className="row">
+            {!standalone && (
+              <button type="button" className="btn ghost" onClick={openWindow}>
+                <SquareArrowOutUpRight size={14} aria-hidden="true" /> {T.openNewWindow}
+              </button>
             )}
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label={T.openInSystem}
+              title={T.openInSystem}
+              onClick={openOriginal}
+            >
+              <ExternalLink size={14} aria-hidden="true" />
+              <span className="reader-action-text"> {T.openInSystem}</span>
+            </button>
           </span>
-        )}
+        </div>
+        <h1 id="reader-title" title={doc.title}>
+          {doc.title}
+        </h1>
+        <div className="reader-tools" role="toolbar" aria-label="Controles do leitor">
+          <div className="group">
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label={T.readerPrev}
+              onClick={() => goTo(current - 1)}
+              disabled={current <= 1}
+            >
+              <ChevronLeft size={16} aria-hidden="true" />
+            </button>
+            <form
+              className="group"
+              onSubmit={(event) => {
+                event.preventDefault();
+                goTo(Number(pageDraft ?? current));
+                setPageDraft(null);
+              }}
+            >
+              <input
+                aria-label={T.readerGoTo}
+                className="reader-page-input"
+                inputMode="numeric"
+                value={pageDraft ?? String(current)}
+                onChange={(event) => setPageDraft(event.target.value)}
+                onBlur={() => setPageDraft(null)}
+              />
+              <span className="muted">{T.readerOfTotal(total)}</span>
+            </form>
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label={T.readerNext}
+              onClick={() => goTo(current + 1)}
+              disabled={current >= total}
+            >
+              <ChevronRight size={16} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="group">
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label={T.readerZoomOut}
+              onClick={() => zoomBy(-ZOOM_STEP)}
+            >
+              <ZoomOut size={16} aria-hidden="true" />
+            </button>
+            <span className="muted zoom-label" aria-live="polite">
+              {Math.round(effective * 100)}%
+            </span>
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label={T.readerZoomIn}
+              onClick={() => zoomBy(ZOOM_STEP)}
+            >
+              <ZoomIn size={16} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label={T.readerFitWidth}
+              onClick={() => setZoom("fit")}
+            >
+              <Maximize2 size={16} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label={T.readerScrollMode}
+              aria-pressed={mode === "scroll"}
+              title={T.readerScrollMode}
+              onClick={() => changeMode(mode === "scroll" ? "page" : "scroll")}
+            >
+              <Rows3 size={16} aria-hidden="true" />
+            </button>
+          </div>
+          <form className="group" role="search" onSubmit={search}>
+            <input
+              ref={searchInput}
+              className="search-input"
+              aria-label={T.readerSearch}
+              placeholder={T.readerSearch}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <button type="submit" className="btn ghost" aria-label={T.readerSearchGo}>
+              <Search size={16} aria-hidden="true" />
+            </button>
+          </form>
+          {hits !== null && (
+            <span className="group" role="status">
+              {hits.length === 0 ? (
+                T.readerNoHits
+              ) : (
+                <>
+                  {T.readerHitOf(hitIndex + 1, hits.length)}
+                  {truncated ? ` · ${T.readerHitsLimit}` : ""}
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    aria-label={T.readerPrev}
+                    onClick={() => moveHit(-1)}
+                  >
+                    <ChevronLeft size={14} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    aria-label={T.readerNext}
+                    onClick={() => moveHit(1)}
+                  >
+                    <ChevronRight size={14} aria-hidden="true" />
+                  </button>
+                </>
+              )}
+            </span>
+          )}
+        </div>
       </div>
       {(error ?? data.error) && (
         <div className="alert" role="alert">

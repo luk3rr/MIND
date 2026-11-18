@@ -615,6 +615,59 @@ mark {
   align-items: center;
   gap: 6px;
 }
+.reader-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.reader-head h1 {
+  margin: 0;
+}
+/* A separate reader window: one compact row on top and the page takes the rest. */
+.content.reader-window {
+  box-sizing: border-box;
+  height: 100vh;
+  padding: 8px 12px;
+}
+.content.reader-window > section.reader {
+  height: 100%;
+  gap: 8px;
+}
+.reader.standalone .reader-head {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+}
+.reader.standalone .reader-head h1 {
+  order: 1;
+  flex: 0 1 auto;
+  max-width: 30ch;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reader.standalone .reader-tools {
+  order: 2;
+  flex: 1 1 auto;
+  margin: 0;
+}
+.reader.standalone .reader-actions {
+  order: 3;
+  margin-left: auto;
+}
+.reader.standalone .reader-action-text {
+  display: none;
+}
+.reader.standalone .reader-body {
+  height: auto;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.reader.standalone .reader-viewport {
+  padding: 8px;
+}
 .reader-body {
   display: grid;
   grid-template-columns: 72px 1fr;
