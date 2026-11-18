@@ -43,6 +43,11 @@ export interface AnswerResult {
   seen: boolean;
 }
 
+/** True for the three levels of confidence: 1, 2 and 3. */
+function isConfidence(value: number): boolean {
+  return Number.isInteger(value) && value >= 1 && value <= 3;
+}
+
 /** A question as the window sees it before answering: no answer key, comment or quote. */
 export interface QuestionView {
   id: number;
@@ -260,7 +265,7 @@ export class PracticeService {
   answer(
     itemId: number,
     answer: string,
-    options: { seconds?: number; now?: Date } = {},
+    options: { seconds?: number; now?: Date; confidence?: number } = {},
   ): AnswerResult {
     const moment = options.now ?? this.clock.now();
     const row = this.db.select().from(item).where(eq(item.id, itemId)).get();
@@ -281,12 +286,15 @@ export class PracticeService {
         { field: "answer", message: `Use uma destas: ${keys.join(", ")}.` },
       ]);
     }
+    const settings = new PracticeSettings(this.workspace).get();
+    const confidence = options.confidence;
+    if (confidence === undefined ? settings.confidence : !isConfidence(confidence)) {
+      throw new AppError("VALIDATION_ERROR", "Informe o quanto você está seguro.", [
+        { field: "confidence", message: "Escolha chute, acho que sei ou tenho certeza." },
+      ]);
+    }
     const correct = answer === payload.answer;
-    const release = releaseFor(
-      new PracticeSettings(this.workspace).get().feedback,
-      moment,
-      this.offset,
-    );
+    const release = releaseFor(settings.feedback, moment, this.offset);
     const created = this.db
       .insert(attempt)
       .values({
@@ -298,6 +306,7 @@ export class PracticeService {
         day: studyDay(moment, this.offset),
         releaseAt: release.releaseAt,
         seenAt: release.seen ? release.releaseAt : null,
+        confidence: confidence ?? null,
       })
       .returning()
       .get();

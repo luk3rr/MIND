@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { count, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import { systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
 import {
@@ -143,6 +143,37 @@ function ratio(part: number, whole: number): number | null {
 }
 
 /** Statistics: accuracy by topic, retention, activity, daily goal and streak. */
+/** How sure the student said they were: 1 a guess, 2 think so, 3 certain. */
+export type ConfidenceLevel = 1 | 2 | 3;
+
+/** Below this accuracy a level of confidence is flagged as overconfident (level 1 has no flag). */
+export const OVERCONFIDENCE_BELOW: Record<ConfidenceLevel, number | null> = {
+  1: null,
+  2: 0.6,
+  3: 0.8,
+};
+
+/** The fewest answers a level needs before it can be flagged. */
+export const MIN_CALIBRATION_ANSWERS = 5;
+
+export interface CalibrationLevel {
+  level: ConfidenceLevel;
+  answers: number;
+  correct: number;
+  /** Null while there are no answers at this level. */
+  rate: number | null;
+  /** Set when the accuracy is below what the confidence suggests. */
+  flag: "overconfident" | null;
+}
+
+export interface Calibration {
+  /** False until some answer in the window has a confidence. */
+  hasData: boolean;
+  levels: CalibrationLevel[];
+  /** Topics with the most wrong answers given with the highest confidence. */
+  topics: { topicId: number; name: string; confidentWrong: number }[];
+}
+
 export class StatsService {
   private readonly clock: Clock;
   private readonly offset: TzOffset;
@@ -405,6 +436,53 @@ export class StatsService {
     const reviews = series.reduce((sum, d) => sum + d.reviews, 0);
     const passes = series.reduce((sum, d) => sum + d.passes, 0);
     return { days: series, reviews, rate: ratio(passes, reviews) };
+  }
+
+  /**
+   * Confidence against accuracy over the practice answers of the last `days` study days. Answers
+   * of a pre-test live in their own table and never count here.
+   */
+  calibration(days = 30, now?: Date): Calibration {
+    const first = addDays(this.today(now), -(days - 1));
+    const inWindow = and(gte(attempt.day, first), isNotNull(attempt.confidence));
+    const rows = this.db
+      .select({
+        level: attempt.confidence,
+        answers: count(),
+        correct: sql<number>`coalesce(sum(${attempt.correct}), 0)`,
+      })
+      .from(attempt)
+      .where(inWindow)
+      .groupBy(attempt.confidence)
+      .all();
+    const levels = ([1, 2, 3] as const).map((level): CalibrationLevel => {
+      const row = rows.find((candidate) => candidate.level === level);
+      const answers = row?.answers ?? 0;
+      const correct = Number(row?.correct ?? 0);
+      const rate = ratio(correct, answers);
+      const below = OVERCONFIDENCE_BELOW[level];
+      const flag =
+        below !== null && rate !== null && answers >= MIN_CALIBRATION_ANSWERS && rate < below
+          ? "overconfident"
+          : null;
+      return { level, answers, correct, rate, flag };
+    });
+    const topics = this.db
+      .select({ topicId: item.topicId, name: topic.name, confidentWrong: count() })
+      .from(attempt)
+      .innerJoin(item, eq(item.id, attempt.itemId))
+      .innerJoin(topic, eq(topic.id, item.topicId))
+      .where(and(gte(attempt.day, first), eq(attempt.confidence, 3), eq(attempt.correct, false)))
+      .groupBy(item.topicId, topic.name)
+      .orderBy(desc(count()), topic.name)
+      .limit(5)
+      .all()
+      .map((row) => ({
+        topicId: row.topicId as number,
+        name: row.name,
+        confidentWrong: row.confidentWrong,
+      }));
+    return { hasData: levels.some((level) => level.answers > 0), levels, topics };
   }
 
   activity(days = 30, now?: Date): ActivityDay[] {

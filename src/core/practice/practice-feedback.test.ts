@@ -186,3 +186,37 @@ describe("feedback of the next day and pending feedback (FR-9, FR-10)", () => {
     expect(practice.pendingCount()).toBe(0);
   });
 });
+
+describe("confidence of an answer (FR-16, FR-17)", () => {
+  it("does not ask for it by default, and keeps it when it is given", async () => {
+    const { practice, ids, rows } = await approved();
+    expect(() => practice.answer(ids[0] as number, "A")).not.toThrow();
+    const result = practice.answer(ids[1] as number, "B", { confidence: 3 });
+    const [first, second] = practice.feedback([result.attemptId - 1, result.attemptId]);
+    expect(first?.confidence).toBeNull();
+    expect(second?.confidence).toBe(3);
+    expect(rows()).toHaveLength(2);
+  });
+
+  it("requires it once the question is turned on, and saves nothing without it", async () => {
+    const { practice, ids, rows } = await approved();
+    rig?.core.practiceSettings(rig.workspaceId).set({ confidence: true });
+    let error: unknown;
+    try {
+      practice.answer(ids[0] as number, "A");
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(AppError);
+    expect((error as AppError).fields?.map((field) => field.field)).toEqual(["confidence"]);
+    expect(rows()).toEqual([]);
+    expect(practice.answer(ids[0] as number, "A", { confidence: 2 }).seen).toBe(true);
+  });
+
+  it.each([0, 4, 1.5, -1])("refuses the confidence %s", async (value) => {
+    const { practice, ids } = await approved();
+    expect(() => practice.answer(ids[0] as number, "A", { confidence: value })).toThrowError(
+      /seguro/,
+    );
+  });
+});
