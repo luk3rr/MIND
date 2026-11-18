@@ -223,18 +223,24 @@ describe("opening in a window and in the system (FR-19, FR-20, FR-21)", () => {
     const docx: FakeMaterial = { ...pdf, id: 5, title: "resumo", kind: "docx", filename: "r.docx" };
     const { state } = open("/w/1/library", { materials: [pdf, docx] });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Nova janela apostila" }));
-    await user.click(screen.getByRole("button", { name: "Abrir no sistema apostila" }));
-    await user.click(screen.getByRole("button", { name: "Abrir original resumo" }));
+    const menu = async (title: string, item: string): Promise<void> => {
+      await user.click(await screen.findByRole("button", { name: `Mais ações ${title}` }));
+      await user.click(screen.getByRole("menuitem", { name: item }));
+    };
+    await user.click(await screen.findByRole("button", { name: "Ler em nova janela apostila" }));
+    await menu("apostila", "Abrir no sistema");
+    await menu("resumo", "Abrir original");
     expect(state.opened).toEqual([
       { kind: "window", materialId: 4 },
       { kind: "system", materialId: 4 },
       { kind: "system", materialId: 5 },
     ]);
-    expect(screen.queryByRole("button", { name: "Nova janela resumo" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ler em nova janela resumo" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ler resumo" })).not.toBeInTheDocument();
     state.openFailure = "Não foi possível abrir o arquivo no aplicativo padrão do sistema.";
-    await user.click(screen.getByRole("button", { name: "Abrir original resumo" }));
+    await menu("resumo", "Abrir original");
     expect(await screen.findByRole("alert")).toHaveTextContent("aplicativo padrão do sistema");
   });
 

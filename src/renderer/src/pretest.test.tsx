@@ -268,7 +268,85 @@ describe("leaving a round in progress", () => {
   });
 });
 
+describe("the saved pre-test rounds", () => {
+  const answerOne = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByText("Enunciado 1?");
+    await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    await screen.findByRole("region", { name: "Resumo do pré-teste" });
+  };
+
+  it("keeps the summary when the student goes to the PDF and comes back", async () => {
+    const withPdf = question(1);
+    withPdf.item.pdfSource = { materialId: 1, page: 2, quote: "citação 1" };
+    open("/w/1/library/1/pretest?count=1", {
+      materials: [{ ...material(1), kind: "pdf" }],
+      questions: [withPdf],
+    });
+    const user = userEvent.setup();
+    await answerOne(user);
+    await user.click(screen.getByRole("button", { name: /^Ver no PDF/ }));
+    await user.click(await screen.findByRole("button", { name: "Voltar ao pré-teste" }));
+    expect(await screen.findByRole("region", { name: "Resumo do pré-teste" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Responder" })).not.toBeInTheDocument();
+  });
+
+  it("lists the rounds of the material and opens one of them", async () => {
+    open("/w/1/library/1/pretests", {
+      materials: [material(1)],
+      questions: [question(1)],
+      pretestGiven: [{ attemptId: 1, itemId: 1, answer: "A" }],
+    });
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: /Histórico de pré-testes: apostila/ });
+    expect(await screen.findByText(/1 de 1 certa/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ver gabarito" }));
+    expect(await screen.findByRole("region", { name: "Resumo do pré-teste" })).toBeInTheDocument();
+  });
+
+  it("says so when the material has no round yet", async () => {
+    open("/w/1/library/1/pretests", { materials: [material(1)], questions: [question(1)] });
+    expect(await screen.findByText(/ainda não fez nenhum pré-teste/)).toBeInTheDocument();
+  });
+
+  it("opens the history from the Library", async () => {
+    open("/w/1/library", { materials: [material(1)], questions: [question(1)] });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Mais ações/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Histórico de pré-testes" }));
+    expect(
+      await screen.findByRole("heading", { name: /Histórico de pré-testes: apostila/ }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("the pre-test route", () => {
+  it("opens a saved round by its id, and the history of a material", () => {
+    expect(parseRoute("/w/1/library/3/pretest?round=abc-123")).toEqual({
+      name: "section",
+      workspaceId: 1,
+      section: "library",
+      detailId: 3,
+      pretest: true,
+      pretestRound: "abc-123",
+    });
+    expect(parseRoute("/w/1/library/3/pretests")).toEqual({
+      name: "section",
+      workspaceId: 1,
+      section: "library",
+      detailId: 3,
+      pretestHistory: true,
+    });
+    for (const path of [
+      "/w/1/library/3/pretest?count=2&round=abc",
+      "/w/1/library/3/pretest?round=a%20b",
+      "/w/1/items/3/pretests",
+      "/w/1/library/3/pretests?count=2",
+    ]) {
+      expect(parseRoute(path)).toEqual({ name: "unknown" });
+    }
+  });
+
   it("belongs to a material of the Library and carries the count", () => {
     expect(parseRoute("/w/1/library/3/pretest?count=10")).toEqual({
       name: "section",

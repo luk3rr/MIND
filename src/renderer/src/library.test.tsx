@@ -226,12 +226,14 @@ describe("Library page", () => {
   it("asks for confirmation before deleting a material", async () => {
     const fake = openLibrary({ materials: [material()] });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Excluir" }));
+    await user.click(await screen.findByRole("button", { name: "Mais ações apostila" }));
+    await user.click(screen.getByRole("menuitem", { name: "Excluir" }));
     const dialog = screen.getByRole("dialog", { name: "Excluir material" });
     expect(dialog).toHaveTextContent("apostila");
     await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
     expect(fake.state.materials).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    await user.click(screen.getByRole("button", { name: "Mais ações apostila" }));
+    await user.click(screen.getByRole("menuitem", { name: "Excluir" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Excluir" }));
     await waitFor(() => expect(fake.state.materials).toHaveLength(0));
     expect(await screen.findByText("Nenhum material ainda")).toBeVisible();
@@ -343,6 +345,39 @@ describe("Library page", () => {
   });
 });
 
+describe("the actions menu of a material", () => {
+  it("opens with the secondary actions, closes on Esc and returns focus", async () => {
+    openLibrary({ materials: [material()] });
+    const user = userEvent.setup();
+    const trigger = await screen.findByRole("button", { name: "Mais ações apostila" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const items = screen.getAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Histórico de pré-testes",
+      "Abrir no sistema",
+      "Renomear",
+      "Excluir",
+    ]);
+    expect(items[0]).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(items[3]).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes when the click is outside", async () => {
+    openLibrary({ materials: [material()] });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Mais ações apostila" }));
+    await user.click(screen.getByRole("heading", { name: "Biblioteca" }));
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
+  });
+});
+
 describe("Renaming a material", () => {
   it("renames from the library, cleans the spaces and refuses an empty name", async () => {
     const material: FakeMaterial = {
@@ -369,7 +404,8 @@ describe("Renaming a material", () => {
     });
     render(<App />);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Renomear Aula_01_Moeda" }));
+    await user.click(await screen.findByRole("button", { name: "Mais ações Aula_01_Moeda" }));
+    await user.click(screen.getByRole("menuitem", { name: "Renomear" }));
     const dialog = await screen.findByRole("dialog");
     const input = within(dialog).getByLabelText("Nome do material");
     expect(input).toHaveValue("Aula_01_Moeda");

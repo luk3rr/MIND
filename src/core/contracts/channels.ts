@@ -1041,6 +1041,21 @@ export const channels = {
       entries: z.array(feedback),
     }),
   },
+  "pretest:history": {
+    input: z.object({ workspaceId, materialId: z.number().int().positive() }).strict(),
+    output: z.object({
+      /** The rounds of the material, newest first. */
+      rounds: z.array(
+        z.object({
+          roundId: z.string().min(1).max(64),
+          /** When the round's last answer was given. */
+          answeredAt: z.string(),
+          total: z.number().int().nonnegative(),
+          correct: z.number().int().nonnegative(),
+        }),
+      ),
+    }),
+  },
   "practice:releaseBlock": {
     input: z
       .object({ workspaceId, attemptIds: z.array(z.number().int().positive()).min(1).max(100) })

@@ -28,6 +28,10 @@ export type Route =
       pretest?: boolean;
       /** How many questions the pre-test round has. */
       count?: number;
+      /** A finished pre-test round, shown with its answer key (`.../pretest?round=<id>`). */
+      pretestRound?: string;
+      /** The pre-tests already done for a material (`/w/:id/library/:materialId/pretests`). */
+      pretestHistory?: boolean;
       /** The page the reader opens on. */
       page?: number;
       /** A passage to highlight on that page. */
@@ -58,6 +62,7 @@ export function parseRoute(path: string): Route {
   const pendingFeedback = section === "study" && material === "feedback";
   const reader = action === "read";
   const pretest = action === "pretest";
+  const pretestHistory = action === "pretests";
   const valid =
     empty === "" &&
     prefix === "w" &&
@@ -65,7 +70,7 @@ export function parseRoute(path: string): Route {
     SECTION_SLUGS.includes(section as SectionSlug) &&
     (material === undefined || isNumber(material) || practice || pendingFeedback) &&
     (action === undefined ||
-      ((reader || pretest) && section === "library" && isNumber(material))) &&
+      ((reader || pretest || pretestHistory) && section === "library" && isNumber(material))) &&
     extra.length === 0;
   const params = parseQuery(query);
   const chunk = params?.get("chunk") ?? undefined;
@@ -74,7 +79,12 @@ export function parseRoute(path: string): Route {
   const page = params?.get("page") ?? undefined;
   const quote = params?.get("quote") ?? undefined;
   const count = params?.get("count") ?? undefined;
-  const allowed = reader ? ["page", "quote"] : pretest ? ["count"] : ["chunk", "topic", "subtype"];
+  const round = params?.get("round") ?? undefined;
+  const allowed = reader
+    ? ["page", "quote"]
+    : pretest
+      ? ["count", "round"]
+      : ["chunk", "topic", "subtype"];
   const queryValid =
     query === undefined ||
     (params !== null &&
@@ -88,9 +98,13 @@ export function parseRoute(path: string): Route {
       (reader
         ? page !== undefined
         : pretest
-          ? count !== undefined && isNumber(count) && Number(count) >= 1 && Number(count) <= 20
+          ? (count === undefined) !== (round === undefined) &&
+            (count === undefined ||
+              (isNumber(count) && Number(count) >= 1 && Number(count) <= 20)) &&
+            (round === undefined || /^[A-Za-z0-9_-]{1,64}$/.test(round))
           : chunk !== undefined || topic !== undefined));
-  if (!valid || !queryValid || (pretest && count === undefined)) return { name: "unknown" };
+  if (!valid || !queryValid) return { name: "unknown" };
+  if (pretest && count === undefined && round === undefined) return { name: "unknown" };
   return {
     name: "section",
     workspaceId: Number(workspace),
@@ -102,7 +116,9 @@ export function parseRoute(path: string): Route {
     ...(pendingFeedback ? { pendingFeedback: true } : {}),
     ...(reader ? { reader: true } : {}),
     ...(pretest ? { pretest: true } : {}),
+    ...(pretestHistory ? { pretestHistory: true } : {}),
     ...(count !== undefined && pretest ? { count: Number(count) } : {}),
+    ...(round !== undefined && pretest ? { pretestRound: round } : {}),
     ...(page !== undefined ? { page: Number(page) } : {}),
     ...(quote !== undefined ? { quote } : {}),
     ...(chunk !== undefined ? { chunkId: Number(chunk) } : {}),
@@ -129,6 +145,16 @@ export function materialPath(workspaceId: number, materialId: number, chunkId?: 
 /** A pre-test round of a material with `count` questions. */
 export function pretestPath(workspaceId: number, materialId: number, count: number): string {
   return `/w/${workspaceId}/library/${materialId}/pretest?count=${count}`;
+}
+
+/** A finished pre-test round of a material, with its answer key. */
+export function pretestRoundPath(workspaceId: number, materialId: number, roundId: string): string {
+  return `/w/${workspaceId}/library/${materialId}/pretest?round=${encodeURIComponent(roundId)}`;
+}
+
+/** The pre-tests the student already did for a material. */
+export function pretestHistoryPath(workspaceId: number, materialId: number): string {
+  return `/w/${workspaceId}/library/${materialId}/pretests`;
 }
 
 /** The longest quote a reader route carries. */

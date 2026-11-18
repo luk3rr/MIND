@@ -178,6 +178,22 @@ h1 {
 .menu button[aria-current="true"] {
   background: var(--panel-2);
 }
+.action-menu {
+  position: relative;
+  display: inline-block;
+}
+.action-menu .menu {
+  left: auto;
+  right: 0;
+  min-width: 190px;
+}
+.menu button.danger {
+  color: var(--danger);
+}
+.menu button:focus-visible {
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: -2px;
+}
 .menu hr {
   border: 0;
   border-top: 1px solid var(--line);

@@ -7,10 +7,18 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
+import { ActionMenu } from "../components/ActionMenu.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
 import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
-import { materialPath, pretestPath, sectionPath, useRouter, readerPath } from "../router.js";
+import {
+  materialPath,
+  pretestHistoryPath,
+  pretestPath,
+  sectionPath,
+  useRouter,
+  readerPath,
+} from "../router.js";
 import { Dialog } from "../components/Dialog.js";
 import { unfinishedPretest } from "./PretestPage.js";
 import { T } from "../strings.js";
@@ -281,75 +289,75 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                   <td>{material.chunkCount}</td>
                   <td>{importedAt(material.createdAt)}</td>
                   <td>
-                    {material.status === "indexed" && (
-                      <span className="row" style={{ display: "inline-flex", gap: 6 }}>
-                        {material.kind === "pdf" && (
-                          <>
-                            <button
-                              type="button"
-                              className="btn"
-                              aria-label={T.openActionLabel(T.readAction, material.title)}
-                              onClick={() => navigate(readerPath(workspaceId, material.id))}
-                            >
-                              {T.readAction}
-                            </button>
-                            <button
-                              type="button"
-                              className="btn ghost"
-                              aria-label={T.openActionLabel(T.openNewWindow, material.title)}
-                              onClick={() => openAction("reader:openWindow", material.id)}
-                            >
-                              {T.openNewWindow}
-                            </button>
-                          </>
-                        )}
-                        <button
-                          type="button"
-                          className="btn ghost"
-                          aria-label={T.openActionLabel(
-                            unfinishedPretest(workspaceId, material.id) === null
+                    <span className="row" style={{ display: "inline-flex", gap: 6 }}>
+                      {material.status === "indexed" && (
+                        <>
+                          {material.kind === "pdf" && (
+                            <>
+                              <button
+                                type="button"
+                                className="btn"
+                                aria-label={T.openActionLabel(T.readAction, material.title)}
+                                onClick={() => navigate(readerPath(workspaceId, material.id))}
+                              >
+                                {T.readAction}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn ghost"
+                                aria-label={T.openActionLabel(T.readNewWindow, material.title)}
+                                onClick={() => openAction("reader:openWindow", material.id)}
+                              >
+                                {T.readNewWindow}
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            className="btn ghost"
+                            aria-label={T.openActionLabel(
+                              unfinishedPretest(workspaceId, material.id) === null
+                                ? T.pretestAction
+                                : T.pretestContinue,
+                              material.title,
+                            )}
+                            onClick={() => {
+                              const open = unfinishedPretest(workspaceId, material.id);
+                              if (open === null) setPretestFor(material);
+                              else navigate(pretestPath(workspaceId, material.id, open));
+                            }}
+                          >
+                            {unfinishedPretest(workspaceId, material.id) === null
                               ? T.pretestAction
-                              : T.pretestContinue,
-                            material.title,
-                          )}
-                          onClick={() => {
-                            const open = unfinishedPretest(workspaceId, material.id);
-                            if (open === null) setPretestFor(material);
-                            else navigate(pretestPath(workspaceId, material.id, open));
-                          }}
-                        >
-                          {unfinishedPretest(workspaceId, material.id) === null
-                            ? T.pretestAction
-                            : T.pretestContinue}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn ghost"
-                          aria-label={T.openActionLabel(
-                            material.kind === "pdf" ? T.openInSystem : T.openOriginal,
-                            material.title,
-                          )}
-                          onClick={() => openAction("material:openOriginal", material.id)}
-                        >
-                          {material.kind === "pdf" ? T.openInSystem : T.openOriginal}
-                        </button>
-                      </span>
-                    )}{" "}
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      aria-label={T.openActionLabel(T.renameMaterial, material.title)}
-                      onClick={() => setToRename(material)}
-                    >
-                      {T.renameMaterial}
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      onClick={() => setToDelete(material)}
-                    >
-                      {T.deleteWorkspace}
-                    </button>
+                              : T.pretestContinue}
+                          </button>
+                        </>
+                      )}
+                      <ActionMenu
+                        label={T.openActionLabel(T.moreActions, material.title)}
+                        items={[
+                          ...(material.status === "indexed"
+                            ? [
+                                {
+                                  label: T.pretestHistoryAction,
+                                  onSelect: () =>
+                                    navigate(pretestHistoryPath(workspaceId, material.id)),
+                                },
+                                {
+                                  label: material.kind === "pdf" ? T.openInSystem : T.openOriginal,
+                                  onSelect: () => openAction("material:openOriginal", material.id),
+                                },
+                              ]
+                            : []),
+                          { label: T.renameMaterial, onSelect: () => setToRename(material) },
+                          {
+                            label: T.deleteWorkspace,
+                            danger: true,
+                            onSelect: () => setToDelete(material),
+                          },
+                        ]}
+                      />
+                    </span>
                   </td>
                 </tr>
               ))}

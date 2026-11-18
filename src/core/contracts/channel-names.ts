@@ -56,6 +56,7 @@ export const CHANNEL_NAMES = [
   "pretest:start",
   "pretest:answer",
   "pretest:summary",
+  "pretest:history",
   "practice:releaseAbandoned",
   "practice:pendingCount",
   "practice:openFeedback",

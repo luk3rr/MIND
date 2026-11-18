@@ -14,7 +14,9 @@ import { ReviewPage } from "./pages/ReviewPage.js";
 import { ChatPage } from "./pages/ChatPage.js";
 import { ItemsPage } from "./pages/ItemsPage.js";
 import { ErrorsPage } from "./pages/ErrorsPage.js";
+import { PretestHistoryPage } from "./pages/PretestHistoryPage.js";
 import { PretestPage } from "./pages/PretestPage.js";
+import { PretestRoundPage } from "./pages/PretestRoundPage.js";
 import { PendingFeedbackPage } from "./pages/PendingFeedbackPage.js";
 import { PracticePage } from "./pages/PracticePage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
@@ -91,8 +93,22 @@ function Screen() {
           )}
         {route.section === "library" &&
           route.detailId !== undefined &&
+          route.pretestRound !== undefined && (
+            <PretestRoundPage
+              key={route.pretestRound}
+              workspaceId={route.workspaceId}
+              materialId={route.detailId}
+              roundId={route.pretestRound}
+            />
+          )}
+        {route.section === "library" && route.detailId !== undefined && route.pretestHistory && (
+          <PretestHistoryPage workspaceId={route.workspaceId} materialId={route.detailId} />
+        )}
+        {route.section === "library" &&
+          route.detailId !== undefined &&
           !route.reader &&
-          !route.pretest && (
+          !route.pretest &&
+          !route.pretestHistory && (
             <MaterialPreviewPage
               key={`${route.detailId}-${route.chunkId ?? ""}`}
               workspaceId={route.workspaceId}

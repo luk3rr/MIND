@@ -1454,6 +1454,22 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           entries,
         });
       }
+      case "pretest:history": {
+        const given = state.pretestGiven ?? [];
+        return ok({
+          rounds:
+            given.length === 0
+              ? []
+              : [
+                  {
+                    roundId: "round-1",
+                    answeredAt: "2026-01-01T10:00:00.000Z",
+                    total: given.length,
+                    correct: given.filter((g) => fakeFeedback(state, g).correct).length,
+                  },
+                ],
+        });
+      }
       case "practice:pendingCount":
         return ok({ count: state.pendingFeedback?.length ?? 0 });
       case "practice:releaseAbandoned":

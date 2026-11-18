@@ -8,14 +8,12 @@ import { useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { ConfidencePicker } from "../components/ConfidencePicker.js";
 import type { Confidence } from "../components/ConfidencePicker.js";
-import { FeedbackList } from "../components/FeedbackList.js";
 import { useInvoke } from "../hooks.js";
 import { MathText } from "../MathText.js";
-import { materialPath, sectionPath, useRouter } from "../router.js";
+import { pretestRoundPath, sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 
 type Round = OutputOf<"pretest:start">;
-type Summary = OutputOf<"pretest:summary">;
 
 /** A round in progress, kept while the app is open so leaving the screen does not lose it. */
 interface Progress {
@@ -67,7 +65,6 @@ export function PretestPage({
   const [chosen, setChosen] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<Confidence | null>(null);
   const [answeredIds, setAnsweredIds] = useState<number[]>(resumed?.answeredIds ?? []);
-  const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsConfidence, setNeedsConfidence] = useState(false);
   const shownAt = useRef(0);
@@ -75,9 +72,8 @@ export function PretestPage({
   // Keep the round while it is open; a finished one is forgotten.
   useEffect(() => {
     const key = keyOf(workspaceId, materialId);
-    if (round && !summary) inProgress.set(key, { count, round, index, reached, answeredIds });
-    else inProgress.delete(key);
-  }, [workspaceId, materialId, count, round, index, reached, answeredIds, summary]);
+    if (round) inProgress.set(key, { count, round, index, reached, answeredIds });
+  }, [workspaceId, materialId, count, round, index, reached, answeredIds]);
 
   useEffect(() => {
     if (resumed) return;
@@ -116,18 +112,18 @@ export function PretestPage({
     setReached((current) => Math.max(current, position));
   };
 
-  /** Shows the summary of the answers so far; with none, there is nothing to show. */
+  /**
+   * Ends the round and opens its saved summary; with no answers, there is nothing to show. The
+   * summary takes this screen's place in the history, so coming back from the PDF lands on it
+   * instead of starting another round.
+   */
   const finish = (given: number = answeredIds.length): void => {
+    inProgress.delete(keyOf(workspaceId, materialId));
     if (!round || given === 0) {
       navigate(sectionPath(workspaceId, "library"));
       return;
     }
-    void window.mind
-      .invoke("pretest:summary", { workspaceId, roundId: round.roundId })
-      .then((response) => {
-        if (!response.ok) setError(response.error.message);
-        else setSummary(response.data);
-      });
+    navigate(pretestRoundPath(workspaceId, materialId, round.roundId), { replace: true });
   };
 
   /** To the next question, or to the end of the round when it was the last one. */
@@ -171,159 +167,127 @@ export function PretestPage({
           {error}
         </p>
       )}
-      {summary ? (
-        <>
-          <p className="muted">{T.pretestSummaryNote}</p>
-          <FeedbackList
-            workspaceId={workspaceId}
-            entries={summary.entries}
-            title={T.pretestSummaryTitle}
-            backLabel={T.pretestBackLibrary}
-            allowMakeCard={false}
-            onBack={() => navigate(sectionPath(workspaceId, "library"))}
-          />
-          <div className="actions">
+      <div className="alert warn" role="note">
+        {T.pretestBanner}
+      </div>
+      {round && round.available < count && (
+        <p className="muted">{T.pretestLimit(round.available)}</p>
+      )}
+      {atEnd && (
+        <div className="card stack">
+          <p className="muted">{T.pretestEndOfRound}</p>
+          {skipped.length > 0 && <p>{T.pretestSkippedCount(skipped.length)}</p>}
+          <div className="row">
             <button
               type="button"
-              className="btn"
-              onClick={() => navigate(materialPath(workspaceId, materialId))}
+              className="btn ghost"
+              onClick={() => goTo(Math.max(questions.length - 1, 0))}
             >
-              {T.pretestReadMaterial}
+              {T.practicePrevious}
+            </button>
+            {skipped.length > 0 && (
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => goTo(questions.findIndex((candidate) => !isAnswered(candidate.id)))}
+              >
+                {T.pretestReviewSkipped}
+              </button>
+            )}
+            <button type="button" className="btn" onClick={() => finish()}>
+              {T.pretestSeeSummary}
             </button>
           </div>
-        </>
-      ) : (
-        <>
-          <div className="alert warn" role="note">
-            {T.pretestBanner}
+        </div>
+      )}
+      {question && (
+        <div className="card stack">
+          <p className="muted">
+            {question.topic ?? ""}
+            {question.topic ? " · " : ""}
+            {T.practicePosition(index + 1, questions.length)}
+            {skipped.length > 0 && !isAnswered(question.id)
+              ? ` · ${T.pretestSkippedCount(skipped.length)}`
+              : ""}
+          </p>
+          <p>
+            <strong>
+              <MathText text={question.statement} />
+            </strong>
+          </p>
+          <div className="stack" role="radiogroup" aria-label={T.pretestAction}>
+            {question.options.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                role="radio"
+                aria-checked={chosen === option.key}
+                disabled={isAnswered(question.id)}
+                className={`option${chosen === option.key ? " chosen" : ""}`}
+                onClick={() => setChosen(option.key)}
+              >
+                <strong>{option.key}</strong> · <MathText text={option.text} />
+              </button>
+            ))}
           </div>
-          {round && round.available < count && (
-            <p className="muted">{T.pretestLimit(round.available)}</p>
-          )}
-          {atEnd && (
-            <div className="card stack">
-              <p className="muted">{T.pretestEndOfRound}</p>
-              {skipped.length > 0 && <p>{T.pretestSkippedCount(skipped.length)}</p>}
+          {isAnswered(question.id) ? (
+            <>
+              <p className="muted">{T.pretestAlreadyAnswered}</p>
               <div className="row">
                 <button
                   type="button"
                   className="btn ghost"
-                  onClick={() => goTo(Math.max(questions.length - 1, 0))}
+                  onClick={() => goTo(index - 1)}
+                  disabled={index === 0}
                 >
                   {T.practicePrevious}
                 </button>
-                {skipped.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    onClick={() =>
-                      goTo(questions.findIndex((candidate) => !isAnswered(candidate.id)))
-                    }
-                  >
-                    {T.pretestReviewSkipped}
-                  </button>
-                )}
-                <button type="button" className="btn" onClick={() => finish()}>
-                  {T.pretestSeeSummary}
+                <button type="button" className="btn" onClick={() => forward()}>
+                  {T.practiceNext}
+                </button>
+                <button type="button" className="btn ghost" onClick={() => finish()}>
+                  {T.pretestEnd}
                 </button>
               </div>
-            </div>
-          )}
-          {question && (
-            <div className="card stack">
-              <p className="muted">
-                {question.topic ?? ""}
-                {question.topic ? " · " : ""}
-                {T.practicePosition(index + 1, questions.length)}
-                {skipped.length > 0 && !isAnswered(question.id)
-                  ? ` · ${T.pretestSkippedCount(skipped.length)}`
-                  : ""}
-              </p>
-              <p>
-                <strong>
-                  <MathText text={question.statement} />
-                </strong>
-              </p>
-              <div className="stack" role="radiogroup" aria-label={T.pretestAction}>
-                {question.options.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    role="radio"
-                    aria-checked={chosen === option.key}
-                    disabled={isAnswered(question.id)}
-                    className={`option${chosen === option.key ? " chosen" : ""}`}
-                    onClick={() => setChosen(option.key)}
-                  >
-                    <strong>{option.key}</strong> · <MathText text={option.text} />
-                  </button>
-                ))}
-              </div>
-              {isAnswered(question.id) ? (
-                <>
-                  <p className="muted">{T.pretestAlreadyAnswered}</p>
-                  <div className="row">
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      onClick={() => goTo(index - 1)}
-                      disabled={index === 0}
-                    >
-                      {T.practicePrevious}
-                    </button>
-                    <button type="button" className="btn" onClick={() => forward()}>
-                      {T.practiceNext}
-                    </button>
-                    <button type="button" className="btn ghost" onClick={() => finish()}>
-                      {T.pretestEnd}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {askConfidence && (
-                    <ConfidencePicker
-                      value={confidence}
-                      onChange={(level) => {
-                        setConfidence(level);
-                        setNeedsConfidence(false);
-                      }}
-                    />
-                  )}
-                  {needsConfidence && (
-                    <p role="alert" className="alert">
-                      {T.confidenceNeeded}
-                    </p>
-                  )}
-                  <div className="row">
-                    <button
-                      type="button"
-                      className="btn"
-                      disabled={chosen === null}
-                      onClick={submit}
-                    >
-                      {T.practiceAnswer}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      onClick={() => goTo(index - 1)}
-                      disabled={index === 0}
-                    >
-                      {T.practicePrevious}
-                    </button>
-                    <button type="button" className="btn ghost" onClick={() => forward()}>
-                      {T.practiceSkip}
-                    </button>
-                    <button type="button" className="btn ghost" onClick={() => finish()}>
-                      {T.pretestEnd}
-                    </button>
-                  </div>
-                </>
+            </>
+          ) : (
+            <>
+              {askConfidence && (
+                <ConfidencePicker
+                  value={confidence}
+                  onChange={(level) => {
+                    setConfidence(level);
+                    setNeedsConfidence(false);
+                  }}
+                />
               )}
-            </div>
+              {needsConfidence && (
+                <p role="alert" className="alert">
+                  {T.confidenceNeeded}
+                </p>
+              )}
+              <div className="row">
+                <button type="button" className="btn" disabled={chosen === null} onClick={submit}>
+                  {T.practiceAnswer}
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => goTo(index - 1)}
+                  disabled={index === 0}
+                >
+                  {T.practicePrevious}
+                </button>
+                <button type="button" className="btn ghost" onClick={() => forward()}>
+                  {T.practiceSkip}
+                </button>
+                <button type="button" className="btn ghost" onClick={() => finish()}>
+                  {T.pretestEnd}
+                </button>
+              </div>
+            </>
           )}
-        </>
+        </div>
       )}
     </section>
   );

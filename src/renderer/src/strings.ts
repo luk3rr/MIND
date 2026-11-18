@@ -323,6 +323,17 @@ export const T = {
   pretestSummaryNote: "Fora das estatísticas: estas respostas não contam como prática.",
   pretestReadMaterial: "Abrir o material",
   pretestBackLibrary: "Voltar à Biblioteca",
+  pretestHistoryAction: "Histórico de pré-testes",
+  pretestHistoryTitle: (title: string) => `Histórico de pré-testes: ${title}`,
+  pretestHistoryIntro:
+    "Cada rodada que você terminou fica guardada aqui, com o gabarito, mesmo que você saia da tela.",
+  pretestHistoryEmpty: "Você ainda não fez nenhum pré-teste deste material.",
+  pretestHistoryRound: (date: string, correct: number, total: number) =>
+    `${date} · ${correct} de ${total} ${total === 1 ? "certa" : "certas"}`,
+  pretestHistoryOpen: "Ver gabarito",
+  pretestHistoryBack: "Voltar aos pré-testes",
+  pretestHistoryDate: (iso: string) =>
+    new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
   pretestLimit: (available: number) =>
     `Só há ${available} ${available === 1 ? "questão elegível" : "questões elegíveis"}; a rodada usa ${available === 1 ? "ela" : "todas"}.`,
   practiceRegisteredNextDay:
@@ -565,6 +576,8 @@ export const T = {
   readerPageImage: (page: number) => `Página ${page}`,
   readerReading: (clock: string) => `Lendo há ${clock}`,
   openNewWindow: "Nova janela",
+  readNewWindow: "Ler em nova janela",
+  moreActions: "Mais ações",
   openInSystem: "Abrir no sistema",
   openOriginal: "Abrir original",
   openFailed: "Não foi possível abrir o arquivo.",
@@ -588,6 +601,7 @@ export const T = {
   },
   backToReader: "Voltar ao leitor",
   backToPreview: "Voltar à prévia do material",
+  backToPretest: "Voltar ao pré-teste",
   backToPractice: "Voltar à Prática",
   readerScrollMode: "Rolagem contínua",
   leaveWorkspace: "Sair do workspace",

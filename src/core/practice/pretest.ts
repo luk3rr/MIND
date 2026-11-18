@@ -28,6 +28,14 @@ export interface PretestRound {
   available: number;
 }
 
+export interface PretestRoundInfo {
+  roundId: string;
+  /** When the last answer of the round was given. */
+  answeredAt: string;
+  total: number;
+  correct: number;
+}
+
 export interface PretestSummary {
   total: number;
   correct: number;
@@ -159,6 +167,38 @@ export class PretestService {
         day: studyDay(moment, this.offset),
       })
       .run();
+  }
+
+  /** The rounds the student answered for a material, newest first. */
+  history(materialId: number): PretestRoundInfo[] {
+    const rows = this.db
+      .select({
+        roundId: pretestAttempt.roundId,
+        correct: pretestAttempt.correct,
+        answeredAt: pretestAttempt.answeredAt,
+      })
+      .from(pretestAttempt)
+      .innerJoin(item, eq(item.id, pretestAttempt.itemId))
+      .innerJoin(generationRun, eq(generationRun.id, item.runId))
+      .where(eq(generationRun.materialId, materialId))
+      .orderBy(asc(pretestAttempt.id))
+      .all();
+    const rounds = new Map<string, PretestRoundInfo>();
+    for (const row of rows) {
+      const round = rounds.get(row.roundId) ?? {
+        roundId: row.roundId,
+        answeredAt: row.answeredAt,
+        total: 0,
+        correct: 0,
+      };
+      round.total += 1;
+      if (row.correct) round.correct += 1;
+      if (row.answeredAt > round.answeredAt) round.answeredAt = row.answeredAt;
+      // Re-inserting moves the round to the end, so the last one to be answered is the last key.
+      rounds.delete(row.roundId);
+      rounds.set(row.roundId, round);
+    }
+    return [...rounds.values()].reverse();
   }
 
   /** The score and the feedback of a round, once the student is done. */

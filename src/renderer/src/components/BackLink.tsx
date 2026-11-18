@@ -14,6 +14,7 @@ export function backLabel(path: string): string | null {
   if (route.name !== "section") return null;
   if (route.section === "library") {
     if (route.reader) return T.backToReader;
+    if (route.pretest || route.pretestHistory) return T.backToPretest;
     return route.detailId !== undefined ? T.backToPreview : T.backToLibrary;
   }
   if (route.section === "study" && route.practice) return T.backToPractice;

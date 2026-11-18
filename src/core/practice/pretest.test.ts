@@ -143,4 +143,21 @@ describe("a pre-test never counts as practice (FR-4)", () => {
     expect(stats.weakestTopics()).toEqual([]);
     expect(core.notebook(ws).entries()).toEqual([]);
   });
+
+  it("lists the rounds of a material, newest first, with their score", async () => {
+    const { pretest, ids, materialId, core, ws } = await questions();
+    expect(pretest.history(materialId)).toEqual([]);
+    const first = pretest.start(materialId, 2);
+    pretest.answer(first.roundId, ids[0] as number, "A");
+    pretest.answer(first.roundId, ids[1] as number, "A");
+    const second = pretest.start(materialId, 1);
+    pretest.answer(second.roundId, ids[2] as number, "A");
+    const rounds = pretest.history(materialId);
+    expect(rounds.map((r) => r.roundId)).toEqual([second.roundId, first.roundId]);
+    expect(rounds.map((r) => r.total)).toEqual([1, 2]);
+    for (const round of rounds) {
+      expect(round.correct).toBe(pretest.summary(round.roundId).correct);
+    }
+    expect(core.pretest(ws).history(999)).toEqual([]);
+  });
 });

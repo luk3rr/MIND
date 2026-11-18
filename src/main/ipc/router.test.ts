@@ -151,6 +151,7 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "pretest:start": () => ({ roundId: "r", questions: [], available: 0 }),
     "pretest:answer": () => ({}),
     "pretest:summary": () => ({ total: 0, correct: 0, entries: [] }),
+    "pretest:history": () => ({ rounds: [] }),
     "practice:releaseBlock": () => ({ entries: [] }),
     "practice:releaseAbandoned": () => ({ released: 0 }),
     "practice:pendingCount": () => ({ count: 0 }),

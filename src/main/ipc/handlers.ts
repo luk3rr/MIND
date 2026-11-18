@@ -351,6 +351,9 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       return {};
     },
     "pretest:summary": ({ workspaceId, roundId }) => core.pretest(workspaceId).summary(roundId),
+    "pretest:history": ({ workspaceId, materialId }) => ({
+      rounds: core.pretest(workspaceId).history(materialId),
+    }),
     "practice:releaseBlock": ({ workspaceId, attemptIds }) => ({
       entries: core.practice(workspaceId).releaseBlock(attemptIds),
     }),
