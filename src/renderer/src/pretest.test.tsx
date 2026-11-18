@@ -67,11 +67,17 @@ function open(route: string, initial: Partial<FakeState> = {}) {
 }
 
 describe("the pre-test button of the Library (FR-1)", () => {
-  it("is disabled, with the reason, when the material has no eligible question", async () => {
+  it("explains that questions must be generated, and offers to go to Generate", async () => {
     open("/w/1/library", { materials: [material(0)] });
-    const button = await screen.findByRole("button", { name: /Pré-teste/ });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute("title", expect.stringContaining("Gere e aprove questões"));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Pré-teste/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/ainda não tem questões para um pré-teste/),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/Gere questões dele em Gerar/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Ir para Gerar" }));
+    expect(await screen.findByRole("heading", { name: "Gerar" })).toBeInTheDocument();
   });
 
   it("opens a dialog with the number of questions, and refuses 0 and 21", async () => {

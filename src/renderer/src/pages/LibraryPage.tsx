@@ -10,7 +10,7 @@ import type { OutputOf } from "../../../core/contracts/index.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
 import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
-import { materialPath, pretestPath, useRouter, readerPath } from "../router.js";
+import { materialPath, pretestPath, sectionPath, useRouter, readerPath } from "../router.js";
 import { Dialog } from "../components/Dialog.js";
 import { T } from "../strings.js";
 import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
@@ -306,8 +306,6 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                           type="button"
                           className="btn ghost"
                           aria-label={T.openActionLabel(T.pretestAction, material.title)}
-                          disabled={material.pretestEligible === 0}
-                          title={material.pretestEligible === 0 ? T.pretestDisabledHint : undefined}
                           onClick={() => setPretestFor(material)}
                         >
                           {T.pretestAction}
@@ -366,6 +364,10 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
         <PretestDialog
           material={pretestFor}
           onClose={() => setPretestFor(null)}
+          onGenerate={() => {
+            setPretestFor(null);
+            navigate(sectionPath(workspaceId, "generate"));
+          }}
           onStart={(count) => {
             setPretestFor(null);
             navigate(pretestPath(workspaceId, pretestFor.id, count));
@@ -413,10 +415,12 @@ function PretestDialog({
   material,
   onClose,
   onStart,
+  onGenerate,
 }: {
   material: Material;
   onClose: () => void;
   onStart: (count: number) => void;
+  onGenerate: () => void;
 }) {
   const [text, setText] = useState(String(Math.min(10, material.pretestEligible)));
   const [error, setError] = useState<string | null>(null);
@@ -429,6 +433,24 @@ function PretestDialog({
     }
     onStart(count);
   };
+  if (material.pretestEligible === 0) {
+    return (
+      <Dialog title={T.pretestDialogTitle(material.title)} onClose={onClose}>
+        <div className="stack">
+          <p>{T.pretestNoQuestions}</p>
+          <p className="muted">{T.pretestNoQuestionsHint}</p>
+          <div className="actions">
+            <button type="button" className="btn ghost" onClick={onClose}>
+              {T.cancel}
+            </button>
+            <button type="button" className="btn" onClick={onGenerate}>
+              {T.pretestGoGenerate}
+            </button>
+          </div>
+        </div>
+      </Dialog>
+    );
+  }
   return (
     <Dialog title={T.pretestDialogTitle(material.title)} onClose={onClose}>
       <form onSubmit={submit} noValidate className="stack">

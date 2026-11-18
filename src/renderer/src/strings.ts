@@ -297,7 +297,10 @@ export const T = {
     "Excesso de confiança: o acerto de “Tenho certeza” ficou abaixo de 80% (ou o de “Acho que sei” abaixo de 60%), com pelo menos 5 respostas no nível.",
   calibrationTopics: "Tópicos com mais respostas seguras erradas",
   pretestAction: "Pré-teste",
-  pretestDisabledHint: "Gere e aprove questões deste material para fazer um pré-teste.",
+  pretestNoQuestions: "Este material ainda não tem questões para um pré-teste.",
+  pretestNoQuestionsHint:
+    "Gere questões dele em Gerar e aprove-as. Só entram questões aprovadas que você ainda não respondeu na prática.",
+  pretestGoGenerate: "Ir para Gerar",
   pretestDialogTitle: (title: string) => `Pré-teste: ${title}`,
   pretestDialogIntro:
     "Responda questões deste material antes de estudá-lo. O gabarito aparece só no fim, e a rodada não conta nas estatísticas.",
