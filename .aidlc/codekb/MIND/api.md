@@ -28,3 +28,7 @@ Não há API HTTP. A interface é o `window.mind` com `invoke(canal, payload)` e
 | `import:preview`, `import:previewRows`, `import:commit`, `import:discard` | lê um arquivo escolhido no diálogo do núcleo, mostra a prévia (token de 15 min), grava as linhas válidas de uma vez e descarta a prévia |
 
 `items:list` passou a devolver `origin`, `sourceTitle`, `sourcePage` e `hasPdf`. Códigos de erro novos: `IMPORT_FILE_INVALID`, `IMPORT_LIMIT_EXCEEDED`, `IMPORT_EXPIRED`. `UiBridge` ganhou `pickImportFile`. `CONTRACT_VERSION` continua 1 (mudanças aditivas). [src: src/core/contracts/channels.ts]
+
+**`study:next` (2026-11-16, commit eb9a6b8).** O payload aceita `early` (booleano opcional: estudar já os cards em aprendizado que vencem mais tarde hoje) e a resposta sem card traz `waiting { count, due } | null`. [src: src/core/contracts/channels.ts; src/main/ipc/handlers.ts]
+
+**Práticas de estudo (intent study-techniques, 2026-11-19; `CONTRACT_VERSION` 2).** `practice:next` devolve a questão sem chave, comentário nem citação (`questionView`); `practice:answer` aceita `confidence` e devolve `{ attemptId, feedback | null, releaseAt | null }`. Canais novos: `practice:settings`, `practice:saveSettings`, `practice:releaseBlock`, `practice:releaseAbandoned`, `practice:pendingCount`, `practice:openFeedback`, `pretest:start`, `pretest:answer`, `pretest:summary`, `stats:calibration`. `study:next` e `practice:next` aceitam `mix` e devolvem `mixKey`; `material:list` traz `pretestEligible`; `today:summary` traz `pendingFeedback`. [src: src/core/contracts/channels.ts]

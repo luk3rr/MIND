@@ -12,3 +12,5 @@ Status: human-reviewed (2026-11-16) · Confiança: alta
 - Dependência nativa ou worker em pacote precisa de `asarUnpack` no `electron-builder.yml`. [inferred: electron-builder.yml]
 
 **Confirmado pelo autor em 2026-11-16** [user]: as quatro regras marcadas [inferred] acima (novo canal IPC em quatro passos, núcleo sem Electron, mudança de esquema por Drizzle + `pnpm db:generate`, `asarUnpack` para nativos e workers) estão corretas.
+
+**Hook de pre-commit (2026-11-17, commit 4e7cc4e).** `.githooks/pre-commit` (ativado por `make install-hooks`, que define `core.hooksPath`) roda `scripts/pre-commit.ts` sobre os arquivos em stage: Prettier `--check`, ESLint nos arquivos de código e `scripts/check-headers.mjs` quando há código em `src`, `scripts`, `tests`. Typecheck e testes ficam fora (rodam em `make check` e no CI). Pula-se com `git commit --no-verify`. Os testes estão em `tests/pre-commit.test.ts`. [src: .githooks/pre-commit; scripts/pre-commit.ts; Makefile] [user: pedido do autor em 2026-11-17, depois de o pipeline falhar por formatação]

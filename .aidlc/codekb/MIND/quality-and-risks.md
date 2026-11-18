@@ -2,7 +2,9 @@
 
 Status: human-reviewed (2026-11-16) · Confiança: alta
 
-**Baseline atual (2026-11-16, commit 240ed43, v0.6.0).** `pnpm lint` exit 0 (cabeçalhos ok em 278 arquivos) · `pnpm format:check` exit 0 · `pnpm typecheck` exit 0 · `pnpm test`: **96 arquivos, 956 testes, todos passam**; cobertura: instruções 94,87% · ramos 87,15% · funções 93,97% · linhas 96,15% (limite 80%). `pnpm e2e` não foi rodado. Sem falhas pré-existentes. [user: autorizou rodar o baseline]
+**Baseline atual (2026-11-17, commit 4e7cc4e, v0.7.0).** `pnpm lint` exit 0 (cabeçalhos ok em 320 arquivos) · `pnpm format:check` exit 0 · `pnpm typecheck` exit 0 · `pnpm test --coverage`: **112 arquivos, 1192 testes, todos passam**; cobertura: instruções 95,15% · ramos 87,06% · funções 94,74% · linhas 96,45% (limite 80%). `pnpm e2e` não foi rodado. Sem falhas pré-existentes. [user: autorizou rodar o baseline em 2026-11-17]
+
+**Baseline anterior (2026-11-16, commit 240ed43, v0.6.0).** `pnpm lint` exit 0 (cabeçalhos ok em 278 arquivos) · `pnpm format:check` exit 0 · `pnpm typecheck` exit 0 · `pnpm test`: **96 arquivos, 956 testes, todos passam**; cobertura: instruções 94,87% · ramos 87,15% · funções 93,97% · linhas 96,15% (limite 80%). `pnpm e2e` não foi rodado. Sem falhas pré-existentes. [user: autorizou rodar o baseline]
 
 **Baseline anterior (2026-11-14, commit 101d3e6).** `pnpm lint` exit 0 · `pnpm format:check` exit 0 · `pnpm typecheck` exit 0 · `pnpm test --coverage`: **66 arquivos, 614 testes, todos passam**; cobertura: instruções 94,37% · ramos 86,2% · funções 93,73% · linhas 95,52% (limite 80%). `pnpm e2e` não foi rodado. Sem falhas pré-existentes.
 

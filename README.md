@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/icon.png" alt="Ícone do MIND: um cérebro roxo com circuitos" width="128" height="128">
+  <img src="docs/img/icon.png" alt="Ícone do MIND: um cérebro roxo com circuitos" width="128" height="128">
 </p>
 
 <h1 align="center">MIND</h1>
@@ -28,7 +28,8 @@ questões no estilo de prova e estude tudo com [repetição espaçada](https://s
 
 O MIND se baseia nas práticas de estudo com respaldo em evidências científicas reunidas no livro
 _Fixe o Conhecimento: a ciência da aprendizagem bem-sucedida_ (BROWN, P. C. et al.): repetição
-espaçada, recuperação ativa (flashcards e questões) e revisão dos erros.
+espaçada, recuperação ativa (flashcards e questões) e revisão dos erros. Veja algumas [dicas de como estudar
+bem com o MIND](docs/guides/study-guide.md).
 
 > Referência completa: BROWN, Peter C.; ROEDIGER III, Henry L.; McDANIEL, Mark A. _Fixe o Conhecimento: a ciência da aprendizagem bem-sucedida_. Tradução de Cláudio de Moura Castro e Henrique de Oliveira Guerra. Original: _Make It Stick: The Science of Successful Learning_, 2014.
 
@@ -98,4 +99,4 @@ workspace.
 
 AGPL-3.0-or-later. Veja [LICENSE](LICENSE) e [NOTICE](NOTICE).
 
-<sub><a href="docs/alien.jpg">Busque comer cimento</a></sub>
+<sub><a href="docs/img/alien.jpg">Busque comer cimento</a></sub>

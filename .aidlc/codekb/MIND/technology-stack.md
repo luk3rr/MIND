@@ -4,7 +4,7 @@ Status: draft · Confiança: alta
 
 | Camada | Tecnologia | Fonte |
 |---|---|---|
-| Runtime | Electron ~45.3, Node ≥ 22, TypeScript 6 strict, pnpm 10 (app v0.6.0) | package.json |
+| Runtime | Electron ~45.3, Node ≥ 22, TypeScript 6 strict, pnpm 10 (app v0.7.0) | package.json |
 | Build | electron-vite 6, Vite 8, electron-builder 26 (.deb amd64 e instalador Windows) | package.json; electron-builder.yml |
 | UI | React 19, lucide-react, KaTeX; CSS próprio com tema claro/escuro | package.json |
 | Dados | better-sqlite3 13 + drizzle-orm 0.45 (WAL, FTS5 em `chunk`); agendamento com ts-fsrs 6 | src/core/db; package.json |

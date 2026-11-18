@@ -1,0 +1,378 @@
+<!doctype html>
+<!--
+  Filename: refined.html
+  Created on: November 17, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+-->
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockups refinados: práticas de estudo</title>
+<style>
+/* Tokens copied from src/renderer/src/styles/tokens.css (dark default, light override). */
+:root{--bg:#1e1f29;--panel:#282a36;--panel-2:#303243;--line:#44475a;--fg:#f8f8f2;--muted:#a4a9c3;--accent:#bd93f9;--on-accent:#282a36;--success:#50fa7b;--side:#44337a;--side-ink:#f8f8f2;--side-active:rgba(255,255,255,.18);--danger:#ff6e6e;--warn:#ffb86c;--info:#8be9fd;--radius:12px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--shadow:0 1px 0 rgba(255,255,255,.04),0 8px 24px rgba(0,0,0,.25);color-scheme:dark}
+:root[data-theme="light"]{--bg:#f3f5f7;--panel:#fff;--panel-2:#eef1f4;--line:#d8dde3;--fg:#1f2328;--muted:#5b6472;--accent:#6f42c1;--on-accent:#fff;--success:#177a41;--side:#5b3fa8;--side-ink:#fff;--side-active:rgba(255,255,255,.22);--danger:#c62828;--warn:#8f4411;--info:#0b6e99;--shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08);color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px Inter,"Segoe UI",system-ui,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.n{color:var(--muted);margin:0 0 12px;max-width:980px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.tabs button{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit}
+.tabs button.on{border-color:var(--accent);outline:1px solid var(--accent)}
+.tabs .sep{width:1px;height:22px;background:var(--line)}
+.app{display:grid;grid-template-columns:200px 1fr;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;max-width:1240px;min-height:620px;background:var(--bg)}
+.sidebar{background:var(--side);color:var(--side-ink);padding:var(--space-4) var(--space-3);display:flex;flex-direction:column;gap:var(--space-1)}
+.sidebar b{font-size:16px;margin-bottom:var(--space-3)}
+.sidebar span{padding:8px 12px;border-radius:8px}.sidebar span.on{background:var(--side-active);font-weight:700}
+.sidebar .sp{flex:1}
+.content{padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4)}
+.content h2{margin:0;font-size:22px}
+.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.row{display:flex;gap:var(--space-4);flex-wrap:wrap;align-items:center}
+.actions{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:var(--on-accent);border:0;border-radius:999px;padding:9px 18px;font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn.sm{padding:5px 12px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:default}
+.pill{padding:2px 10px;border-radius:999px;font-size:12px;background:var(--panel-2);border:1px solid var(--line)}
+.pill.ok{color:var(--success)}.pill.bad{color:var(--danger)}.pill.warn{color:var(--warn)}.pill.info{color:var(--info)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--muted);font-size:12px;text-transform:uppercase}
+td.num,th.num{text-align:right}
+.stack{display:flex;flex-direction:column;gap:var(--space-3)}
+.banner{border:1px solid var(--warn);color:var(--warn);border-radius:8px;padding:8px 12px}
+.banner.info{border-color:var(--info);color:var(--info)}
+.banner.ok{border-color:var(--success);color:var(--success)}
+.banner.bad{border-color:var(--danger);color:var(--danger)}
+.option{display:block;width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:transparent;color:var(--fg);font:inherit;text-align:left}
+.option.chosen{border-color:var(--info)}
+.option.right{border-color:var(--success);background:rgba(80,250,123,.12)}
+.option.wrong{border-color:var(--danger);background:rgba(255,110,110,.12)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}.seg span{padding:5px 14px;border-radius:999px;border:1px solid var(--line);color:var(--muted);cursor:pointer}.seg span.on{border-color:var(--accent);color:var(--fg);font-weight:700}
+.subtabs{display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:var(--space-2)}
+.subtabs span{padding:4px 12px;border-radius:8px;color:var(--muted)}.subtabs span.on{background:var(--panel-2);color:var(--fg);font-weight:700}
+.source{border-left:3px solid var(--line);margin:0;padding:4px 12px;color:var(--muted)}
+.bar{height:10px;border-radius:999px;background:var(--panel-2);overflow:hidden;min-width:120px}.bar i{display:block;height:100%;background:var(--accent)}
+.bar.ok i{background:var(--success)}.bar.warn i{background:var(--warn)}
+.field{display:flex;flex-direction:column;gap:var(--space-1);max-width:520px}
+.field label,.lbl{font-weight:600}
+.radio{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.radio.on{border-color:var(--accent)}
+.radio i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);margin-top:3px;flex:none}.radio.on i{border-color:var(--accent);background:var(--accent)}
+.check{display:flex;gap:10px;align-items:flex-start}.check i{width:16px;height:16px;border-radius:4px;border:2px solid var(--line);margin-top:2px;flex:none}.check.on i{border-color:var(--accent);background:var(--accent)}
+.sk{height:14px;border-radius:6px;background:var(--panel-2)}
+.note{color:var(--muted);font-size:12px;border-top:1px dashed var(--line);padding-top:var(--space-2);margin-top:var(--space-2)}
+.screen{display:none}.screen.on{display:block}
+.hint{font-size:12px;color:var(--muted)}
+.backdrop{background:rgba(0,0,0,.45);border-radius:var(--radius);padding:var(--space-5);display:flex;justify-content:center}
+.dialog{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:var(--space-5);width:440px;display:flex;flex-direction:column;gap:var(--space-3)}
+.dialog h3{margin:0}
+input.num{width:90px;padding:8px 10px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;font:inherit}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 6px;font:12px ui-monospace,monospace;background:var(--panel-2)}
+.opt-off{opacity:.55}
+.tag{font-size:11px;padding:1px 8px;border-radius:999px;border:1px dashed var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<h1>MIND: pré-teste, feedback postergado, intercalação e calibração (mockups refinados, 2.5)</h1>
+<p class="n">Telas novas ou alteradas, com valores fictícios. O rótulo <span class="tag">novo</span> marca o que não existe hoje. Use as abas para alternar telas e estados, e o botão de tema para conferir claro e escuro. Versão refinada com as decisões de 2.3 (quantidade do pré-teste, confiança obrigatória, feedback pendente, rodízio por tópico ou material) e as especificações de interação em design.md § 2.5.</p>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="app">
+  <aside class="sidebar">
+    <b>MIND</b>
+    <span data-nav="today">Hoje</span><span data-nav="library">Biblioteca</span><span>Gerar</span><span>Itens</span><span data-nav="study">Estudar</span><span data-nav="stats">Estatísticas</span><span>Erros</span><span>Chat</span>
+    <div class="sp"></div><span data-nav="settings">Configurações</span>
+  </aside>
+  <main class="content" id="screens">
+
+    <!-- 1. Biblioteca -->
+    <section class="screen" data-id="lib" data-nav="library" data-title="Biblioteca: botão Pré-teste">
+      <div class="stack">
+        <h2>Biblioteca</h2>
+        <div class="card">
+          <table>
+            <thead><tr><th>Material</th><th>Tipo</th><th class="num">Páginas</th><th>Status</th><th>Questões</th><th>Ações</th></tr></thead>
+            <tbody>
+              <tr><td>Fotossíntese (resumo)</td><td>Markdown</td><td class="num">4</td><td><span class="pill ok">Pronto</span></td><td>12 aprovadas</td>
+                <td class="actions"><button class="btn sm">Ler</button><button class="btn sm ghost">Estudar</button><button class="btn sm ghost">Pré-teste <span class="tag">novo</span></button></td></tr>
+              <tr><td>Genética mendeliana</td><td>PDF</td><td class="num">38</td><td><span class="pill ok">Pronto</span></td><td>0 aprovadas</td>
+                <td class="actions"><button class="btn sm">Ler</button><button class="btn sm ghost">Estudar</button><button class="btn sm ghost" disabled title="Gere e aprove questões deste material primeiro">Pré-teste</button></td></tr>
+              <tr><td>Ecologia de populações</td><td>Página web</td><td class="num">—</td><td><span class="pill info">Indexando</span></td><td>—</td>
+                <td class="actions"><button class="btn sm" disabled>Ler</button><button class="btn sm ghost" disabled>Estudar</button><button class="btn sm ghost" disabled>Pré-teste</button></td></tr>
+            </tbody>
+          </table>
+          <p class="note">Pré-teste: ativo quando o material tem ao menos uma questão aprovada. Sem questões, o botão fica desabilitado, com a dica de gerar e aprovar questões antes (estado vazio na aba "Estados").</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Pré-teste: pergunta -->
+    <section class="screen" data-id="pre" data-nav="library" data-title="Pré-teste: durante a rodada">
+      <div class="stack">
+        <h2>Pré-teste: Fotossíntese (resumo)</h2>
+        <div class="banner info">Você ainda não estudou este material, então errar aqui é esperado. Esta rodada não conta nas estatísticas nem no caderno de erros. <span class="hint">Sair da rodada <button class="btn sm ghost">Encerrar</button></span></div>
+        <div class="card stack">
+          <p class="muted">Clima e luz · Questão 3 de 8</p>
+          <p><strong>Em qual organela da célula vegetal ocorre a fotossíntese?</strong></p>
+          <button class="option">A · Mitocôndria</button>
+          <button class="option chosen">B · Cloroplasto</button>
+          <button class="option">C · Ribossomo</button>
+          <button class="option">D · Núcleo</button>
+          <div class="row"><span class="lbl">Quão seguro você está?</span><div class="seg"><span>Chute</span><span class="on">Acho que sei</span><span>Tenho certeza</span></div><span class="tag">novo</span></div>
+          <div class="actions"><button class="btn">Responder</button><button class="btn ghost">Pular</button></div>
+          <p class="note">Confiança obrigatória enquanto a opção está ligada: "Responder" só habilita depois de escolher um nível (atalhos <kbd>Alt</kbd>+<kbd>1</kbd> a <kbd>3</kbd>). No pré-teste o gabarito só aparece ao fim da rodada.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Pré-teste: resumo -->
+    <section class="screen" data-id="presum" data-nav="library" data-title="Pré-teste: resumo da rodada">
+      <div class="stack">
+        <h2>Resumo do pré-teste</h2>
+        <div class="card stack">
+          <div class="row"><b style="font-size:28px">3 de 8</b><span class="muted">acertos antes de estudar</span><span class="pill info">fora das estatísticas</span></div>
+          <table>
+            <thead><tr><th>Questão</th><th>Sua resposta</th><th>Gabarito</th><th>Confiança</th></tr></thead>
+            <tbody>
+              <tr><td>Organela da fotossíntese</td><td><span class="pill ok">B</span></td><td>B</td><td>Acho que sei</td></tr>
+              <tr><td>Pigmento principal</td><td><span class="pill bad">A</span></td><td>C · clorofila</td><td>Chute</td></tr>
+              <tr><td>Produto da fase clara</td><td><span class="pill bad">D</span></td><td>B · ATP e NADPH</td><td>Tenho certeza</td></tr>
+            </tbody>
+          </table>
+          <p class="hint">Cada linha abre o comentário e a passagem citada. As questões erradas aqui continuam "novas" na prática normal.</p>
+          <div class="actions"><button class="btn">Ler o material agora</button><button class="btn ghost">Ver os comentários</button><button class="btn ghost">Fechar</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Praticar: confiança + imediato -->
+    <section class="screen" data-id="prac" data-nav="study" data-title="Praticar: confiança (feedback imediato)">
+      <div class="stack">
+        <h2>Praticar questões</h2>
+        <div class="subtabs"><span>Cards</span><span class="on">Questões</span></div>
+        <div class="row"><div class="seg"><span class="on">Tudo</span><span>Por tópico</span><span>Por material</span></div>
+          <div class="check on"><i></i><span>Misturar tópicos <span class="tag">novo</span></span></div></div>
+        <p class="muted">12 novas · 3 para refazer · Hoje: 5 respondidas, 4 certas</p>
+        <div class="card stack">
+          <p class="muted">Clima e luz · Questão 2 de 20</p>
+          <p><strong>A fase clara da fotossíntese acontece:</strong></p>
+          <button class="option right">A · <b>nos tilacoides</b> — é onde estão os pigmentos e a cadeia de transporte de elétrons.</button>
+          <button class="option wrong">B · no estroma — ocorre ali o ciclo de Calvin, a fase escura.</button>
+          <button class="option">C · na membrana externa</button>
+          <div role="status" class="stack">
+            <p style="color:var(--danger)">Resposta errada. Gabarito: A</p>
+            <p>Os pigmentos ficam nos tilacoides; o estroma abriga o ciclo de Calvin.</p>
+            <blockquote class="source">Fonte: Fotossíntese (resumo), p. 2<br>“A fase clara ocorre nas membranas dos tilacoides.”</blockquote>
+            <div class="row"><span class="pill warn">Você tinha marcado "Tenho certeza"</span><span class="tag">novo</span></div>
+          </div>
+          <div class="actions"><button class="btn ghost">Anterior</button><button class="btn">Próxima</button></div>
+          <p class="note">Modo "imediato" (padrão): como hoje, com a confiança registrada antes de responder e comparada ao resultado.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Praticar: feedback no fim do bloco, pergunta respondida -->
+    <section class="screen" data-id="defer" data-nav="study" data-title="Praticar: feedback ao fim do bloco">
+      <div class="stack">
+        <h2>Praticar questões</h2>
+        <div class="subtabs"><span>Cards</span><span class="on">Questões</span></div>
+        <div class="card stack">
+          <p class="muted">Clima e luz · Questão 2 de 20 <span class="pill info">Feedback ao fim do bloco</span></p>
+          <p><strong>A fase clara da fotossíntese acontece:</strong></p>
+          <button class="option chosen" disabled>A · nos tilacoides</button>
+          <button class="option" disabled>B · no estroma</button>
+          <button class="option" disabled>C · na membrana externa</button>
+          <div role="status" class="banner info">Resposta registrada. O gabarito e o comentário aparecem ao fim do bloco (faltam 18 questões).</div>
+          <div class="actions"><button class="btn ghost">Anterior</button><button class="btn">Próxima</button><button class="btn ghost">Ver o feedback agora</button></div>
+          <p class="note">"Ver o feedback agora" encerra o bloco antes do fim e mostra o que já foi respondido. Mudar a resposta depois de registrada não é permitido.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Fim do bloco: feedback -->
+    <section class="screen" data-id="block" data-nav="study" data-title="Fim do bloco: feedback">
+      <div class="stack">
+        <h2>Feedback do bloco</h2>
+        <div class="card stack">
+          <div class="row"><b style="font-size:28px">14 de 20</b><span class="muted">certas</span><span class="pill info">Calibração: 2 respostas "Tenho certeza" estavam erradas</span></div>
+          <div class="stack">
+            <div class="card"><div class="row"><span class="pill bad">Errada</span><b>A fase clara da fotossíntese acontece:</b></div>
+              <p class="muted">Você: B · Gabarito: A · Confiança: Tenho certeza</p>
+              <p>Os pigmentos ficam nos tilacoides; o estroma abriga o ciclo de Calvin.</p>
+              <blockquote class="source">Fotossíntese (resumo), p. 2 · “A fase clara ocorre nas membranas dos tilacoides.”</blockquote>
+              <div class="actions"><button class="btn sm ghost">Fazer um card desta questão</button></div></div>
+            <div class="card"><div class="row"><span class="pill ok">Certa</span><b>Qual gás é absorvido na fotossíntese?</b></div><p class="muted">Você: C · Confiança: Acho que sei</p></div>
+          </div>
+          <div class="actions"><button class="btn">Começar novo bloco</button><button class="btn ghost">Ir para Erros</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Hoje com pendentes (dia seguinte) -->
+    <section class="screen" data-id="today" data-nav="today" data-title="Hoje: feedback pendente (dia seguinte)">
+      <div class="stack">
+        <h2>Hoje</h2>
+        <div class="banner info"><b>16 respostas aguardam feedback.</b> O gabarito de ontem está liberado. <button class="btn sm" style="margin-left:8px">Ver feedback</button> <span class="tag">novo</span></div>
+        <div class="row">
+          <div class="card"><b style="font-size:24px">32</b><br><span class="muted">cards para estudar</span></div>
+          <div class="card"><b style="font-size:24px">12</b><br><span class="muted">questões novas</span></div>
+          <div class="card"><b style="font-size:24px">16</b><br><span class="muted">feedbacks pendentes</span></div>
+        </div>
+        <div class="card"><div class="row"><span class="lbl">Meta de hoje</span><div class="bar" style="width:260px"><i style="width:55%"></i></div><span class="muted">22 de 40</span></div></div>
+        <p class="note">Feedback "no dia seguinte": o gabarito é liberado na virada do dia de estudo (4h, como hoje). Antes disso, a questão mostra "Resposta registrada. Feedback disponível amanhã". O limite de pendentes e o comportamento quando o estudante não volta ficam para 2.3.</p>
+      </div>
+    </section>
+
+    <!-- 8. Estudar: intercalação -->
+    <section class="screen" data-id="mix" data-nav="study" data-title="Estudar: intercalação">
+      <div class="stack">
+        <h2>Estudar</h2>
+        <div class="subtabs"><span class="on">Cards</span><span>Questões</span></div>
+        <div class="card stack">
+          <div class="row"><span class="lbl">Filtro</span><div class="seg"><span class="on">Tudo</span><span>Um tópico</span><span>Um material</span></div></div>
+          <div class="check on"><i></i><div><b>Misturar tópicos</b> <span class="tag">novo</span><br><span class="hint">Alterna os assuntos dos cards novos e das revisões, em vez de estudá-los em bloco. Com um filtro de tópico ou material, a opção fica desabilitada.</span></div></div>
+          <div class="row"><span class="lbl">Alternar por</span><div class="seg"><span class="on">Tópico</span><span>Material</span></div></div>
+        </div>
+        <div class="card stack">
+          <p class="muted">Card 1 de 32 · <span class="pill">Genética</span></p>
+          <p><strong>O que é um alelo recessivo?</strong></p>
+          <div class="actions"><button class="btn">Mostrar resposta (Espaço)</button></div>
+          <p class="hint">Próximos tópicos da fila: Ecologia → Fotossíntese → Genética → Fotossíntese (alternados).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Estatísticas: calibração -->
+    <section class="screen" data-id="stats" data-nav="stats" data-title="Estatísticas: calibração">
+      <div class="stack">
+        <h2>Estatísticas</h2>
+        <div class="card stack">
+          <h3 style="margin:0">Calibração <span class="tag">novo</span></h3>
+          <p class="muted">Compara quão seguro você estava com o quanto acertou, nas questões dos últimos 30 dias.</p>
+          <table>
+            <thead><tr><th>Confiança</th><th class="num">Respostas</th><th>Acerto</th><th class="num">%</th><th>Leitura</th></tr></thead>
+            <tbody>
+              <tr><td>Chute</td><td class="num">24</td><td><div class="bar warn"><i style="width:38%"></i></div></td><td class="num">38%</td><td class="muted">como esperado</td></tr>
+              <tr><td>Acho que sei</td><td class="num">61</td><td><div class="bar"><i style="width:66%"></i></div></td><td class="num">66%</td><td class="muted">como esperado</td></tr>
+              <tr><td>Tenho certeza</td><td class="num">40</td><td><div class="bar ok"><i style="width:78%"></i></div></td><td class="num">78%</td><td><span class="pill warn">excesso de confiança</span></td></tr>
+            </tbody>
+          </table>
+          <p class="hint">Excesso de confiança: o acerto de "Tenho certeza" ficou abaixo de 80% (ou o de "Acho que sei" abaixo de 60%). Tópicos com mais respostas seguras erradas: Fotossíntese (6), Genética (4).</p>
+        </div>
+        <p class="note">O pré-teste não entra aqui (A6). Sem respostas com confiança, a seção mostra o estado vazio com a dica de ligar a calibração em Configurações.</p>
+      </div>
+    </section>
+
+    <!-- 10. Configurações -->
+    <section class="screen" data-id="set" data-nav="settings" data-title="Configurações: práticas de estudo">
+      <div class="stack">
+        <h2>Configurações</h2>
+        <div class="card stack">
+          <h3 style="margin:0">Práticas de estudo <span class="tag">novo</span></h3>
+          <div class="field"><span class="lbl">Feedback das questões</span>
+            <div class="radio on"><i></i><div><b>Imediato</b> (padrão)<br><span class="hint">O gabarito aparece assim que você responde.</span></div></div>
+            <div class="radio"><i></i><div><b>Ao fim do bloco</b><br><span class="hint">Você responde um bloco de questões e vê o gabarito e os comentários no fim.</span></div></div>
+            <div class="radio"><i></i><div><b>No dia seguinte</b><br><span class="hint">O gabarito é liberado na virada do dia de estudo.</span></div></div>
+          </div>
+          <div class="field"><div class="check"><i></i><div><b>Perguntar a confiança antes de responder</b><br><span class="hint">Três níveis (chute, acho que sei, tenho certeza). Alimenta Estatísticas &gt; Calibração. Desligado por padrão.</span></div></div></div>
+          <div class="field"><div class="check"><i></i><div><b>Misturar tópicos por padrão</b><br><span class="hint">Marca a opção de intercalação já ligada em Estudar e Praticar. Desligado por padrão.</span></div></div></div>
+          <div class="actions"><button class="btn">Salvar</button><button class="btn ghost">Restaurar padrões</button></div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 2b. Diálogo de quantidade do pré-teste -->
+    <section class="screen" data-id="dlg" data-nav="library" data-title="Pré-teste: quantidade">
+      <div class="backdrop">
+        <div class="dialog" role="dialog" aria-label="Pré-teste">
+          <h3>Pré-teste: Fotossíntese (resumo)</h3>
+          <p class="muted">Responda questões deste material antes de estudá-lo. O gabarito aparece só no fim, e a rodada não conta nas estatísticas.</p>
+          <div class="field"><label for="q">Quantas questões? (1 a 20)</label><div class="row"><input id="q" class="num" value="10"><span class="hint">12 questões elegíveis neste material</span></div></div>
+          <div class="banner">Só entram questões aprovadas que você ainda não respondeu na prática.</div>
+          <div class="actions"><button class="btn ghost">Cancelar</button><button class="btn">Começar</button></div>
+          <p class="note">Com menos questões elegíveis do que o pedido, o campo mostra o limite ("Só há 4 elegíveis") e a rodada usa as 4. Valor fora de 1 a 20 mostra o erro no campo e não começa.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5b. Praticar: dia seguinte -->
+    <section class="screen" data-id="tomorrow" data-nav="study" data-title="Praticar: feedback amanhã">
+      <div class="stack">
+        <h2>Praticar questões</h2>
+        <div class="subtabs"><span>Cards</span><span class="on">Questões</span></div>
+        <div class="card stack">
+          <p class="muted">Genética · Questão 5 de 20 <span class="pill info">Feedback no dia seguinte</span></p>
+          <p><strong>Qual é a proporção fenotípica esperada em um cruzamento Aa x Aa (dominância completa)?</strong></p>
+          <button class="option chosen" disabled>B · 3:1</button>
+          <div role="status" class="banner info">Resposta registrada. O gabarito fica disponível amanhã, a partir das 4h.</div>
+          <div class="actions"><button class="btn ghost">Anterior</button><button class="btn">Próxima</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7b. Feedback pendente -->
+    <section class="screen" data-id="pending" data-nav="today" data-title="Feedback pendente (lista)">
+      <div class="stack">
+        <h2>Feedback pendente</h2>
+        <p class="muted">16 respostas liberadas. Abrir esta tela marca todas como vistas.</p>
+        <div class="card stack">
+          <div class="row"><span class="pill bad">Errada</span><b>Qual é a proporção fenotípica esperada em Aa x Aa?</b></div>
+          <p class="muted">Respondida ontem às 22:14 · Você: B · Gabarito: A · Confiança: Tenho certeza <span class="pill warn">divergência</span></p>
+          <p>Em dominância completa, a proporção fenotípica é 3:1 e a genotípica, 1:2:1.</p>
+          <blockquote class="source">Genética mendeliana, p. 12 · “Cruzamentos monoíbridos resultam em proporção 3:1.”</blockquote>
+          <div class="actions"><button class="btn sm ghost">Ver no PDF</button><button class="btn sm ghost">Fazer um card desta questão</button></div>
+        </div>
+        <div class="card"><div class="row"><span class="pill ok">Certa</span><b>Qual gás é absorvido na fotossíntese?</b></div><p class="muted">Respondida ontem às 22:20 · Você: C</p></div>
+        <div class="actions"><button class="btn">Fechar</button></div>
+        <p class="note">Ordem: da resposta mais antiga para a mais nova. Sem pendentes: estado vazio ("Você não tem respostas aguardando feedback").</p>
+      </div>
+    </section>
+
+    <!-- 8b. Intercalação com filtro -->
+    <section class="screen" data-id="mixoff" data-nav="study" data-title="Estudar: intercalação desabilitada">
+      <div class="stack">
+        <h2>Estudar</h2>
+        <div class="subtabs"><span class="on">Cards</span><span>Questões</span></div>
+        <div class="card stack">
+          <div class="row"><span class="lbl">Filtro</span><div class="seg"><span>Tudo</span><span class="on">Um tópico: Genética</span><span>Um material</span></div></div>
+          <div class="check opt-off"><i></i><div><b>Misturar tópicos</b><br><span class="hint">Desabilitada com um filtro de tópico ou material ativo. Escolha "Tudo" para misturar.</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Estados -->
+    <section class="screen" data-id="states" data-nav="library" data-title="Estados: vazio, carregando, erro">
+      <div class="stack">
+        <h2>Estados</h2>
+        <div class="card stack"><b>Pré-teste sem questões</b>
+          <p class="muted">Este material ainda não tem questões aprovadas. Gere e aprove questões em Gerar para fazer um pré-teste.</p>
+          <div class="actions"><button class="btn">Ir para Gerar</button></div></div>
+        <div class="card stack"><b>Carregando a rodada</b><div class="sk" style="width:70%"></div><div class="sk" style="width:90%"></div><div class="sk" style="width:55%"></div></div>
+        <div class="card stack"><b>Erro</b><div class="banner bad">Não foi possível registrar sua resposta. Tente de novo; nada foi perdido.</div><div class="actions"><button class="btn ghost">Tentar de novo</button></div></div>
+        <div class="card stack"><b>Confiança não escolhida</b><div class="actions"><button class="btn" disabled>Responder</button></div><p class="hint">Escolha um nível de confiança para responder.</p></div>
+        <div class="card stack"><b>Nenhum feedback pendente</b><p class="muted">Você não tem respostas aguardando feedback.</p></div>
+        <div class="card stack"><b>Calibração sem dados</b><p class="muted">Ligue "Perguntar a confiança" em Configurações e responda algumas questões para ver esta análise.</p></div>
+        <div class="card stack"><b>Sem provedor de IA</b><p class="muted">O pré-teste, o feedback postergado, a intercalação e a calibração usam só questões já aprovadas e funcionam sem provedor e sem internet (como Estudar e Praticar hoje). Só Gerar precisa de provedor.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+const screens=[...document.querySelectorAll('.screen')];
+const tabs=document.getElementById('tabs');
+screens.forEach((s,i)=>{const b=document.createElement('button');b.textContent=s.dataset.title;b.onclick=()=>show(i);tabs.appendChild(b)});
+const sep=document.createElement('span');sep.className='sep';tabs.appendChild(sep);
+const t=document.createElement('button');t.textContent='Alternar tema';t.onclick=()=>{const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark'};tabs.appendChild(t);
+function show(i){screens.forEach((s,j)=>s.classList.toggle('on',i===j));[...tabs.querySelectorAll('button')].forEach((b,j)=>{if(j<screens.length)b.classList.toggle('on',j===i)});
+document.querySelectorAll('.sidebar span[data-nav]').forEach(n=>n.classList.toggle('on',n.dataset.nav===screens[i].dataset.nav))}
+show(0);
+</script>
+</body>
+</html>

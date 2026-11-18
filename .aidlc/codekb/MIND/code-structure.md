@@ -53,3 +53,5 @@ Status: draft · Confiança: alta
 | `src/core/importing/` | templates (`templates.ts`), leitura segura de CSV e XLSX (`read.ts`, `zip.ts`), validação por linha (`validate.ts`) e `ImportService` (prévia em memória, `commit`) |
 | `src/core/db/run-kinds.ts` | `SYNTHETIC_RUN_KINDS`: runs que só existem para satisfazer `item.run_id` |
 | `src/renderer/src/components/` | `SidePanel`, `ItemEditor` (cartão e questão), `SourcePicker`, `ImproveProposal`, `SelectionBar`, `GenerateFromSelection`, `ImportPanel`; `wordDiff.ts` |
+
+**Adições de 2026-11-17 (commit 4e7cc4e).** `.githooks/pre-commit` e `scripts/pre-commit.ts` (hook de pre-commit), `tests/pre-commit.test.ts` (seus testes), `Makefile` (atalhos de desenvolvimento) e `docs/{img,guides}/` (imagens e guias). [src: listagem do repositório]
