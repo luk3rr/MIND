@@ -164,10 +164,39 @@ export const attempt = sqliteTable(
     seconds: real("seconds"),
     answeredAt: text("answered_at").notNull().$defaultFn(now),
     day: text("day").notNull(),
+    /** How sure the student was before answering: 1 guess, 2 think so, 3 certain; null if not asked. */
+    confidence: integer("confidence"),
+    /** When the feedback becomes visible; null while it waits for the end of the block. */
+    releaseAt: text("release_at"),
+    /** When the student saw the feedback; null while it is pending. */
+    seenAt: text("seen_at"),
   },
   (table) => [
     index("ix_attempt_item_answered").on(table.itemId, table.answeredAt),
     index("ix_attempt_day").on(table.day),
+    index("ix_attempt_pending").on(table.seenAt, table.releaseAt),
+  ],
+);
+
+/** One answer in a pre-test round; kept apart from `attempt` so it never counts as practice. */
+export const pretestAttempt = sqliteTable(
+  "pretest_attempt",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => item.id, { onDelete: "cascade" }),
+    roundId: text("round_id").notNull(),
+    answer: text("answer").notNull(),
+    correct: integer("correct", { mode: "boolean" }).notNull(),
+    confidence: integer("confidence"),
+    seconds: real("seconds"),
+    answeredAt: text("answered_at").notNull().$defaultFn(now),
+    day: text("day").notNull(),
+  },
+  (table) => [
+    index("ix_pretest_attempt_round").on(table.roundId),
+    index("ix_pretest_attempt_item").on(table.itemId),
   ],
 );
 

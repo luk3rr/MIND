@@ -47,6 +47,7 @@ describe("migrations", () => {
         "job",
         "material",
         "meta",
+        "pretest_attempt",
         "review_log",
         "study_session",
         "topic",
@@ -71,7 +72,48 @@ describe("migrations", () => {
       "0001_chunk_index.sql",
       "0002_chunk_fts.sql",
       "0003_study_session.sql",
+      "0004_study_practices.sql",
     ]);
+  });
+
+  it("migrates a database from before the study practices without losing answers (NFR-1)", () => {
+    const connection = openDatabase(join(tempDir(), "workspace.db"), {});
+    const { sqlite } = connection;
+    applyMigrations(sqlite, workspaceMigrations.slice(0, 4));
+    sqlite
+      .prepare(
+        "INSERT INTO generation_run (kind, subtype, model, requested, created_at) VALUES ('question','multiple_choice','m',1,'x')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO item (run_id, kind, subtype, payload_json, created_at) VALUES (1,'question','multiple_choice','{}','x')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO attempt (item_id, answer, correct, seconds, answered_at, day) VALUES (1,'A',1,3.5,'2026-03-10T15:00:00.000Z','2026-03-10')",
+      )
+      .run();
+
+    applyMigrations(sqlite, workspaceMigrations);
+
+    expect(sqlite.prepare("SELECT * FROM attempt").all()).toEqual([
+      {
+        id: 1,
+        item_id: 1,
+        answer: "A",
+        correct: 1,
+        seconds: 3.5,
+        answered_at: "2026-03-10T15:00:00.000Z",
+        day: "2026-03-10",
+        confidence: null,
+        release_at: "2026-03-10T15:00:00.000Z",
+        seen_at: "2026-03-10T15:00:00.000Z",
+      },
+    ]);
+    expect(sqlite.prepare("SELECT COUNT(*) AS n FROM pretest_attempt").get()).toEqual({ n: 0 });
+    connection.close();
   });
 
   it("refuses a database written by a newer version", () => {

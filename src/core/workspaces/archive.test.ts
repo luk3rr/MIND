@@ -366,6 +366,63 @@ describe("exportWorkspace and importWorkspace (FR-22)", () => {
     expect(restored[0]).toMatchObject({ seconds: 600, source: "manual", day: "2026-03-10" });
   });
 
+  it("takes the study practice data along in a backup and a restore (NFR-10)", async () => {
+    const registry = newRegistry();
+    const source = populated(registry);
+    const { sqlite } = registry.open(source).connection;
+    sqlite
+      .prepare(
+        "INSERT INTO generation_run (kind, subtype, model, requested, created_at) VALUES ('question','multiple_choice','m',1,'x')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO item (run_id, kind, subtype, payload_json, created_at) VALUES (1,'question','multiple_choice','{}','x')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO attempt (item_id, answer, correct, answered_at, day, confidence, release_at, seen_at) VALUES (1,'B',0,'2026-03-10T22:00:00.000Z','2026-03-10',3,'2026-03-11T07:00:00.000Z',NULL)",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO pretest_attempt (item_id, round_id, answer, correct, confidence, answered_at, day) VALUES (1,'round-1','A',1,2,'2026-03-09T10:00:00.000Z','2026-03-09')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO meta (key, value) VALUES ('practice.feedback','next_day'), ('study.interleave','1')",
+      )
+      .run();
+
+    const archive = await exportWorkspace(registry, source, join(tempDir(), "b.zip"));
+    const copy = await importWorkspace(registry, archive);
+    const restored = registry.open(copy.id).connection.sqlite;
+
+    expect(restored.prepare("SELECT * FROM attempt").all()).toEqual([
+      expect.objectContaining({
+        answer: "B",
+        confidence: 3,
+        release_at: "2026-03-11T07:00:00.000Z",
+        seen_at: null,
+      }),
+    ]);
+    expect(
+      restored.prepare("SELECT round_id, answer, confidence FROM pretest_attempt").all(),
+    ).toEqual([{ round_id: "round-1", answer: "A", confidence: 2 }]);
+    expect(
+      restored
+        .prepare(
+          "SELECT key, value FROM meta WHERE key LIKE 'practice.%' OR key LIKE 'study.%' ORDER BY key",
+        )
+        .all(),
+    ).toEqual([
+      { key: "practice.feedback", value: "next_day" },
+      { key: "study.interleave", value: "1" },
+    ]);
+  });
+
   it("imports a backup made before the study sessions existed and adds the table (FR-11)", async () => {
     const registry = newRegistry();
     const dir = tempDir();
