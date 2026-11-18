@@ -240,6 +240,33 @@ export const T = {
   restoreDefaults: "Restaurar padrões",
   studySettingsSave: "Salvar estudo",
   studySettingsSaved: "Configurações de estudo salvas.",
+  practiceSettingsTitle: "Práticas de estudo",
+  practiceSettingsNote:
+    "Escolha como as questões e as filas de estudo se comportam neste workspace. Os padrões mantêm o comportamento de sempre.",
+  practiceFeedbackLabel: "Feedback das questões",
+  practiceFeedbackModes: {
+    immediate: {
+      label: "Imediato (padrão)",
+      hint: "O gabarito aparece assim que você responde.",
+    },
+    block: {
+      label: "Ao fim do bloco",
+      hint: "Você responde um bloco de questões e vê o gabarito e os comentários no fim.",
+    },
+    next_day: {
+      label: "No dia seguinte",
+      hint: "O gabarito é liberado na virada do dia de estudo.",
+    },
+  } as Record<string, { label: string; hint: string }>,
+  practiceConfidenceLabel: "Perguntar a confiança antes de responder",
+  practiceConfidenceHint:
+    "Três níveis: chute, acho que sei e tenho certeza. Alimenta a calibração em Estatísticas. Desligado por padrão.",
+  practiceInterleaveLabel: "Misturar tópicos por padrão",
+  practiceInterleaveHint:
+    "Deixa a opção de misturar tópicos já marcada em Estudar e Praticar. Desligado por padrão.",
+  practiceRestoreDefaults: "Restaurar padrões das práticas",
+  practiceSettingsSave: "Salvar práticas",
+  practiceSettingsSaved: "Configurações das práticas salvas.",
   runMaterial: "Material",
   runAllPages: "material inteiro",
   runPage: (page: number) => `pág. ${page}`,

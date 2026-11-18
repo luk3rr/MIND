@@ -32,6 +32,12 @@ export const DEFAULT_STUDY_SETTINGS: FakeStudySettings = {
   relearningSteps: "10m",
   enableFuzz: true,
 };
+export type FakePracticeSettings = OutputOf<"practice:settings">["settings"];
+export const DEFAULT_PRACTICE_SETTINGS: FakePracticeSettings = {
+  feedback: "immediate",
+  confidence: false,
+  interleave: false,
+};
 export type FakeStudyCard = NonNullable<OutputOf<"study:next">["card"]>;
 export type FakeErrorEntry = OutputOf<"errors:list">["entries"][number];
 export type FakeTopic = OutputOf<"topics:list">["topics"][number];
@@ -101,6 +107,8 @@ export interface FakeState {
   releasedExtra?: number;
   /** The study settings the settings form saves. */
   studySettings?: FakeStudySettings;
+  /** The study practices the settings form saves. */
+  practiceSettings?: FakePracticeSettings;
   reviewedToday: number;
   undoStack: FakeStudyCard[];
   /** Questions the practice queue serves; answering one removes it. */
@@ -916,6 +924,23 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           ),
         };
         return ok(state.studySettings);
+      }
+      case "practice:settings":
+        return ok({
+          settings: state.practiceSettings ?? DEFAULT_PRACTICE_SETTINGS,
+          defaults: DEFAULT_PRACTICE_SETTINGS,
+        });
+      case "practice:saveSettings": {
+        const input = payload as InputOf<"practice:saveSettings">;
+        state.practiceSettings = {
+          ...(state.practiceSettings ?? DEFAULT_PRACTICE_SETTINGS),
+          ...Object.fromEntries(
+            Object.entries(input).filter(
+              ([key, value]) => key !== "workspaceId" && value !== undefined,
+            ),
+          ),
+        };
+        return ok(state.practiceSettings);
       }
       case "practice:next": {
         const input = payload as InputOf<"practice:next">;
