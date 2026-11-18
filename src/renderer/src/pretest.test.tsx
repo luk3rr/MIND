@@ -135,8 +135,8 @@ describe("a pre-test round (FR-3, FR-5, FR-6)", () => {
     expect(within(list).getByText("1 de 1 certa")).toBeInTheDocument();
   });
 
-  it("asks for the confidence when it is turned on", async () => {
-    open(route, {
+  it("warns when answering without a level of confidence", async () => {
+    const { state } = open(route, {
       materials: [material(1)],
       questions: [question(1)],
       practiceSettings: { feedback: "immediate", confidence: true, interleave: false },
@@ -144,14 +144,88 @@ describe("a pre-test round (FR-3, FR-5, FR-6)", () => {
     const user = userEvent.setup();
     await screen.findByText("Enunciado 1?");
     await user.click(screen.getByRole("radio", { name: /^A ·/ }));
-    expect(screen.getByRole("button", { name: "Responder" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Escolha o quanto você está seguro para responder.",
+    );
+    expect(state.pretestGiven ?? []).toHaveLength(0);
     await user.click(screen.getByRole("radio", { name: "Chute" }));
-    expect(screen.getByRole("button", { name: "Responder" })).toBeEnabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    expect(await screen.findByRole("region", { name: "Resumo do pré-teste" })).toBeInTheDocument();
   });
 
   it("says when fewer questions than asked are available", async () => {
     open(route, { materials: [material(1)], questions: [question(1)] });
     expect(await screen.findByText(/Só há 1 questão elegível/)).toBeInTheDocument();
+  });
+});
+
+describe("going back to skipped questions", () => {
+  const route = "/w/1/library/1/pretest?count=3";
+  const three = { materials: [material(3)], questions: [question(1), question(2), question(3)] };
+
+  it("goes back with Previous and answers a skipped question", async () => {
+    open(route, three);
+    const user = userEvent.setup();
+    await screen.findByText("Enunciado 1?");
+    await user.click(screen.getByRole("button", { name: "Pular" }));
+    await screen.findByText("Enunciado 2?");
+    await user.click(screen.getByRole("button", { name: "Anterior" }));
+    expect(await screen.findByText("Enunciado 1?")).toBeInTheDocument();
+    expect(screen.getByText(/1 pulada/)).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    expect(await screen.findByText("Enunciado 2?")).toBeInTheDocument();
+  });
+
+  it("offers the skipped ones at the end of the round, and shows the summary when none is left", async () => {
+    open(route, three);
+    const user = userEvent.setup();
+    await screen.findByText("Enunciado 1?");
+    await user.click(screen.getByRole("button", { name: "Pular" }));
+    for (const id of [2, 3]) {
+      await screen.findByText(`Enunciado ${id}?`);
+      await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+      await user.click(screen.getByRole("button", { name: "Responder" }));
+    }
+    expect(
+      await screen.findByText("Você chegou ao fim das questões da rodada."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 pulada")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Voltar às puladas" }));
+    expect(await screen.findByText("Enunciado 1?")).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    const list = await screen.findByRole("region", { name: "Resumo do pré-teste" });
+    expect(within(list).getByText("3 de 3 certas")).toBeInTheDocument();
+  });
+
+  it("lets the student see the summary with some questions still skipped", async () => {
+    open(route, three);
+    const user = userEvent.setup();
+    await screen.findByText("Enunciado 1?");
+    await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    await screen.findByText("Enunciado 2?");
+    await user.click(screen.getByRole("button", { name: "Pular" }));
+    await user.click(await screen.findByRole("button", { name: "Pular" }));
+    await user.click(await screen.findByRole("button", { name: "Ver o resumo" }));
+    const list = await screen.findByRole("region", { name: "Resumo do pré-teste" });
+    expect(within(list).getByText("1 de 1 certa")).toBeInTheDocument();
+  });
+
+  it("shows an answered question as answered, without a key", async () => {
+    open(route, three);
+    const user = userEvent.setup();
+    await screen.findByText("Enunciado 1?");
+    await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    await screen.findByText("Enunciado 2?");
+    await user.click(screen.getByRole("button", { name: "Anterior" }));
+    expect(await screen.findByText(/Você já respondeu esta questão/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Responder" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Gabarito/)).not.toBeInTheDocument();
   });
 });
 

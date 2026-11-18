@@ -56,7 +56,7 @@ describe("confidence before answering (FR-16, FR-17, FR-18)", () => {
     expect(screen.queryByText("Quão seguro você está?")).not.toBeInTheDocument();
   });
 
-  it("keeps Responder disabled until a level is chosen, then sends it", async () => {
+  it("warns when answering without a level, then sends it once chosen", async () => {
     const { invoke } = open("/w/1/study/practice", {
       questions: [question(1)],
       practiceSettings: on,
@@ -64,11 +64,14 @@ describe("confidence before answering (FR-16, FR-17, FR-18)", () => {
     const user = userEvent.setup();
     await screen.findByText("Enunciado 1?");
     await user.click(screen.getByRole("radio", { name: /^A ·/ }));
-    const answer = screen.getByRole("button", { name: "Responder" });
-    expect(answer).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Escolha o quanto você está seguro para responder.",
+    );
+    expect(invoke).not.toHaveBeenCalledWith("practice:answer", expect.anything());
     await user.click(screen.getByRole("radio", { name: "Acho que sei" }));
-    expect(answer).toBeEnabled();
-    await user.click(answer);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Responder" }));
     expect(invoke).toHaveBeenCalledWith(
       "practice:answer",
       expect.objectContaining({ itemId: 1, answer: "A", confidence: 2 }),

@@ -62,6 +62,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
   const [error, setError] = useState<string | null>(null);
   // The feedback of the block, once released: it replaces the questions on the screen.
   const [block, setBlock] = useState<Feedback[] | null>(null);
+  const [needsConfidence, setNeedsConfidence] = useState(false);
   const shownAt = useRef(0);
   const generation = useRef(0);
 
@@ -147,7 +148,10 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
 
   const submit = (answer: string | null = entry?.chosen ?? null): void => {
     if (!entry || !answer || entry.answered) return;
-    if (askConfidence && entry.confidence === null) return;
+    if (askConfidence && entry.confidence === null) {
+      setNeedsConfidence(true);
+      return;
+    }
     const at = index;
     const seconds = Math.round(((performance.now() - shownAt.current) / 1000) * 10) / 10;
     void window.mind
@@ -379,15 +383,23 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
           {!entry.answered && askConfidence && (
             <ConfidencePicker
               value={entry.confidence}
-              onChange={(level) => update(index, { confidence: level })}
+              onChange={(level) => {
+                setNeedsConfidence(false);
+                update(index, { confidence: level });
+              }}
             />
+          )}
+          {!entry.answered && askConfidence && needsConfidence && entry.confidence === null && (
+            <p role="alert" className="alert">
+              {T.confidenceNeeded}
+            </p>
           )}
           {!entry.answered && (
             <div className="row" style={{ alignItems: "center" }}>
               <button
                 type="button"
                 className="btn"
-                disabled={entry.chosen === null || (askConfidence && entry.confidence === null)}
+                disabled={entry.chosen === null}
                 onClick={() => submit()}
               >
                 {T.practiceAnswer}

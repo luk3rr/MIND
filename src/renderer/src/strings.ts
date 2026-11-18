@@ -314,6 +314,11 @@ export const T = {
   pretestBanner:
     "Você ainda não estudou este material, então errar aqui é esperado. Esta rodada não conta nas estatísticas nem no caderno de erros.",
   pretestEnd: "Encerrar",
+  pretestEndOfRound: "Você chegou ao fim das questões da rodada.",
+  pretestSkippedCount: (count: number) => `${count} ${count === 1 ? "pulada" : "puladas"}`,
+  pretestReviewSkipped: "Voltar às puladas",
+  pretestSeeSummary: "Ver o resumo",
+  pretestAlreadyAnswered: "Você já respondeu esta questão; o gabarito aparece no resumo.",
   pretestSummaryTitle: "Resumo do pré-teste",
   pretestSummaryNote: "Fora das estatísticas: estas respostas não contam como prática.",
   pretestReadMaterial: "Abrir o material",

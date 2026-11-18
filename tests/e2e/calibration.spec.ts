@@ -68,7 +68,8 @@ test("asks for the confidence, points out a sure mistake and shows it in Statist
   await page.getByRole("button", { name: "Estudar", exact: true }).click();
   await page.getByRole("tab", { name: /Questões/ }).click();
   await page.getByRole("radio", { name: /^B ·/ }).click();
-  await expect(page.getByRole("button", { name: "Responder" })).toBeDisabled();
+  await page.getByRole("button", { name: "Responder" }).click();
+  await expect(page.getByRole("alert")).toContainText("Escolha o quanto você está seguro");
   await page.getByRole("radio", { name: "Tenho certeza" }).click();
   await page.getByRole("button", { name: "Responder" }).click();
   await expect(page.getByText("Você tinha marcado “Tenho certeza”")).toBeVisible();
