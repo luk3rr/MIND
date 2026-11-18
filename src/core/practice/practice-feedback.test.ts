@@ -116,3 +116,73 @@ describe("feedback timing of an answer (FR-7, FR-8, FR-11)", () => {
     expect(JSON.stringify(view)).not.toContain("alternativa A");
   });
 });
+
+describe("feedback of the next day and pending feedback (FR-9, FR-10)", () => {
+  async function nextDay() {
+    const { practice, ids, clock, rows } = await approved();
+    rig?.core.practiceSettings(rig.workspaceId).set({ feedback: "next_day" });
+    return { practice, ids, clock, rows };
+  }
+
+  it("waits for the turn of the study day: nothing at 3:59, ready at 4:00", async () => {
+    const { practice, ids, clock } = await nextDay();
+    clock.set("2026-03-10T22:00:00.000Z");
+    const result = practice.answer(ids[0] as number, "B");
+    expect(result).toMatchObject({ seen: false, releaseAt: "2026-03-11T04:00:00.000Z" });
+    clock.set("2026-03-11T03:59:00.000Z");
+    expect(practice.pendingCount()).toBe(0);
+    expect(practice.openFeedback().entries).toEqual([]);
+    clock.set("2026-03-11T04:00:00.000Z");
+    expect(practice.pendingCount()).toBe(1);
+  });
+
+  it("opens the ready feedback oldest first and marks it as seen", async () => {
+    const { practice, ids, clock } = await nextDay();
+    clock.set("2026-03-10T22:00:00.000Z");
+    const first = practice.answer(ids[0] as number, "B");
+    clock.set("2026-03-10T22:05:00.000Z");
+    const second = practice.answer(ids[1] as number, "A");
+    clock.set("2026-03-11T05:00:00.000Z");
+    const opened = practice.openFeedback();
+    expect(opened.entries.map((entry) => entry.attemptId)).toEqual([
+      first.attemptId,
+      second.attemptId,
+    ]);
+    expect(opened.remaining).toBe(0);
+    expect(practice.pendingCount()).toBe(0);
+    expect(practice.openFeedback().entries).toEqual([]);
+  });
+
+  it("returns what did not fit in the limit as remaining", async () => {
+    const { practice, ids, clock } = await nextDay();
+    clock.set("2026-03-10T22:00:00.000Z");
+    for (const id of ids) {
+      practice.answer(id, "A");
+      clock.advance(1000);
+    }
+    clock.set("2026-03-11T05:00:00.000Z");
+    const opened = practice.openFeedback(2);
+    expect(opened.entries).toHaveLength(2);
+    expect(opened.remaining).toBe(1);
+    expect(practice.openFeedback().entries).toHaveLength(1);
+  });
+
+  it("releases the answers of an abandoned block, keeping the next-day ones waiting", async () => {
+    const { practice, ids, clock, rows } = await approved("block");
+    practice.answer(ids[0] as number, "A");
+    rig?.core.practiceSettings(rig.workspaceId).set({ feedback: "next_day" });
+    clock.set("2026-03-10T22:00:00.000Z");
+    practice.answer(ids[1] as number, "A");
+    expect(practice.pendingCount()).toBe(0);
+    expect(practice.releaseAbandoned()).toBe(1);
+    expect(practice.pendingCount()).toBe(1);
+    expect(rows().map((row) => row.release_at !== null)).toEqual([true, true]);
+    expect(practice.releaseAbandoned()).toBe(0);
+  });
+
+  it("does not count an answer given and seen at once, and ignores a pre-test", async () => {
+    const { practice, ids } = await approved();
+    practice.answer(ids[0] as number, "A");
+    expect(practice.pendingCount()).toBe(0);
+  });
+});

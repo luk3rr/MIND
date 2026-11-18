@@ -30,5 +30,8 @@ export function fixedClock(start = "2026-01-01T12:00:00.000Z") {
     advance(ms: number): void {
       current = new Date(current.getTime() + ms);
     },
+    set(iso: string): void {
+      current = new Date(iso);
+    },
   };
 }

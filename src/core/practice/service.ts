@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, isNull, lte } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
@@ -282,7 +282,11 @@ export class PracticeService {
       ]);
     }
     const correct = answer === payload.answer;
-    const release = releaseFor(new PracticeSettings(this.workspace).get().feedback, moment);
+    const release = releaseFor(
+      new PracticeSettings(this.workspace).get().feedback,
+      moment,
+      this.offset,
+    );
     const created = this.db
       .insert(attempt)
       .values({
@@ -342,6 +346,62 @@ export class PracticeService {
         pdfSource: info.pdfSource,
       };
     });
+  }
+
+  /**
+   * Makes visible the feedback of answers whose block was left unfinished (it waits for the end
+   * of a block that will not come). Returns how many were released.
+   */
+  releaseAbandoned(now: Date = this.clock.now()): number {
+    return this.db
+      .update(attempt)
+      .set({ releaseAt: now.toISOString() })
+      .where(isNull(attempt.releaseAt))
+      .run().changes;
+  }
+
+  /** The conditions of an answer whose feedback is visible and has not been seen yet. */
+  private pendingWhere(now: Date) {
+    return and(
+      isNull(attempt.seenAt),
+      isNotNull(attempt.releaseAt),
+      lte(attempt.releaseAt, now.toISOString()),
+    );
+  }
+
+  /** How many answers have feedback ready that the student has not seen. */
+  pendingCount(now: Date = this.clock.now()): number {
+    return (
+      this.db.select({ total: count() }).from(attempt).where(this.pendingWhere(now)).get()?.total ??
+      0
+    );
+  }
+
+  /**
+   * The feedback that is ready and not seen yet, oldest answer first, up to `limit`; what is
+   * returned is marked as seen, and `remaining` counts what did not fit.
+   */
+  openFeedback(
+    limit = 200,
+    now: Date = this.clock.now(),
+  ): { entries: Feedback[]; remaining: number } {
+    const rows = this.db
+      .select({ id: attempt.id })
+      .from(attempt)
+      .where(this.pendingWhere(now))
+      .orderBy(asc(attempt.answeredAt), asc(attempt.id))
+      .limit(limit)
+      .all();
+    const ids = rows.map((row) => row.id);
+    const entries = ids.length > 0 ? this.feedback(ids) : [];
+    if (ids.length > 0) {
+      this.db
+        .update(attempt)
+        .set({ seenAt: now.toISOString() })
+        .where(inArray(attempt.id, ids))
+        .run();
+    }
+    return { entries, remaining: this.pendingCount(now) };
   }
 
   /**
