@@ -17,6 +17,26 @@ import { T } from "../strings.js";
 type Round = OutputOf<"pretest:start">;
 type Summary = OutputOf<"pretest:summary">;
 
+/** A round in progress, kept while the app is open so leaving the screen does not lose it. */
+interface Progress {
+  count: number;
+  round: Round;
+  index: number;
+  answered: number;
+}
+const inProgress = new Map<string, Progress>();
+const keyOf = (workspaceId: number, materialId: number): string => `${workspaceId}:${materialId}`;
+
+/** Forgets every round in progress (a test starts from a clean slate). */
+export function forgetPretests(): void {
+  inProgress.clear();
+}
+
+/** The size of the round the student left unfinished for a material, if there is one. */
+export function unfinishedPretest(workspaceId: number, materialId: number): number | null {
+  return inProgress.get(keyOf(workspaceId, materialId))?.count ?? null;
+}
+
 /**
  * A pre-test round: questions of a material answered before studying it. No key or comment is
  * shown until the end, and nothing here counts as practice.
@@ -34,16 +54,26 @@ export function PretestPage({
   const settings = useInvoke("practice:settings", { workspaceId });
   const askConfidence =
     settings.state.status === "ready" && settings.state.data.settings.confidence;
-  const [round, setRound] = useState<Round | null>(null);
-  const [index, setIndex] = useState(0);
+  const saved = inProgress.get(keyOf(workspaceId, materialId));
+  const resumed = saved !== undefined && saved.count === count ? saved : undefined;
+  const [round, setRound] = useState<Round | null>(resumed?.round ?? null);
+  const [index, setIndex] = useState(resumed?.index ?? 0);
   const [chosen, setChosen] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<Confidence | null>(null);
-  const [answered, setAnswered] = useState(0);
+  const [answered, setAnswered] = useState(resumed?.answered ?? 0);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const shownAt = useRef(0);
 
+  // Keep the round while it is open; a finished or empty one is forgotten.
   useEffect(() => {
+    const key = keyOf(workspaceId, materialId);
+    if (round && !summary) inProgress.set(key, { count, round, index, answered });
+    else inProgress.delete(key);
+  }, [workspaceId, materialId, count, round, index, answered, summary]);
+
+  useEffect(() => {
+    if (resumed) return;
     let current = true;
     void window.mind
       .invoke("pretest:start", { workspaceId, materialId, count })

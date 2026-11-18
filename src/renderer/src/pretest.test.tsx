@@ -7,11 +7,14 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { installFakeMind } from "../test/fake-mind.js";
 import type { FakeItem, FakeMaterial, FakeQuestion, FakeState } from "../test/fake-mind.js";
 import { App } from "./App.js";
+import { forgetPretests } from "./pages/PretestPage.js";
 import { parseRoute } from "./router.js";
+
+afterEach(forgetPretests);
 
 const ws = { id: 1, name: "Estudos", createdAt: "2026-01-01T00:00:00.000Z" };
 const material = (eligible: number): FakeMaterial => ({
@@ -149,6 +152,44 @@ describe("a pre-test round (FR-3, FR-5, FR-6)", () => {
   it("says when fewer questions than asked are available", async () => {
     open(route, { materials: [material(1)], questions: [question(1)] });
     expect(await screen.findByText(/Só há 1 questão elegível/)).toBeInTheDocument();
+  });
+});
+
+describe("leaving a round in progress", () => {
+  it("keeps the round and continues it from the Library", async () => {
+    const { invoke } = open("/w/1/library/1/pretest?count=2", {
+      materials: [material(2)],
+      questions: [question(1), question(2)],
+    });
+    const user = userEvent.setup();
+    await screen.findByText("Enunciado 1?");
+    await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    await screen.findByText("Enunciado 2?");
+    await user.click(screen.getByRole("button", { name: "Biblioteca" }));
+    await user.click(await screen.findByRole("button", { name: /Continuar pré-teste/ }));
+    expect(await screen.findByText("Enunciado 2?")).toBeInTheDocument();
+    expect(screen.queryByText("Enunciado 1?")).not.toBeInTheDocument();
+    expect(invoke.mock.calls.filter(([name]) => name === "pretest:start")).toHaveLength(1);
+    await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    const list = await screen.findByRole("region", { name: "Resumo do pré-teste" });
+    expect(within(list).getByText("2 de 2 certas")).toBeInTheDocument();
+  });
+
+  it("offers a new round again once the summary was seen", async () => {
+    open("/w/1/library/1/pretest?count=1", {
+      materials: [material(1)],
+      questions: [question(1)],
+    });
+    const user = userEvent.setup();
+    await screen.findByText("Enunciado 1?");
+    await user.click(screen.getByRole("radio", { name: /^A ·/ }));
+    await user.click(screen.getByRole("button", { name: "Responder" }));
+    await screen.findByRole("region", { name: "Resumo do pré-teste" });
+    await user.click(screen.getByRole("button", { name: "Voltar à Biblioteca" }));
+    expect(await screen.findByRole("button", { name: /^Pré-teste/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Continuar pré-teste/ })).not.toBeInTheDocument();
   });
 });
 

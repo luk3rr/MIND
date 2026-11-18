@@ -12,6 +12,7 @@ import { PromptDialog } from "../components/PromptDialog.js";
 import { useInvoke } from "../hooks.js";
 import { materialPath, pretestPath, sectionPath, useRouter, readerPath } from "../router.js";
 import { Dialog } from "../components/Dialog.js";
+import { unfinishedPretest } from "./PretestPage.js";
 import { T } from "../strings.js";
 import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 import { SeeInPdf } from "../components/SeeInPdf.js";
@@ -305,10 +306,21 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                         <button
                           type="button"
                           className="btn ghost"
-                          aria-label={T.openActionLabel(T.pretestAction, material.title)}
-                          onClick={() => setPretestFor(material)}
+                          aria-label={T.openActionLabel(
+                            unfinishedPretest(workspaceId, material.id) === null
+                              ? T.pretestAction
+                              : T.pretestContinue,
+                            material.title,
+                          )}
+                          onClick={() => {
+                            const open = unfinishedPretest(workspaceId, material.id);
+                            if (open === null) setPretestFor(material);
+                            else navigate(pretestPath(workspaceId, material.id, open));
+                          }}
                         >
-                          {T.pretestAction}
+                          {unfinishedPretest(workspaceId, material.id) === null
+                            ? T.pretestAction
+                            : T.pretestContinue}
                         </button>
                         <button
                           type="button"
