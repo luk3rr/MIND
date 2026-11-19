@@ -18,6 +18,13 @@ import { pageOf, SourcePicker } from "./SourcePicker.js";
 import type { SourceValue } from "./SourcePicker.js";
 
 type Draft = InputOf<"items:create">["draft"];
+
+/** What an editor stored: the draft as it was saved, its topic and the quote of its source. */
+export interface SavedItem {
+  draft: Draft;
+  topic: string | null;
+  quote: string | null;
+}
 type CardSubtype = Extract<Draft, { kind: "card" }>["subtype"];
 type QuestionSubtype = Extract<Draft, { kind: "question" }>["subtype"];
 type Kind = Draft["kind"];
@@ -101,8 +108,11 @@ export function ItemEditor({
   /** When given, a "Voltar" button leaves the editor without saving, back to where it came from. */
   onBack?: () => void;
   onClose: () => void;
-  /** Called after each saved item, so the page behind can refresh. */
-  onSaved: (created: OutputOf<"items:create">) => void;
+  /**
+   * Called after each saved item, so the page behind can refresh. `saved` is what was stored
+   * (the text may differ from the draft the editor started with).
+   */
+  onSaved: (created: OutputOf<"items:create">, saved: SavedItem) => void;
 }) {
   const [kind, setKind] = useState<Kind>(initialDraft?.kind ?? "card");
   const [cardSubtype, setCardSubtype] = useState<CardSubtype>(
@@ -285,9 +295,10 @@ export function ItemEditor({
       }
     }
     setBusy(true);
+    const stored = draft();
     const result = await window.mind.invoke("items:create", {
       workspaceId,
-      draft: draft(),
+      draft: stored,
       topic: topic.trim() || null,
       origin,
       ...(source !== null && source.materialId !== null
@@ -306,7 +317,11 @@ export function ItemEditor({
       return;
     }
     setErrors({});
-    onSaved(result.data);
+    onSaved(result.data, {
+      draft: stored,
+      topic: topic.trim() || null,
+      quote: source?.quote.trim() || null,
+    });
     // A quote that is not in the material still saves the item; the panel stays to say so.
     const unlinked = source !== null && !result.data.sourceLinked;
     if (!another && !unlinked) {

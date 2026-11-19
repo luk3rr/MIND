@@ -22,6 +22,8 @@ const SETUP_ERRORS = new Set(["PROVIDER_KEY_MISSING", "CONSENT_REQUIRED", "MONTH
 interface Row {
   id: number;
   generated: Generated;
+  /** The text the model wrote, kept after an edit so a repeat of it is not listed again. */
+  original: string;
   state: "pending" | "saved" | "discarded";
   /** True when the saved item points to a chunk (so "Ver no PDF" works). */
   linked: boolean;
@@ -125,12 +127,15 @@ export function GenerateFromSelection({
     );
     setRows((current) => {
       // A second request can repeat a draft that is still on the list: keep only the new ones.
-      const known = new Set(current.map((row) => key(textOf(row.generated))));
+      const known = new Set(
+        current.flatMap((row) => [key(textOf(row.generated)), key(row.original)]),
+      );
       const added = result.data.drafts
         .filter((generated) => !known.has(key(textOf(generated))))
         .map<Row>((generated) => ({
           id: next.current++,
           generated,
+          original: textOf(generated),
           state: "pending",
           linked: false,
           error: null,
@@ -167,8 +172,28 @@ export function GenerateFromSelection({
         initialSource={{ materialId, page: String(page), quote: editing.generated.quote }}
         onClose={() => setEditing(null)}
         onBack={() => setEditing(null)}
-        onSaved={(created) =>
-          patch(editing.id, { state: "saved", linked: created.sourceLinked, error: null })
+        onSaved={(created, saved) =>
+          // What the person saved (perhaps after asking the model to adjust it) replaces the
+          // generated text, so the list shows the item as it is stored. A second item saved from
+          // the same editor ("save and create another") is not this draft.
+          setRows((all) =>
+            all.map((row) =>
+              row.id === editing.id && row.state === "pending"
+                ? {
+                    ...row,
+                    state: "saved",
+                    linked: created.sourceLinked,
+                    error: null,
+                    generated: {
+                      ...row.generated,
+                      draft: saved.draft,
+                      topic: saved.topic,
+                      ...(saved.quote ? { quote: saved.quote } : {}),
+                    },
+                  }
+                : row,
+            ),
+          )
         }
       />
     );

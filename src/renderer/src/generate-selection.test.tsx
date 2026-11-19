@@ -183,6 +183,30 @@ describe("Generating items from the selected passage (FR-5, FR-7, FR-8, FR-9)", 
     const back = await screen.findByRole("dialog", { name: "Gerar itens do trecho" });
     expect(within(back).getAllByText(/^Salvo e aprovado/)).toHaveLength(1);
     expect(within(back).getByText("Pergunta 2 sobre o trecho?")).toBeVisible();
+    // The list shows what was saved, not the text the model wrote.
+    expect(within(back).getByText("Minha versão?")).toBeVisible();
+    expect(within(back).queryByText("Pergunta 1 sobre o trecho?")).toBeNull();
+  });
+
+  it("keeps the saved text when more items are asked for afterwards", async () => {
+    const { fake, user, panel } = await openPanel();
+    await user.click(within(panel).getByRole("button", { name: "Gerar" }));
+    const draft = await within(panel).findByRole("article", { name: /Rascunho: Pergunta 1/ });
+    await user.click(within(draft).getByRole("button", { name: "Editar" }));
+    const editor = await screen.findByRole("dialog", { name: "Novo cartão" });
+    await user.clear(within(editor).getByLabelText("Frente"));
+    await user.type(within(editor).getByLabelText("Frente"), "Minha versão?");
+    await user.clear(within(editor).getByLabelText("Verso"));
+    await user.type(within(editor).getByLabelText("Verso"), "Meu verso.");
+    await user.click(within(editor).getByRole("button", { name: "Salvar" }));
+    const back = await screen.findByRole("dialog", { name: "Gerar itens do trecho" });
+    await user.click(within(back).getByRole("button", { name: "Pedir mais" }));
+    await waitFor(() => expect(requests(fake)).toHaveLength(2));
+    expect(within(back).getByText("Minha versão?")).toBeVisible();
+    expect(within(back).getByText("Meu verso.")).toBeVisible();
+    expect(within(back).queryByText("Resposta 1.")).toBeNull();
+    // The model repeating its original text is not a new draft: the saved one stays alone.
+    expect(within(back).getAllByRole("article")).toHaveLength(2);
   });
 
   it("goes back to the list when the editor is closed without saving", async () => {
