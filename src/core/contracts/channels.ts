@@ -893,6 +893,8 @@ export const channels = {
         early: z.boolean().optional(),
         /** Alternate the topics or materials of the queue instead of studying them in blocks. */
         mix: mixRequest.optional(),
+        /** Show this card again, with its current text, instead of the next one of the queue. */
+        itemId: z.number().int().optional(),
       })
       .strict(),
     output: z.object({

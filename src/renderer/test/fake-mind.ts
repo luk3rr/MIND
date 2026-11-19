@@ -952,7 +952,11 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             state.studyQueue = [chosen, ...state.studyQueue.filter((card) => card !== chosen)];
           }
         }
-        const shown = state.studyQueue[0] ?? null;
+        const { itemId } = payload as InputOf<"study:next">;
+        const shown =
+          itemId !== undefined
+            ? (state.studyQueue.find((card) => card.itemId === itemId) ?? null)
+            : (state.studyQueue[0] ?? null);
         return ok({
           card: shown,
           counts: studyCounts(state),

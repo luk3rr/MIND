@@ -256,9 +256,12 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         facets: study.facets(),
       };
     },
-    "study:next": ({ workspaceId, filter, extraNew, early, mix }) => {
+    "study:next": ({ workspaceId, filter, extraNew, early, mix, itemId }) => {
       const study = core.study(workspaceId);
-      const next = study.nextCard(undefined, filter, extraNew ?? 0, early ?? false, mix);
+      const next =
+        itemId !== undefined
+          ? study.card(itemId)
+          : study.nextCard(undefined, filter, extraNew ?? 0, early ?? false, mix);
       const counts = study.counts(undefined, filter, extraNew ?? 0);
       if (!next) {
         return { card: null, counts, waiting: study.waiting(undefined, filter), mixKey: null };

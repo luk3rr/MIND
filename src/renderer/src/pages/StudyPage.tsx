@@ -60,7 +60,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
   const shownAt = useRef(0);
   useActivity("cards", next?.card ? { itemId: next.card.itemId } : {});
 
-  const load = (keepRevealed = false): void => {
+  const load = (keepCard?: number): void => {
     void window.mind
       .invoke("study:next", {
         workspaceId,
@@ -68,6 +68,8 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
         ...(extraNew > 0 ? { extraNew } : {}),
         ...(early ? { early } : {}),
         ...(mix.request ? { mix: { by: mix.request.by, afterKey: mixKey.current } } : {}),
+        // After an edit the same card stays, with its new text; the queue is not advanced.
+        ...(keepCard !== undefined ? { itemId: keepCard } : {}),
       })
       .then((result) => {
         if (!result.ok) {
@@ -75,9 +77,9 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
           return;
         }
         setError(null);
-        mixKey.current = result.data.mixKey;
+        if (keepCard === undefined) mixKey.current = result.data.mixKey;
         setNext(result.data);
-        if (!keepRevealed) {
+        if (keepCard === undefined) {
           setRevealed(false);
           shownAt.current = performance.now();
         }
@@ -271,7 +273,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
               <ItemActions
                 workspaceId={workspaceId}
                 itemId={next.card.itemId}
-                onEdited={() => load(true)}
+                onEdited={() => load(next.card?.itemId)}
                 onDiscarded={() => load()}
               />
             )}

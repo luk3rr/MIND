@@ -138,6 +138,9 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
     await waitFor(() => expect(fake.state.items[0]?.front).toBe("Pergunta corrigida?"));
     // The answer stays on screen after the edit.
     expect(screen.getByText("Resposta 1")).toBeVisible();
+    // The same card is reloaded, not the next one of the queue.
+    expect(fake.invoke).toHaveBeenLastCalledWith("study:next", { workspaceId: 1, itemId: 1 });
+    expect(screen.queryByText("Pergunta 2?")).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Descartar" }));
     await user.click(
