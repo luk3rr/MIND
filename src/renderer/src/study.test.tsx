@@ -180,6 +180,32 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
     await waitFor(() => expect(fake.state.items[0]?.front).toBe("Pergunta melhor?"));
   });
 
+  it("pressing Enter in the adjust field asks the model and does not save the edit", async () => {
+    const cardItem: FakeItem = {
+      ...question(1, ["A"]).item,
+      kind: "card",
+      subtype: "qa",
+      front: "Pergunta 1?",
+      back: "Resposta 1",
+      options: [],
+      answer: null,
+    };
+    const fake = open("/w/1/study", { studyQueue: [card(1)], items: [cardItem] });
+    const user = userEvent.setup();
+    await screen.findByText("Pergunta 1?");
+    await user.keyboard(" ");
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /Melhorar com IA/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Ajustar…" }));
+    await user.type(within(dialog).getByLabelText(/O que ajustar/), "mais curto{Enter}");
+    expect(fake.invoke).toHaveBeenCalledWith(
+      "assist:improve",
+      expect.objectContaining({ action: "adjust", instruction: "mais curto" }),
+    );
+    expect(fake.invoke).not.toHaveBeenCalledWith("review:edit", expect.anything());
+  });
+
   it("works with the keyboard: Space reveals and 1 to 4 rate", async () => {
     const fake = open("/w/1/study", { studyQueue: [card(1), card(2)] });
     const user = userEvent.setup();

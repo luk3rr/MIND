@@ -349,6 +349,14 @@ export function EditItemDialog({
                     maxLength={500}
                     value={instruction}
                     onChange={(event) => setInstruction(event.target.value)}
+                    onKeyDown={(event) => {
+                      // Enter asks for the adjustment; it must not submit (save) the form.
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      if (assist.status !== "waiting" && instruction.trim()) {
+                        void askModel("adjust");
+                      }
+                    }}
                   />
                   {assist.status === "error" && assist.field === "instruction" && (
                     <p className="field-error" role="alert">
