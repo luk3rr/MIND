@@ -150,6 +150,36 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
     expect(fake.state.items[0]?.status).toBe("discarded");
   });
 
+  it("asks the model for help in the edit dialog and applies the proposal to the form", async () => {
+    const cardItem: FakeItem = {
+      ...question(1, ["A"]).item,
+      kind: "card",
+      subtype: "qa",
+      front: "Pergunta 1?",
+      back: "Resposta 1",
+      options: [],
+      answer: null,
+    };
+    const fake = open("/w/1/study", { studyQueue: [card(1)], items: [cardItem] });
+    fake.state.assist = {
+      proposal: { kind: "card", subtype: "qa", front: "Pergunta melhor?", back: "Resposta 1" },
+    };
+    const user = userEvent.setup();
+    await screen.findByText("Pergunta 1?");
+    await user.keyboard(" ");
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /Melhorar com IA/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Melhorar" }));
+    await user.click(await screen.findByRole("button", { name: "Aceitar tudo" }));
+    const form = await screen.findByRole("dialog");
+    expect(within(form).getByLabelText("Frente")).toHaveValue("Pergunta melhor?");
+    // Nothing is stored until the person saves.
+    expect(fake.state.items[0]?.front).toBe("Pergunta 1?");
+    await user.click(within(form).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(fake.state.items[0]?.front).toBe("Pergunta melhor?"));
+  });
+
   it("works with the keyboard: Space reveals and 1 to 4 rate", async () => {
     const fake = open("/w/1/study", { studyQueue: [card(1), card(2)] });
     const user = userEvent.setup();

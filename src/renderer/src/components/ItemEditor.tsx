@@ -11,6 +11,7 @@ import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
 import { ImproveProposal } from "./ImproveProposal.js";
+import { changedFields } from "./ImproveProposal.js";
 import type { ProposedField } from "./ImproveProposal.js";
 import { SearchCombobox } from "./SearchCombobox.js";
 import { SidePanel } from "./SidePanel.js";
@@ -44,31 +45,6 @@ type Assist =
 
 /** Errors that only the settings can fix, so retrying would not help. */
 const SETUP_ERRORS = new Set(["PROVIDER_KEY_MISSING", "CONSENT_REQUIRED", "MONTHLY_LIMIT_REACHED"]);
-
-/** The fields of a proposal that differ from the current draft, in the order they are shown. */
-function changedFields(current: Draft, proposed: Draft): ProposedField[] {
-  const out: ProposedField[] = [];
-  const add = (key: string, label: string, before: string, after: string): void => {
-    if (before !== after) out.push({ key, label, before, after });
-  };
-  if (current.kind === "card" && proposed.kind === "card") {
-    add("front", T.editFront, current.front, proposed.front);
-    add("back", T.editBack, current.back, proposed.back);
-  } else if (current.kind === "question" && proposed.kind === "question") {
-    add("statement", T.editStatement, current.statement, proposed.statement);
-    const count = Math.max(current.options.length, proposed.options.length);
-    for (let index = 0; index < count; index += 1) {
-      const before = current.options[index];
-      const after = proposed.options[index];
-      const key = LETTERS[index] ?? "";
-      add(`option:${index}:text`, T.editOptionText(key), before?.text ?? "", after?.text ?? "");
-      add(`option:${index}:why`, T.editOptionWhy(key), before?.why ?? "", after?.why ?? "");
-    }
-    add("answer", T.newItemAnswer, current.answer, proposed.answer);
-    add("explanation", T.newItemExplanation, current.explanation, proposed.explanation);
-  }
-  return out;
-}
 
 interface OptionText {
   text: string;

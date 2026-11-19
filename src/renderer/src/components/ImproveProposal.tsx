@@ -4,8 +4,12 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import type { InputOf } from "../../../core/contracts/index.js";
 import { T } from "../strings.js";
 import { wordDiff } from "../wordDiff.js";
+
+type Draft = InputOf<"items:create">["draft"];
+const LETTERS = "ABCDE";
 
 /** One field of the item that the model proposes to change. */
 export interface ProposedField {
@@ -90,4 +94,29 @@ export function ImproveProposal({
       </div>
     </div>
   );
+}
+
+/** The fields of a proposal that differ from the current draft, in the order they are shown. */
+export function changedFields(current: Draft, proposed: Draft): ProposedField[] {
+  const out: ProposedField[] = [];
+  const add = (key: string, label: string, before: string, after: string): void => {
+    if (before !== after) out.push({ key, label, before, after });
+  };
+  if (current.kind === "card" && proposed.kind === "card") {
+    add("front", T.editFront, current.front, proposed.front);
+    add("back", T.editBack, current.back, proposed.back);
+  } else if (current.kind === "question" && proposed.kind === "question") {
+    add("statement", T.editStatement, current.statement, proposed.statement);
+    const count = Math.max(current.options.length, proposed.options.length);
+    for (let index = 0; index < count; index += 1) {
+      const before = current.options[index];
+      const after = proposed.options[index];
+      const key = LETTERS[index] ?? "";
+      add(`option:${index}:text`, T.editOptionText(key), before?.text ?? "", after?.text ?? "");
+      add(`option:${index}:why`, T.editOptionWhy(key), before?.why ?? "", after?.why ?? "");
+    }
+    add("answer", T.newItemAnswer, current.answer, proposed.answer);
+    add("explanation", T.newItemExplanation, current.explanation, proposed.explanation);
+  }
+  return out;
 }
