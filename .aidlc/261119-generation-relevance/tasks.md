@@ -80,13 +80,21 @@
 - **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (131 arquivos, 1386 testes, linhas 96,14%); e2e de geração e do fluxo de exemplo passaram (3).
 - **Desvios:** (1) o `Judge` ganhou `subject` opcional também no juiz de questões (a UNIT-2 só pedia o critério; a disciplina no prompt do juiz é o que dá sentido ao critério); (2) `BatchRequest.judgeModel` é obrigatório para cards, então os testes e o `scripted.ts` passaram a responder ao esquema `RelevanceBatch` (exportado `allInScope`); (3) `planMore` foi acrescentado a `planning.ts` para a segunda rodada; (4) a frase de lote incompleto passou de "o modelo devolveu N itens a menos" para "o material não tinha conteúdo da disciplina para N itens", como no mockup; (5) o custo de um lote de cards agora soma a revisão de relevância (0,02 nos testes em vez de 0,01).
 
-### UNIT-3 Fixtures e avaliação   Status: pending
+### UNIT-3 Fixtures e avaliação   Status: verified (2026-11-19, exit 0); T-3.4 pendente do usuário
 
-- [ ] T-3.1 Montar o conjunto de fixtures de relevância em `src/core/test/relevance/` (trechos anonimizados de conceito, exemplo, questão de prova, motivador, comentário e outro, com o resultado esperado) — covers FR-17 — files: `src/core/test/relevance/*.ts` — test: teste de formato das fixtures
-- [ ] T-3.2 Testes do pipeline com LLM scriptado sobre as fixtures: itens esperados passam e os fora de escopo são descartados — covers FR-17 — files: `src/core/generation/relevance.test.ts` — test: o próprio teste
-- [ ] T-3.3 Criar `scripts/eval-generation.ts` (modelo real, lê a chave do ambiente, imprime fora de escopo que passam e bons mantidos) e o script `eval:generation` — covers FR-17, US-9, NFR-1 — files: `scripts/eval-generation.ts`, `package.json` — test: execução com LLM falso verifica o cálculo dos indicadores
-- [ ] T-3.4 Registrar o baseline da avaliação (antes da análise de trechos) em `construction/build-and-test.md` — covers NFR-1 — files: `.aidlc/261119-generation-relevance/construction/build-and-test.md` — test: números registrados
-- [ ] T-3.5 Rodar o comando de verificação — covers DoD — files: `tasks.md`, `state.md` — test: exit 0
+- [x] T-3.1 Montar o conjunto de fixtures de relevância em `src/core/test/relevance/` (trechos anonimizados de conceito, exemplo, questão de prova, motivador, comentário e outro, com o resultado esperado) — covers FR-17 — files: `src/core/test/relevance/*.ts` — test: teste de formato das fixtures
+- [x] T-3.2 Testes do pipeline com LLM scriptado sobre as fixtures: itens esperados passam e os fora de escopo são descartados — covers FR-17 — files: `src/core/generation/relevance.test.ts` — test: o próprio teste
+- [x] T-3.3 Criar `scripts/eval-generation.ts` (modelo real, lê a chave do ambiente, imprime fora de escopo que passam e bons mantidos) e o script `eval:generation` — covers FR-17, US-9, NFR-1 — files: `scripts/eval-generation.ts`, `package.json` — test: execução com LLM falso verifica o cálculo dos indicadores
+- [~] T-3.4 Registrar o baseline da avaliação (antes da análise de trechos) em `construction/build-and-test.md` — covers NFR-1 — files: `.aidlc/261119-generation-relevance/construction/build-and-test.md` — test: números registrados
+- [x] T-3.5 Rodar o comando de verificação — covers DoD — files: `tasks.md`, `state.md` — test: exit 0
+
+**Unit summary (Construction 3.5):**
+
+- **Arquivos novos:** `src/core/test/relevance/{cases,score,seed}.ts` (a apostila rotulada, a pontuação e a semeadura), `src/core/generation/relevance.test.ts`, `scripts/eval-generation.ts`.
+- **Arquivos alterados:** `package.json` (script `eval:generation`).
+- **Como rodar:** `pnpm test src/core/generation/relevance.test.ts`; a avaliação com o modelo real é `OPENROUTER_API_KEY=... pnpm eval:generation [--cards 40] [--questions 20]` (sai com 1 se uma meta falhar e com 2 sem chave).
+- **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (132 arquivos, 1395 testes, linhas 96,14%).
+- **Desvios:** (1) **T-3.4 (baseline com o modelo real) não foi feita**: a chave só existe cifrada no armazenamento do app e a avaliação gasta com o provedor; fica para o usuário rodar `pnpm eval:generation` (a UNIT-7 cobra o resultado); (2) o script de avaliação é fino e fica fora da cobertura (`scripts/**`); a lógica dos indicadores está em `score.ts`, testada em `relevance.test.ts`, em vez de um teste do script com LLM falso; (3) as fixtures têm 15 trechos (6 de conteúdo, 1 exemplo, 1 comentário, 2 questões, 3 motivadores, 2 de páginas que não são conteúdo), abaixo das "dezenas" da A14; podem crescer quando o baseline real mostrar onde faltam casos.
 
 ### UNIT-4 Análise dos trechos   Status: pending
 
