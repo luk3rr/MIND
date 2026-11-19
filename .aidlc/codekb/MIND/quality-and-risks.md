@@ -25,6 +25,8 @@ Status: human-reviewed (2026-11-16) · Confiança: alta
 
 **Atualização após o intent manual-cards-import (2026-11-16).** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage`: 110 arquivos, 1142 testes, linhas 96,44%. `pnpm e2e` coberto pelos três specs novos (`authoring`, `reader-items`, `import`) e pela suíte antiga. Riscos novos: um zip que mente sobre os tamanhos no diretório central passa pela checagem de cabeçalho (defesa restante: limite de 10 MB e as bibliotecas); itens do leitor e importados não entram em `stats:materials`; a seleção de texto do leitor depende da camada de texto do PDF (escaneados dependem de OCR).
 
+**Verificação parcial em 2026-11-19 (HEAD 0c425b9, intent generation-relevance).** `typecheck` exit 0; `vitest run src/renderer`: 39 arquivos, 410 testes ok; `vitest run` de study, mix e `src/main/ipc`: 18 arquivos, 119 testes ok. A suíte completa e o e2e não foram reexecutados; o baseline completo continua o de 2026-11-17 (1192 testes, 96,45% linhas) e será refeito antes do primeiro commit de código da Construção.
+
 ## Open questions
 
 - (nenhuma pendente de convenções; a escolha da run sintética para itens manuais e importados fica para o ADR em 2.6)
