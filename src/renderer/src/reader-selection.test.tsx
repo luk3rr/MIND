@@ -8,16 +8,21 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import { openReader, READER_LINE as LINE, select } from "../test/reader-fixture.js";
+import { openReader, READER_LINE as LINE, rightClick, select } from "../test/reader-fixture.js";
 
 beforeEach(() => window.localStorage.clear());
 
 describe("Selecting a passage in the reader (FR-5, FR-6)", () => {
-  it("shows the actions next to a selection and hides them when it is cleared", async () => {
+  it("keeps the actions away while selecting, and opens them with a right click", async () => {
     await openReader();
     expect(screen.queryByRole("toolbar", { name: "Ações da seleção" })).toBeNull();
-    select(await screen.findByText(LINE));
+    const line = await screen.findByText(LINE);
+    select(line);
+    // Selecting, and selecting more, never shows or hides anything.
+    expect(screen.queryByRole("toolbar", { name: "Ações da seleção" })).toBeNull();
+    rightClick(line);
     const bar = await screen.findByRole("toolbar", { name: "Ações da seleção" });
+    expect(bar).toHaveStyle({ left: "160px", top: "220px" });
     expect(within(bar).getByRole("button", { name: "✦ Gerar itens" })).toBeVisible();
     expect(within(bar).getByRole("button", { name: "+ Criar item" })).toBeVisible();
     expect(screen.getByText(/Trecho selecionado, 65 caracteres/)).toBeInTheDocument();
@@ -30,6 +35,37 @@ describe("Selecting a passage in the reader (FR-5, FR-6)", () => {
     );
   });
 
+  it("closes the actions when the selection grows or the person clicks elsewhere", async () => {
+    await openReader();
+    const line = await screen.findByText(LINE);
+    select(line);
+    rightClick(line);
+    await screen.findByRole("toolbar", { name: "Ações da seleção" });
+    const part = document.createRange();
+    part.setStart(line.firstChild as Node, 0);
+    part.setEnd(line.firstChild as Node, 10);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(part);
+    act(() => void document.dispatchEvent(new Event("selectionchange")));
+    expect(screen.queryByRole("toolbar", { name: "Ações da seleção" })).toBeNull();
+    select(line);
+    rightClick(line);
+    await screen.findByRole("toolbar", { name: "Ações da seleção" });
+    fireEvent.mouseDown(screen.getByRole("heading", { name: "apostila" }));
+    expect(screen.queryByRole("toolbar", { name: "Ações da seleção" })).toBeNull();
+  });
+
+  it("leaves the usual menu alone when nothing is selected or the selection does not count", async () => {
+    await openReader();
+    const line = await screen.findByText(LINE);
+    expect(fireEvent.contextMenu(line)).toBe(true);
+    select(screen.getByRole("heading", { name: "apostila" }));
+    expect(fireEvent.contextMenu(line)).toBe(true);
+    expect(screen.queryByRole("toolbar", { name: "Ações da seleção" })).toBeNull();
+    select(line);
+    expect(fireEvent.contextMenu(line)).toBe(false);
+  });
+
   it("ignores text selected outside the pages", async () => {
     await openReader();
     await screen.findByText(LINE);
@@ -40,7 +76,9 @@ describe("Selecting a passage in the reader (FR-5, FR-6)", () => {
   it("opens the editor with the material, page and passage filled in, and saves an item of the reader", async () => {
     const fake = await openReader();
     const user = userEvent.setup();
-    select(await screen.findByText(LINE));
+    const line = await screen.findByText(LINE);
+    select(line);
+    rightClick(line);
     await user.click(await screen.findByRole("button", { name: "+ Criar item" }));
     const panel = await screen.findByRole("dialog", { name: "Novo cartão" });
     // The selection is not needed any more, so the actions go away.
@@ -69,7 +107,9 @@ describe("Selecting a passage in the reader (FR-5, FR-6)", () => {
   it("lets the person edit the passage and leaves room for the PDF beside the panel", async () => {
     await openReader();
     const user = userEvent.setup();
-    select(await screen.findByText(LINE));
+    const line = await screen.findByText(LINE);
+    select(line);
+    rightClick(line);
     await user.click(await screen.findByRole("button", { name: "+ Criar item" }));
     const panel = await screen.findByRole("dialog", { name: "Novo cartão" });
     const quote = within(panel).getByLabelText("Trecho da fonte");
@@ -83,7 +123,9 @@ describe("Selecting a passage in the reader (FR-5, FR-6)", () => {
 
   it("is reachable with the keyboard: Tab leads to the action and Esc dismisses the bar", async () => {
     await openReader();
-    select(await screen.findByText(LINE));
+    const line = await screen.findByText(LINE);
+    select(line);
+    rightClick(line);
     const bar = await screen.findByRole("toolbar", { name: "Ações da seleção" });
     fireEvent.keyDown(document, { key: "Tab" });
     // The first action takes the focus; the next Tab reaches the other one.
@@ -101,6 +143,7 @@ describe("Selecting a passage in the reader (FR-5, FR-6)", () => {
     await user.click(screen.getByRole("button", { name: "Rolagem contínua" }));
     const second = await screen.findByText("Página dois.");
     select(first.firstChild as Node, second.firstChild as Node);
+    rightClick(first);
     expect(screen.queryByRole("toolbar", { name: "Ações da seleção" })).toBeNull();
   });
   it("offers the actions when a triple click selects the whole text layer of a page", async () => {
@@ -113,6 +156,7 @@ describe("Selecting a passage in the reader (FR-5, FR-6)", () => {
     window.getSelection()?.removeAllRanges();
     window.getSelection()?.addRange(range);
     act(() => void document.dispatchEvent(new Event("selectionchange")));
+    rightClick(layer);
     expect(await screen.findByRole("toolbar", { name: "Ações da seleção" })).toBeVisible();
   });
   it("offers the actions when a triple click ends the selection in the next block, outside the reader", async () => {
@@ -126,6 +170,7 @@ describe("Selecting a passage in the reader (FR-5, FR-6)", () => {
     window.getSelection()?.removeAllRanges();
     window.getSelection()?.addRange(range);
     act(() => void document.dispatchEvent(new Event("selectionchange")));
+    rightClick(line);
     expect(await screen.findByRole("toolbar", { name: "Ações da seleção" })).toBeVisible();
   });
 });

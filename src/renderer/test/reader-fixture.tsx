@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { App } from "../src/App.js";
 import { installFakeMind } from "./fake-mind.js";
 import type { FakeMaterial, FakeState } from "./fake-mind.js";
@@ -64,6 +64,12 @@ export async function openReader(
   render(<App />);
   await screen.findByRole("img", { name: "Página 1" });
   return fake;
+}
+
+/** Right-clicks a node, as the person does to open the actions of the selected passage. */
+export function rightClick(node: Node): void {
+  const target = node instanceof Element ? node : (node.parentElement as Element);
+  fireEvent.contextMenu(target, { clientX: 160, clientY: 220 });
 }
 
 /** Selects the text of a node the way the mouse would, and tells the page about it. */

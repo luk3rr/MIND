@@ -46,9 +46,12 @@ test("creates items from a passage selected in the PDF and goes back to it (FR-5
   await page.getByRole("button", { name: /^Ler (?!em nova janela)/ }).click();
   await expect(page.getByRole("img", { name: "Página 1" })).toBeVisible({ timeout: 10_000 });
 
-  // Selecting a line of the page with the mouse (triple click) shows the actions next to it.
+  // Selecting a line of the page with the mouse (triple click) shows nothing by itself; the
+  // actions open with a right click on the selection.
   const line = page.getByLabel("Texto da página").getByText("Primeira página com função.");
   await line.click({ clickCount: 3 });
+  await expect(page.getByRole("toolbar", { name: "Ações da seleção" })).toHaveCount(0);
+  await line.click({ button: "right" });
   const bar = page.getByRole("toolbar", { name: "Ações da seleção" });
   await expect(bar).toBeVisible();
   await bar.getByRole("button", { name: "✦ Gerar itens" }).click();
@@ -70,6 +73,7 @@ test("creates items from a passage selected in the PDF and goes back to it (FR-5
 
   // Another passage, this time written into one item by hand, with the source already filled in.
   await line.click({ clickCount: 3 });
+  await line.click({ button: "right" });
   await page
     .getByRole("toolbar", { name: "Ações da seleção" })
     .getByRole("button", { name: "+ Criar item" })

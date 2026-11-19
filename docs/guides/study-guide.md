@@ -103,7 +103,7 @@ botão de abrir o PDF na página citada.
 ### Crie os seus próprios itens
 
 Escrever uma pergunta com as suas palavras é, por si só, uma forma de estudar. Em **Itens**, use
-**Novo item**, ou, enquanto estiver lendo o conteúdo, selecione um trecho no leitor e crie o card ou a questão direto dele. Os itens
+**Novo item**, ou, enquanto estiver lendo o conteúdo, selecione um trecho no leitor, clique nele com o botão direito e crie o card ou a questão direto dele. Os itens
 que você escreve costumam ser os que mais fixam, e você os adapta ao que precisa aprender.
 
 ### Não conte com reler e grifar

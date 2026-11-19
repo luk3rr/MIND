@@ -78,7 +78,7 @@ Aplicativos instalados → MIND**; a desinstalação também preserva os seus da
 5. Em **Itens**, use **Novo item** para escrever um card ou uma questão (a fonte é opcional) e **Importar…** para
    trazer itens de uma planilha: baixe o template de cards ou de questões (CSV ou XLSX), preencha uma linha por item,
    confira a prévia, com os erros e as duplicadas apontados linha a linha, e confirme. Nada é gravado antes da
-   confirmação. Ao ler um PDF, selecione um trecho para **Gerar itens** dele (a quantidade e o assunto são opcionais)
+   confirmação. Ao ler um PDF, selecione um trecho e clique com o botão direito para **Gerar itens** dele (a quantidade e o assunto são opcionais)
    ou **Criar item** com o trecho já como fonte. O botão **Melhorar com IA** do editor propõe um texto melhor, sem
    alterar nada até você aceitar.
 6. **Estude** a fila do dia e **Pratique** questões.

@@ -8,14 +8,16 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import { openReader, READER_LINE as LINE, select } from "../test/reader-fixture.js";
+import { openReader, READER_LINE as LINE, rightClick, select } from "../test/reader-fixture.js";
 
 beforeEach(() => window.localStorage.clear());
 
 async function openPanel(lines?: string[], extra?: Parameters<typeof openReader>[1]) {
   const fake = await openReader(lines, extra);
   const user = userEvent.setup();
-  select(await screen.findByText(lines?.[0] ?? LINE));
+  const line = await screen.findByText(lines?.[0] ?? LINE);
+  select(line);
+  rightClick(line);
   await user.click(await screen.findByRole("button", { name: "✦ Gerar itens" }));
   const panel = await screen.findByRole("dialog", { name: "Gerar itens do trecho" });
   return { fake, user, panel };
