@@ -344,19 +344,12 @@ export function EditItemDialog({
               {adjusting && (
                 <div className="field">
                   <label htmlFor="assist-instruction">{T.assistInstruction}</label>
-                  <input
+                  <textarea
                     id="assist-instruction"
+                    rows={3}
                     maxLength={500}
                     value={instruction}
                     onChange={(event) => setInstruction(event.target.value)}
-                    onKeyDown={(event) => {
-                      // Enter asks for the adjustment; it must not submit (save) the form.
-                      if (event.key !== "Enter") return;
-                      event.preventDefault();
-                      if (assist.status !== "waiting" && instruction.trim()) {
-                        void askModel("adjust");
-                      }
-                    }}
                   />
                   {assist.status === "error" && assist.field === "instruction" && (
                     <p className="field-error" role="alert">

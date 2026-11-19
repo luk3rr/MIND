@@ -180,7 +180,7 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
     await waitFor(() => expect(fake.state.items[0]?.front).toBe("Pergunta melhor?"));
   });
 
-  it("pressing Enter in the adjust field asks the model and does not save the edit", async () => {
+  it("Enter in the adjust field breaks the line; the button sends it", async () => {
     const cardItem: FakeItem = {
       ...question(1, ["A"]).item,
       kind: "card",
@@ -198,10 +198,12 @@ describe("Study page (FR-12, FR-13, FR-32)", () => {
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: /Melhorar com IA/ }));
     await user.click(within(dialog).getByRole("button", { name: "Ajustar…" }));
-    await user.type(within(dialog).getByLabelText(/O que ajustar/), "mais curto{Enter}");
+    await user.type(within(dialog).getByLabelText(/O que ajustar/), "mais curto{Enter}bem curto");
+    expect(fake.invoke).not.toHaveBeenCalledWith("assist:improve", expect.anything());
+    await user.click(within(dialog).getByRole("button", { name: "Pedir ajuste" }));
     expect(fake.invoke).toHaveBeenCalledWith(
       "assist:improve",
-      expect.objectContaining({ action: "adjust", instruction: "mais curto" }),
+      expect.objectContaining({ action: "adjust", instruction: "mais curto\nbem curto" }),
     );
     expect(fake.invoke).not.toHaveBeenCalledWith("review:edit", expect.anything());
   });
