@@ -38,18 +38,26 @@
 
 ## Tasks
 
-### UNIT-1 Prompts, escopo e "até N"   Status: pending
+### UNIT-1 Prompts, escopo e "até N"   Status: verified (2026-11-19, exit 0)
 
-- [ ] T-1.1 Rodar a suíte completa e o `xvfb-run -a pnpm e2e` do baseline e registrar as falhas anteriores — covers A10 — files: `.aidlc/261119-generation-relevance/construction/build-and-test.md` — test: saída registrada
-- [ ] T-1.2 Acrescentar `PromptScope` e o parâmetro `scope` a `buildCardMessages`, com a disciplina, o teste de escopo e a regra "até N" no `SYSTEM` e na tarefa — covers FR-1 (interino), FR-2, FR-3 — files: `src/core/generation/prompts.ts` — test: `prompts.test.ts` (conteúdo: disciplina, escopo, "up to")
-- [ ] T-1.3 O mesmo para `buildQuestionMessages`: `QUESTION_SYSTEM`, `PROFILE_RULES` e `CALCULATION_SYSTEM`, com questões práticas e sem forçar o número — covers FR-2, FR-3 — files: `src/core/generation/question-prompts.ts` — test: `questions.test.ts` (conteúdo para cada perfil)
-- [ ] T-1.4 Ajustar `self-contained.ts`: tirar a instrução de copiar enunciado de prova, acrescentar a regra do comentário do professor e da questão inspirada — covers FR-5 — files: `src/core/generation/self-contained.ts` — test: `self-contained.test.ts`
-- [ ] T-1.5 Garantir que `CardGenerator` e `QuestionGenerator` aceitam lista vazia ou menor que a pedida, sem erro e sem preenchimento; atualizar as descrições dos esquemas — covers FR-3 — files: `src/core/generation/cards.ts`, `questions.ts`, `schemas.ts` — test: testes dos geradores com LLM scriptado devolvendo 0, 1 e N−1 itens
-- [ ] T-1.6 Passar a disciplina (o título do material, por ora) do `GenerationService` aos geradores e aos builders — covers FR-1 (interino) — files: `src/core/generation/service.ts`, `cards.ts`, `questions.ts` — test: `generation.test.ts` (o prompt do lote contém o título)
-- [ ] T-1.7 Criar `scripts/regen-prompt-fixtures.ts` e o script `fixtures:prompts` em `package.json`; regenerar só as entradas de cards, questões e juiz de `fixtures/prompts.json` — covers FR-18 — files: `scripts/regen-prompt-fixtures.ts`, `package.json`, `fixtures/prompts.json` — test: `prompts.test.ts` e `questions.test.ts` passam
-- [ ] T-1.8 Registrar em `fixtures/README.md` que os prompts de geração divergem do Python por decisão (intent generation-relevance) e como regenerar — covers FR-18 — files: `fixtures/README.md` — test: `tests/fixtures/fixtures.test.ts` passa
-- [ ] T-1.9 Teste ponta a ponta do esqueleto: `GenerationService.start` com LLM scriptado que devolve menos itens que o pedido e um card sobre texto motivador marcado nas fixtures — covers FR-2, FR-3 — files: `src/core/generation/generation.test.ts` — test: o próprio teste
-- [ ] T-1.10 Rodar o comando de verificação e pedir a aprovação do esqueleto — covers DoD — files: `tasks.md`, `state.md` — test: exit 0
+- [x] T-1.1 Rodar a suíte completa e o `xvfb-run -a pnpm e2e` do baseline e registrar as falhas anteriores — covers A10 — files: `.aidlc/261119-generation-relevance/construction/build-and-test.md` — test: saída registrada
+- [x] T-1.2 Acrescentar `PromptScope` e o parâmetro `scope` a `buildCardMessages`, com a disciplina, o teste de escopo e a regra "até N" no `SYSTEM` e na tarefa — covers FR-1 (interino), FR-2, FR-3 — files: `src/core/generation/prompts.ts` — test: `prompts.test.ts` (conteúdo: disciplina, escopo, "up to")
+- [x] T-1.3 O mesmo para `buildQuestionMessages`: `QUESTION_SYSTEM`, `PROFILE_RULES` e `CALCULATION_SYSTEM`, com questões práticas e sem forçar o número — covers FR-2, FR-3 — files: `src/core/generation/question-prompts.ts` — test: `questions.test.ts` (conteúdo para cada perfil)
+- [x] T-1.4 Ajustar `self-contained.ts`: tirar a instrução de copiar enunciado de prova, acrescentar a regra do comentário do professor e da questão inspirada — covers FR-5 — files: `src/core/generation/self-contained.ts` — test: `self-contained.test.ts`
+- [x] T-1.5 Garantir que `CardGenerator` e `QuestionGenerator` aceitam lista vazia ou menor que a pedida, sem erro e sem preenchimento; atualizar as descrições dos esquemas — covers FR-3 — files: `src/core/generation/cards.ts`, `questions.ts`, `schemas.ts` — test: testes dos geradores com LLM scriptado devolvendo 0, 1 e N−1 itens
+- [x] T-1.6 Passar a disciplina (o título do material, por ora) do `GenerationService` aos geradores e aos builders — covers FR-1 (interino) — files: `src/core/generation/service.ts`, `cards.ts`, `questions.ts` — test: `generation.test.ts` (o prompt do lote contém o título)
+- [x] T-1.7 Criar `scripts/regen-prompt-fixtures.ts` e o script `fixtures:prompts` em `package.json`; regenerar só as entradas de cards, questões e juiz de `fixtures/prompts.json` — covers FR-18 — files: `scripts/regen-prompt-fixtures.ts`, `package.json`, `fixtures/prompts.json` — test: `prompts.test.ts` e `questions.test.ts` passam
+- [x] T-1.8 Registrar em `fixtures/README.md` que os prompts de geração divergem do Python por decisão (intent generation-relevance) e como regenerar — covers FR-18 — files: `fixtures/README.md` — test: `tests/fixtures/fixtures.test.ts` passa
+- [x] T-1.9 Teste ponta a ponta do esqueleto: `GenerationService.start` com LLM scriptado que devolve menos itens que o pedido e um card sobre texto motivador marcado nas fixtures — covers FR-2, FR-3 — files: `src/core/generation/generation.test.ts` — test: o próprio teste
+- [x] T-1.10 Rodar o comando de verificação e pedir a aprovação do esqueleto — covers DoD — files: `tasks.md`, `state.md` — test: exit 0
+
+**Unit summary (Construction 3.5):**
+
+- **Arquivos alterados:** `src/core/generation/{prompts,question-prompts,self-contained,cards,questions,service}.ts`, `src/core/llm/scripted.ts`, `fixtures/prompts.json`, `fixtures/README.md`, `package.json`, e os testes `generation.test.ts`, `prompts.test.ts`, `questions.test.ts`, `self-contained.test.ts`.
+- **Arquivos novos:** `scripts/regen-prompt-fixtures.ts`.
+- **Como rodar:** `pnpm test src/core/generation tests/fixtures`; para regenerar as fixtures de prompt, `pnpm fixtures:prompts`.
+- **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (131 arquivos, 1372 testes, linhas 96,15%). Baseline antes da Unit: 2 falhas por instabilidade sob carga (ver `construction/build-and-test.md`); nesta rodada passaram.
+- **Desvios:** (1) o provedor offline `scripted.ts` extraía a quantidade com `Create exactly N`; as regexes passaram a aceitar também `up to`; (2) os testes que citavam "Create exactly" nos prompts de geração foram atualizados para "up to"; os de seleção de trecho (`selection-prompts.ts`) mantêm "exactly", pois a seleção tem prompt próprio e não entrou no escopo; (3) `renderSubject` foi exportado de `prompts.ts` e `SCOPE_QUESTION_RULES` de `question-prompts.ts` para os testes de conteúdo.
 
 ### UNIT-2 Juiz de relevância, resumo e segunda rodada   Status: pending
 

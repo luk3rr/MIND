@@ -9,7 +9,26 @@ import { cardProblem } from "./cards.js";
 import { buildCardMessages } from "./prompts.js";
 import { buildJudgeMessages, buildQuestionMessages } from "./question-prompts.js";
 import { questionProblem } from "./questions.js";
-import { dependsOnSource, withSelfContained, withSelfContainedJudge } from "./self-contained.js";
+import {
+  SELF_CONTAINED_RULES,
+  dependsOnSource,
+  withSelfContained,
+  withSelfContainedJudge,
+} from "./self-contained.js";
+
+describe("rules for exam questions in the excerpts (FR-5)", () => {
+  it("does not ask to reproduce an exam question as an item", () => {
+    expect(SELF_CONTAINED_RULES).not.toContain("write the question's own statement");
+    expect(SELF_CONTAINED_RULES).toContain("do not reproduce it as an item");
+    expect(SELF_CONTAINED_RULES).toContain("inspiration for a new, self-contained item");
+  });
+
+  it("keeps the self-contained rule, adding it to the system message only", () => {
+    const [system, user] = withSelfContained(buildCardMessages("qa", 1, []));
+    expect(system?.content).toContain(SELF_CONTAINED_RULES);
+    expect(user?.content).not.toContain(SELF_CONTAINED_RULES);
+  });
+});
 
 describe("dependsOnSource", () => {
   it.each([

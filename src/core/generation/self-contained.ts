@@ -14,8 +14,9 @@ export const SELF_CONTAINED_RULES =
   "- Every item must be fully self-contained: the person sees ONLY the item, never the excerpt. " +
   'Never refer to "the text", "the excerpt", "the passage", "the comment", "the statement", ' +
   '"the question", "the figure", "the table" or to an alternative letter without reproducing ' +
-  "what is referred to. If the excerpt holds an exam question with its answer, write the " +
-  "question's own statement (and the alternatives that matter) inside the item, or skip it.\n";
+  "what is referred to. If the excerpt holds an exam question, do not reproduce it as an item: " +
+  "use it only as inspiration for a new, self-contained item that tests the same skill with new " +
+  "data, or skip it.\n";
 
 /** What the reviewer is told on top of its own criteria. */
 export const SELF_CONTAINED_JUDGE =

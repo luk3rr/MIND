@@ -22,7 +22,8 @@
     "package": "umask 022 && electron-vite build && electron-builder --linux deb --publish never",
     "package:win": "electron-vite build && electron-builder --win nsis --publish never",
     "package:dir": "umask 022 && electron-vite build && electron-builder --linux --dir",
-    "sm1": "tsx scripts/sm1.ts"
+    "sm1": "tsx scripts/sm1.ts",
+    "fixtures:prompts": "tsx scripts/regen-prompt-fixtures.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

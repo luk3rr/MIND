@@ -30,7 +30,7 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
   const provider = new FakeProvider(usage, latencyMs);
   provider.script("CardBatch", (messages: readonly { content: string }[]) => {
     const prompt = messages.at(-1)?.content ?? "";
-    const count = Number(/Create exactly (\d+) flashcards/.exec(prompt)?.[1] ?? 1);
+    const count = Number(/Create (?:exactly|up to) (\d+) flashcards/.exec(prompt)?.[1] ?? 1);
     const subtype = /`subtype` = "(\w+)"/.exec(prompt)?.[1] ?? "qa";
     const excerpts = parseExcerpts(prompt);
     const cards = Array.from({ length: count }, (_, index) => {
@@ -55,7 +55,7 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
   });
   provider.script("QuestionBatch", (messages: readonly { content: string }[]) => {
     const prompt = messages.at(-1)?.content ?? "";
-    const count = Number(/Create exactly (\d+) questions/.exec(prompt)?.[1] ?? 1);
+    const count = Number(/Create (?:exactly|up to) (\d+) questions/.exec(prompt)?.[1] ?? 1);
     const choices = /exactly (\d) options/.exec(prompt)?.[1];
     const calculation = prompt.includes('Question type "calculation"');
     const excerpts = parseExcerpts(prompt);
@@ -130,7 +130,7 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
   provider.script("SelectionCards", (messages: readonly { content: string }[]) => {
     const prompt = messages.at(-1)?.content ?? "";
     const passage = passageOf(messages);
-    const count = Number(/Create exactly (\d+) flashcards/.exec(prompt)?.[1] ?? 2);
+    const count = Number(/Create (?:exactly|up to) (\d+) flashcards/.exec(prompt)?.[1] ?? 2);
     const subject = /Subject requested by the student: ([^\n.]*)/.exec(prompt)?.[1]?.trim();
     const subtype = /must use `subtype` = "(\w+)"/.exec(prompt)?.[1] ?? "qa";
     const words = passage.split(/\s+/).slice(0, 4).join(" ");
@@ -157,7 +157,7 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
   provider.script("SelectionQuestions", (messages: readonly { content: string }[]) => {
     const prompt = messages.at(-1)?.content ?? "";
     const passage = passageOf(messages);
-    const count = Number(/Create exactly (\d+) questions/.exec(prompt)?.[1] ?? 2);
+    const count = Number(/Create (?:exactly|up to) (\d+) questions/.exec(prompt)?.[1] ?? 2);
     const choices = Number(/exactly (\d) options/.exec(prompt)?.[1] ?? 0);
     const words = passage.split(/\s+/).slice(0, 4).join(" ");
     return {

@@ -204,6 +204,17 @@ export class GenerationService {
     return this.workspace.connection.db;
   }
 
+  /** The subject the prompts name: the material's title, or none when training by topic. */
+  private subjectOf(request: GenerationRequest): string | null {
+    if ((request.topicId ?? null) !== null || request.materialId == null) return null;
+    const row = this.db
+      .select({ title: material.title })
+      .from(material)
+      .where(eq(material.id, request.materialId))
+      .get();
+    return row?.title ?? null;
+  }
+
   private chunksFor(request: GenerationRequest): SourceChunk[] {
     if ((request.topicId ?? null) !== null) {
       const training = trainingMaterial(this.workspace.connection, request.topicId as number);
@@ -433,6 +444,9 @@ export class GenerationService {
       ...(request.instructions?.trim() ? { instructions: request.instructions.trim() } : {}),
       ...(seeds.length > 0 ? { seeds } : {}),
     };
+    // Until the material is analyzed (UNIT-4/5) its subject is its title; training by topic mixes
+    // materials, so it has none.
+    const scope = { subject: this.subjectOf(request) };
     // Training puts the items in the trained topic; otherwise the person may name one for the run.
     const forcedTopic = request.topicId ?? this.namedTopic(request.topicName);
     let accepted = 0;
@@ -470,6 +484,7 @@ export class GenerationService {
                 topicId: forcedTopic,
                 avoid,
                 extra,
+                scope,
               })
             : await this.generator.generateBatch({
                 runId,
@@ -481,6 +496,7 @@ export class GenerationService {
                 topicId: forcedTopic,
                 avoid,
                 extra,
+                scope,
               });
         accepted += outcome.accepted;
         finished += 1;

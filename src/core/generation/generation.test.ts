@@ -112,8 +112,29 @@ describe("CardGenerator", () => {
     await batch();
     const call = provider.calls[0];
     expect(call?.model).toBe("m");
-    expect(call?.messages[1]?.content).toContain("Create exactly 3 flashcards");
+    expect(call?.messages[1]?.content).toContain("Create up to 3 flashcards");
     expect(call?.messages[1]?.content).toContain("[excerpt 1 | Biologia p.1]");
+  });
+
+  it("accepts a batch with fewer cards than asked, or none (FR-3)", async () => {
+    const some = setup([card()]);
+    expect(await some.batch({ count: 3 })).toMatchObject({ accepted: 1, invalid: 0, noSource: 0 });
+    await rig?.core.close();
+    const none = setup([]);
+    expect(await none.batch({ count: 3 })).toMatchObject({ accepted: 0, invalid: 0, noSource: 0 });
+    expect(none.workspace.connection.db.select().from(item).all()).toHaveLength(0);
+  });
+
+  it("names the subject in the prompt only when it is known (FR-1, FR-2)", async () => {
+    const { batch, provider } = setup([card()]);
+    await batch({ scope: { subject: "Língua Portuguesa: acentuação" } });
+    await batch({ scope: { subject: null } });
+    expect(provider.calls[0]?.messages[1]?.content).toContain(
+      "Subject of the material: Língua Portuguesa: acentuação.",
+    );
+    expect(provider.calls[1]?.messages[1]?.content).not.toContain("Subject of the material");
+    // The scope test lives in the system prompt, so every batch carries it.
+    expect(provider.calls[1]?.messages[0]?.content).toContain("SUBJECT of the material");
   });
 
   it("discards cards whose source cannot be verified and counts them", async () => {
@@ -215,6 +236,22 @@ describe("GenerationService", () => {
     const db = rig.core.registry.open(rig.workspaceId).connection.db;
     expect(db.select().from(item).all()).toHaveLength(7);
     expect(service.listRuns().map((r) => r.id)).toEqual([started.id]);
+  });
+
+  it("finishes a run that gets fewer cards than requested, with the title as the subject (FR-1, FR-3)", async () => {
+    const provider = new FakeProvider();
+    provider.script("CardBatch", { cards: [card({ front: "só este" })] });
+    rig = generationRig({ provider, texts: [TEXTS[0] as string] });
+    const service = rig.core.generation(rig.workspaceId);
+    const run = service.start(request({ materialId: rig.materialId, quantity: 5 }));
+    await rig.core.queue.wait(rig.workspaceId, run.jobId as number);
+    expect(service.get(run.id)).toMatchObject({
+      status: "done",
+      requested: 5,
+      generated: 1,
+      errorCode: null,
+    });
+    expect(provider.calls[0]?.messages[1]?.content).toContain("Subject of the material: Biologia.");
   });
 
   it("counts discard reasons on the run", async () => {

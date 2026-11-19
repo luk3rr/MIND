@@ -19,6 +19,10 @@ Rules:
 - Write mathematical formulas in LaTeX between $...$ (inline) or $$...$$ (display).
 - Set \`topic\` to a short, consistent label (up to 5 words) so related cards share it.
 - Do not repeat a card. Prefer facts, definitions, rules and relations that are worth memorizing; skip trivia, headings and formatting remarks.
+- Cards teach the SUBJECT of the material (named in the task): its concepts, rules, exceptions, definitions and relations. Before writing a card, ask whether a teacher of that subject would list it as something to learn; if not, skip it.
+- Never write cards about content that only serves as context: the motivating text of an exam question, a passage quoted as exercise material, the topic of an example sentence, or incidental facts. A fact about what an example says is not part of the subject.
+- An exam question in the excerpts is not a card. A teacher's comment that explains the rule behind it may be: write the rule itself, never depending on the question.
+- Return fewer cards than requested, or none, when the excerpts do not hold enough suitable content. Never fill the quota with weak or off-subject cards.
 `;
 
 export const SUBTYPE_RULES: Record<string, string> = {
@@ -34,6 +38,18 @@ export const SUBTYPE_RULES: Record<string, string> = {
     'Card type "true_false": `front` is one statement; `back` starts with "Verdadeiro" or ' +
     '"Falso" followed by a one-sentence explanation. Mix true and false statements.',
 };
+
+/** What the prompt says about the material the excerpts come from. */
+export interface PromptScope {
+  /** The subject of the material (such as its title, or the discipline the person named). */
+  subject: string | null;
+}
+
+/** The line that names the subject, or nothing when it is not known. */
+export function renderSubject(scope: PromptScope | undefined): string {
+  const subject = scope?.subject?.trim();
+  return subject ? `Subject of the material: ${subject}.\n\n` : "";
+}
 
 export interface PromptChunk {
   id: number;
@@ -93,11 +109,12 @@ export function buildCardMessages(
   chunks: readonly PromptChunk[],
   avoid: readonly string[] = [],
   extra: PromptExtra = {},
+  scope?: PromptScope,
 ): Message[] {
   const task =
-    `Create exactly ${count} flashcards of one type from the excerpts below. ` +
+    `Create up to ${count} flashcards of one type from the excerpts below. ` +
     `${SUBTYPE_RULES[subtype]} Every card must use \`subtype\` = "${subtype}".\n\n` +
-    `Excerpts:\n\n${renderChunks(chunks)}${renderAvoid(avoid)}${renderExtra(extra)}`;
+    `${renderSubject(scope)}Excerpts:\n\n${renderChunks(chunks)}${renderAvoid(avoid)}${renderExtra(extra)}`;
   return [
     { role: "system", content: SYSTEM },
     { role: "user", content: task },

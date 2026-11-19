@@ -40,7 +40,7 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 ## Units (filled by 2.7)
 | Unit | Depends on | Status | Verified |
 |---|---|---|---|
-| UNIT-1 Prompts, escopo e "até N" | — | pending | |
+| UNIT-1 Prompts, escopo e "até N" | — | verified (aguarda aprovação do esqueleto) | 2026-11-19, exit 0 |
 | UNIT-2 Juiz de relevância, resumo e segunda rodada | UNIT-1 | pending | |
 | UNIT-3 Fixtures e avaliação | UNIT-2 | pending | |
 | UNIT-4 Análise dos trechos | — | pending | |

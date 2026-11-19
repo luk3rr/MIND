@@ -16,6 +16,7 @@ import {
   buildCardMessages,
   renderAvoid,
   renderChunks,
+  renderSubject,
 } from "./prompts.js";
 
 interface Golden {
@@ -58,6 +59,26 @@ describe("card prompt rules", () => {
     expect(SYSTEM).toContain("VERBATIM");
     expect(SYSTEM).toContain(`between ${MIN_QUOTE} and ${MAX_QUOTE} characters`);
     expect(SYSTEM).toContain("LaTeX");
+  });
+
+  it("keeps cards on the subject and lets the model return fewer (FR-2, FR-3)", () => {
+    expect(SYSTEM).toContain("SUBJECT of the material");
+    expect(SYSTEM).toContain("motivating text of an exam question");
+    expect(SYSTEM).toContain("An exam question in the excerpts is not a card");
+    expect(SYSTEM).toContain("Return fewer cards than requested, or none");
+    const [, task] = buildCardMessages("qa", 4, golden.chunks);
+    expect(task?.content).toContain("Create up to 4 flashcards");
+    expect(task?.content).not.toContain("exactly");
+  });
+
+  it("names the subject before the excerpts, and only when there is one (FR-1)", () => {
+    const named = buildCardMessages("qa", 2, golden.chunks, [], {}, { subject: " Ortografia " });
+    expect(named[1]?.content).toContain("Subject of the material: Ortografia.\n\nExcerpts:");
+    expect(buildCardMessages("qa", 2, golden.chunks, [], {}, { subject: null })).toEqual(
+      buildCardMessages("qa", 2, golden.chunks),
+    );
+    expect(renderSubject({ subject: "  " })).toBe("");
+    expect(renderSubject(undefined)).toBe("");
   });
 
   it("accepts a valid batch and rejects unknown subtypes", () => {

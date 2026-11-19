@@ -16,7 +16,11 @@ import { Judge } from "./judge.js";
 import { scriptedCardProvider } from "../llm/scripted.js";
 import { studyRig } from "../test/study-fixture.js";
 import { QuestionGenerator, payloadFor, questionProblem } from "./questions.js";
-import { buildJudgeMessages, buildQuestionMessages } from "./question-prompts.js";
+import {
+  SCOPE_QUESTION_RULES,
+  buildJudgeMessages,
+  buildQuestionMessages,
+} from "./question-prompts.js";
 import { selectChunks } from "./planning.js";
 import { buildCardMessages } from "./prompts.js";
 import type { QuestionOut } from "./schemas.js";
@@ -415,6 +419,51 @@ describe("calculation questions", () => {
       "arithmetic is verified separately",
     );
     expect(buildJudgeMessages(golden.judge_items)[0]?.content).not.toContain("arithmetic");
+  });
+});
+
+describe("question scope (FR-2, FR-3)", () => {
+  it.each(["multiple_choice_4", "certo_errado", "calculation_4"])(
+    "keeps %s questions on applying the subject and lets the model return fewer",
+    (profile) => {
+      const [system, task] = buildQuestionMessages(
+        profile,
+        3,
+        golden.chunks,
+        [],
+        {},
+        {
+          subject: "Língua Portuguesa",
+        },
+      );
+      expect(system?.content).toContain(SCOPE_QUESTION_RULES);
+      expect(system?.content).toContain("APPLY a rule, concept or procedure of the subject");
+      expect(system?.content).toContain("do not copy it");
+      expect(system?.content).toContain("Return fewer questions than requested, or none");
+      expect(task?.content).toContain("Create up to 3 questions");
+      expect(task?.content).toContain("Subject of the material: Língua Portuguesa.");
+    },
+  );
+
+  it("leaves the subject line out when it is not known", () => {
+    const [, task] = buildQuestionMessages("multiple_choice_4", 3, golden.chunks);
+    expect(task?.content).not.toContain("Subject of the material");
+  });
+
+  it("accepts a batch with fewer questions than asked, or none", async () => {
+    const provider = new FakeProvider({ promptTokens: 5, completionTokens: 5, costUsd: 0.01 });
+    provider.script("QuestionBatch", { questions: [] });
+    rig = generationRig({ provider });
+    const service = rig.core.generation(rig.workspaceId);
+    const run = service.start({
+      materialId: rig.materialId,
+      subtype: "multiple_choice_4",
+      quantity: 4,
+      kind: "question",
+    });
+    await rig.core.queue.wait(rig.workspaceId, run.jobId as number);
+    expect(service.get(run.id)).toMatchObject({ status: "done", generated: 0, errorCode: null });
+    expect(provider.calls[0]?.messages[1]?.content).toContain("Subject of the material: Biologia.");
   });
 });
 

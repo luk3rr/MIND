@@ -16,7 +16,7 @@ import type { BatchOutcome } from "./cards.js";
 import { Judge } from "./judge.js";
 import { chunkLabel } from "./planning.js";
 import type { SourceChunk } from "./planning.js";
-import type { PromptChunk, PromptExtra } from "./prompts.js";
+import type { PromptChunk, PromptExtra, PromptScope } from "./prompts.js";
 import { buildQuestionMessages } from "./question-prompts.js";
 import { PROFILES, questionBatchSchema } from "./schemas.js";
 import type { OptionOut, QuestionOut, QuestionPayload } from "./schemas.js";
@@ -97,6 +97,8 @@ export interface QuestionBatchRequest {
   avoid?: string[];
   /** The person's own instructions and the items to vary. */
   extra?: PromptExtra;
+  /** What the excerpts are about (the subject of the material). */
+  scope?: PromptScope;
 }
 
 /** Questions with a verified source and a second-model check that the answer is supported. */
@@ -127,6 +129,7 @@ export class QuestionGenerator {
             promptChunks,
             request.avoid ?? [],
             request.extra ?? {},
+            request.scope,
           ),
         ),
         request.topicId ? [] : topTopics(this.db),
