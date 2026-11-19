@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { and, count, eq, inArray, max, or } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, max, or } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
 import type { Clock } from "../clock.js";
@@ -83,11 +83,19 @@ export class ErrorNotebook {
     return this.workspace.connection.db;
   }
 
-  private runId(): number {
+  /** The synthetic run of the cards of a material (the material of an item is its run's). */
+  private runId(materialId: number | null): number {
     const found = this.db
       .select({ id: generationRun.id })
       .from(generationRun)
-      .where(eq(generationRun.kind, NOTEBOOK_KIND))
+      .where(
+        and(
+          eq(generationRun.kind, NOTEBOOK_KIND),
+          materialId === null
+            ? isNull(generationRun.materialId)
+            : eq(generationRun.materialId, materialId),
+        ),
+      )
       .limit(1)
       .get();
     if (found) return found.id;
@@ -96,6 +104,7 @@ export class ErrorNotebook {
       .values({
         kind: NOTEBOOK_KIND,
         subtype: ERROR_NOTE,
+        materialId,
         model: "-",
         requested: 0,
         status: "done",
@@ -148,7 +157,13 @@ export class ErrorNotebook {
     const card = this.db
       .insert(item)
       .values({
-        runId: this.runId(),
+        runId: this.runId(
+          this.db
+            .select({ id: generationRun.materialId })
+            .from(generationRun)
+            .where(eq(generationRun.id, question.runId))
+            .get()?.id ?? null,
+        ),
         kind: "card",
         subtype,
         payloadJson: JSON.stringify({ front, back }),

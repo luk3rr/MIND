@@ -66,12 +66,23 @@ export class ItemAuthoringService {
     return this.workspace.connection.db;
   }
 
-  /** The synthetic run of an origin, created the first time it is needed. */
-  ensureRun(origin: AuthoredOrigin): number {
+  /**
+   * The synthetic run of an origin and material, created the first time it is needed. The
+   * material of an item is the one of its run, so an item with a source must hang on a run that
+   * names it; items with no material share one run of their origin.
+   */
+  ensureRun(origin: AuthoredOrigin, materialId: number | null = null): number {
     const found = this.db
       .select({ id: generationRun.id })
       .from(generationRun)
-      .where(eq(generationRun.kind, origin))
+      .where(
+        and(
+          eq(generationRun.kind, origin),
+          materialId === null
+            ? isNull(generationRun.materialId)
+            : eq(generationRun.materialId, materialId),
+        ),
+      )
       .limit(1)
       .get();
     if (found) return found.id;
@@ -80,6 +91,7 @@ export class ItemAuthoringService {
       .values({
         kind: origin,
         subtype: origin,
+        materialId,
         model: "-",
         requested: 0,
         status: "done",
@@ -108,7 +120,7 @@ export class ItemAuthoringService {
       const row = this.db
         .insert(item)
         .values({
-          runId: this.ensureRun(input.origin),
+          runId: this.ensureRun(input.origin, input.source?.materialId ?? null),
           kind: draft.kind,
           subtype: draft.subtype,
           payloadJson: JSON.stringify(payload),

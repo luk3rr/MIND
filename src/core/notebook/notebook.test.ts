@@ -114,6 +114,19 @@ describe("ErrorNotebook.createCard (FR-15)", () => {
     expect(() => notebook(w).createCard(w.item("card", null))).toThrowError(/Não existe questão/);
   });
 
+  it("hangs the card on a run of the material of the question, so it shows that material", () => {
+    const w = setup();
+    const id = question(w);
+    w.db.update(generationRun).set({ materialId: w.rig.materialId }).run();
+    w.attempts(id, [false]);
+    const created = notebook(w).createCard(id);
+    const entry = w.rig.core
+      .review(w.workspaceId)
+      .catalog()
+      .find((candidate) => candidate.id === created.itemId);
+    expect(entry).toMatchObject({ origin: "error_note", materialId: w.rig.materialId });
+  });
+
   it("creates an approved card that keeps the source and the topic", () => {
     const w = setup();
     const id = question(w);

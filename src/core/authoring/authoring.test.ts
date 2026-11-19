@@ -427,6 +427,71 @@ describe("ItemAuthoringService sources", () => {
     expect(info.pdfSource).toBeNull();
   });
 
+  it("gives the item the material of its source, found or not, so the catalog shows it", () => {
+    const w = setup();
+    asPdf(w);
+    const service = authoring(w);
+    const found = service.create({
+      draft: CARD,
+      topic: null,
+      origin: "reader",
+      source: {
+        materialId: w.rig.materialId,
+        page: 3,
+        quote: "fixa o dióxido de carbono em açúcares",
+      },
+    });
+    const missing = service.create({
+      draft: { ...CARD, front: "Outra?" },
+      topic: null,
+      origin: "reader",
+      source: { materialId: w.rig.materialId, page: 3, quote: "uma frase que não existe no livro" },
+    });
+    const none = service.create({
+      draft: { ...CARD, front: "Sem fonte?" },
+      topic: null,
+      origin: "reader",
+    });
+    const catalog = w.rig.core.review(w.workspaceId).catalog();
+    for (const id of [found.itemId, missing.itemId]) {
+      expect(catalog.find((entry) => entry.id === id)).toMatchObject({
+        materialId: w.rig.materialId,
+        material: "Biologia",
+      });
+    }
+    expect(catalog.find((entry) => entry.id === none.itemId)).toMatchObject({ materialId: null });
+    // One run per origin and material, shared by the items of the same pair.
+    const runs = w.db
+      .select()
+      .from(generationRun)
+      .all()
+      .filter((r) => r.kind === "reader");
+    expect(runs.map((r) => r.materialId).sort()).toEqual([null, w.rig.materialId].sort());
+  });
+
+  it("keeps the item when its material is deleted", () => {
+    const w = setup();
+    const created = authoring(w).create({
+      draft: CARD,
+      topic: null,
+      origin: "reader",
+      source: {
+        materialId: w.rig.materialId,
+        page: 3,
+        quote: "fixa o dióxido de carbono em açúcares",
+      },
+    });
+    w.db.delete(material).where(eq(material.id, w.rig.materialId)).run();
+    expect(
+      w.rig.core
+        .review(w.workspaceId)
+        .catalog()
+        .find((e) => e.id === created.itemId),
+    ).toMatchObject({
+      materialId: null,
+    });
+  });
+
   it("saves nothing when the material of the source does not exist", () => {
     const w = setup();
     const before = w.db.select().from(item).all().length;

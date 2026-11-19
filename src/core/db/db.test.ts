@@ -73,6 +73,7 @@ describe("migrations", () => {
       "0002_chunk_fts.sql",
       "0003_study_session.sql",
       "0004_study_practices.sql",
+      "0005_item_runs_by_material.sql",
     ]);
   });
 
@@ -113,6 +114,63 @@ describe("migrations", () => {
       },
     ]);
     expect(sqlite.prepare("SELECT COUNT(*) AS n FROM pretest_attempt").get()).toEqual({ n: 0 });
+    connection.close();
+  });
+
+  it("moves authored items onto a run of their material without losing anything", () => {
+    const connection = openDatabase(join(tempDir(), "workspace.db"), {});
+    const { sqlite } = connection;
+    applyMigrations(sqlite, workspaceMigrations.slice(0, 5));
+    const run = (kind: string, subtype: string, material: number | null): number =>
+      Number(
+        sqlite
+          .prepare(
+            "INSERT INTO generation_run (kind, subtype, material_id, model, requested, created_at) VALUES (?, ?, ?, '-', 0, 'x')",
+          )
+          .run(kind, subtype, material).lastInsertRowid,
+      );
+    sqlite
+      .prepare(
+        "INSERT INTO material (title, kind, filename, stored_path, status, created_at) VALUES ('Apostila', 'pdf', 'a.pdf', 'p', 'indexed', 'x')",
+      )
+      .run();
+    sqlite
+      .prepare("INSERT INTO chunk (material_id, ordinal, page, text) VALUES (1, 0, 1, 'texto')")
+      .run();
+    const generated = run("question", "multiple_choice", 1);
+    const reader = run("reader", "reader", null);
+    const manual = run("manual", "manual", null);
+    const notebook = run("notebook", "error_note", null);
+    const add = (runId: number, origin: string, chunk: number | null, from: number | null) =>
+      Number(
+        sqlite
+          .prepare(
+            "INSERT INTO item (run_id, kind, subtype, payload_json, chunk_id, origin, origin_item_id, created_at) VALUES (?, 'card', 'qa', '{}', ?, ?, ?, 'x')",
+          )
+          .run(runId, chunk, origin, from).lastInsertRowid,
+      );
+    const question = add(generated, "generated", 1, null);
+    const fromReader = add(reader, "reader", 1, null);
+    const unlinked = add(manual, "manual", null, null);
+    const error = add(notebook, "error_note", 1, question);
+
+    applyMigrations(sqlite, workspaceMigrations);
+
+    const placed = (id: number) =>
+      sqlite
+        .prepare(
+          "SELECT r.kind AS kind, r.material_id AS material FROM item i JOIN generation_run r ON r.id = i.run_id WHERE i.id = ?",
+        )
+        .get(id);
+    expect(placed(fromReader)).toEqual({ kind: "reader", material: 1 });
+    expect(placed(error)).toEqual({ kind: "notebook", material: 1 });
+    // No source, no material: it stays on the shared run.
+    expect(placed(unlinked)).toEqual({ kind: "manual", material: null });
+    expect(placed(question)).toEqual({ kind: "question", material: 1 });
+    expect(sqlite.prepare("SELECT COUNT(*) AS n FROM item").get()).toEqual({ n: 4 });
+    expect(
+      sqlite.prepare("SELECT name FROM sqlite_temp_master WHERE name = '_item_material'").all(),
+    ).toEqual([]);
     connection.close();
   });
 
