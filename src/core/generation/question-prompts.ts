@@ -43,10 +43,20 @@ export const CALCULATION_SYSTEM =
   SCOPE_QUESTION_RULES;
 
 export const CALCULATION_JUDGE_SYSTEM =
-  "You are a strict reviewer of exam calculation questions. For each numbered question you receive the source excerpt, the question, its options and the proposed answer. The arithmetic is verified separately by the app: do not redo it.\n\nA question is `supported` only if ALL of these hold:\n1. The formula or method the problem needs is given in the excerpt.\n2. The statement contains every datum needed and is unambiguous about what is asked.\n3. The wrong options are plausible results of mistakes and none of them is also a defensible answer.\nOtherwise it is not supported. When in doubt, answer `supported: false`. Return one verdict per question, using its `index`, with a short `reason`.\n";
+  "You are a strict reviewer of exam calculation questions. For each numbered question you receive the source excerpt, the question, its options and the proposed answer. The arithmetic is verified separately by the app: do not redo it.\n\nA question is `supported` only if ALL of these hold:\n1. The formula or method the problem needs is given in the excerpt.\n2. The statement contains every datum needed and is unambiguous about what is asked.\n3. The wrong options are plausible results of mistakes and none of them is also a defensible answer.\n4. The problem is about the subject of the material, not about incidental content such as the topic of a motivating text or the facts inside an example.\nOtherwise it is not supported. When in doubt, answer `supported: false`. Return one verdict per question, using its `index`, with a short `reason`; when criterion 4 is the one that fails, start the reason with `out_of_scope:`.\n";
 
 export const JUDGE_SYSTEM =
-  "You are a strict reviewer of exam questions. For each numbered question you receive the source excerpt, the question, its options (if any) and the proposed answer.\n\nA question is `supported` only if ALL of these hold:\n1. The proposed answer is established by the excerpt alone.\n2. Exactly one option (or the right/wrong verdict) is correct; no other option is also defensible.\n3. The statement is unambiguous.\nOtherwise it is not supported. When in doubt, answer `supported: false`. Return one verdict per question, using its `index`, with a short `reason`.\n";
+  "You are a strict reviewer of exam questions. For each numbered question you receive the source excerpt, the question, its options (if any) and the proposed answer.\n\nA question is `supported` only if ALL of these hold:\n1. The proposed answer is established by the excerpt alone.\n2. Exactly one option (or the right/wrong verdict) is correct; no other option is also defensible.\n3. The statement is unambiguous.\n4. The question is about the subject of the material, not about incidental content such as the topic of a motivating text or the facts inside an example.\nOtherwise it is not supported. When in doubt, answer `supported: false`. Return one verdict per question, using its `index`, with a short `reason`; when criterion 4 is the one that fails, start the reason with `out_of_scope:`.\n";
+
+/** The reviewer that checks that a card teaches the subject of its material, not its context. */
+export const RELEVANCE_SYSTEM =
+  "You are a strict reviewer of study flashcards. For each numbered card you receive the subject of the material, the source excerpt and the card.\n\nA card is `in_scope` only if ALL of these hold:\n1. It teaches a concept, rule, exception, definition or relation of the subject, something a teacher of the subject would list as worth learning.\n2. It is not about content that only serves as context: the motivating text of an exam question, a passage quoted as exercise material, the topic of an example sentence, or incidental facts.\n3. It can be understood on its own.\nWhen in doubt, answer `in_scope: false`. Return one verdict per card, using its `index`, with a short `reason`.\n";
+
+export interface RelevanceItem {
+  excerpt: string;
+  /** The card as the person will see it. */
+  text: string;
+}
 
 export interface JudgeItem {
   excerpt: string;
@@ -73,7 +83,25 @@ export function buildQuestionMessages(
   ];
 }
 
-export function buildJudgeMessages(items: readonly JudgeItem[], calculation = false): Message[] {
+export function buildRelevanceMessages(
+  items: readonly RelevanceItem[],
+  subject: string | null,
+): Message[] {
+  const blocks = items.map(
+    (item, index) => `[card ${index}]\nExcerpt:\n${item.excerpt}\n\nCard:\n${item.text}`,
+  );
+  const header = subject?.trim() ? `Subject of the material: ${subject.trim()}.\n\n` : "";
+  return [
+    { role: "system", content: RELEVANCE_SYSTEM },
+    { role: "user", content: `${header}${blocks.join("\n\n")}` },
+  ];
+}
+
+export function buildJudgeMessages(
+  items: readonly JudgeItem[],
+  calculation = false,
+  subject: string | null = null,
+): Message[] {
   const blocks = items.map((item, index) => {
     const options =
       item.options.map(([key, text]) => `  ${key}) ${text}`).join("\n") || "  (certo/errado)";
@@ -84,6 +112,9 @@ export function buildJudgeMessages(items: readonly JudgeItem[], calculation = fa
   });
   return [
     { role: "system", content: calculation ? CALCULATION_JUDGE_SYSTEM : JUDGE_SYSTEM },
-    { role: "user", content: blocks.join("\n\n") },
+    {
+      role: "user",
+      content: `${subject?.trim() ? `Subject of the material: ${subject.trim()}.\n\n` : ""}${blocks.join("\n\n")}`,
+    },
   ];
 }

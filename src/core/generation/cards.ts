@@ -13,6 +13,7 @@ import { buildCardMessages } from "./prompts.js";
 import type { PromptChunk, PromptExtra, PromptScope } from "./prompts.js";
 import { chunkLabel } from "./planning.js";
 import type { SourceChunk } from "./planning.js";
+import { Judge } from "./judge.js";
 import { cardBatchSchema } from "./schemas.js";
 import { dependsOnSource, withSelfContained } from "./self-contained.js";
 import type { CardOut, CardPayload } from "./schemas.js";
@@ -35,12 +36,23 @@ export interface BatchOutcome {
   invalid: number;
   duplicate: number;
   unsupported: number;
+  /** Items the relevance judge found to be about something other than the subject. */
+  outOfScope: number;
   costUsd: number;
   log: DiscardNote[];
 }
 
 export function emptyOutcome(costUsd = 0): BatchOutcome {
-  return { accepted: 0, noSource: 0, invalid: 0, duplicate: 0, unsupported: 0, costUsd, log: [] };
+  return {
+    accepted: 0,
+    noSource: 0,
+    invalid: 0,
+    duplicate: 0,
+    unsupported: 0,
+    outOfScope: 0,
+    costUsd,
+    log: [],
+  };
 }
 
 export function note(outcome: BatchOutcome, reason: string, text: string): void {
@@ -77,6 +89,8 @@ export interface BatchRequest {
   count: number;
   chunks: SourceChunk[];
   model: string;
+  /** The model that reviews whether each card is about the subject of the material. */
+  judgeModel: string;
   /** How many more cards the run still accepts. */
   remaining: () => number;
   topicId?: number | null;
@@ -87,14 +101,26 @@ export interface BatchRequest {
   scope?: PromptScope;
 }
 
-/** Asks the model for cards, verifies their sources and stores valid ones as drafts. */
+interface Candidate {
+  card: CardOut;
+  chunk: SourceChunk;
+}
+
+/**
+ * Asks the model for cards, verifies their sources, has a second model check that they are about
+ * the subject of the material, and stores the ones that pass as drafts.
+ */
 export class CardGenerator {
+  private readonly judge: Judge;
+
   constructor(
     private readonly db: WorkspaceDb,
     private readonly sqlite: { transaction<T>(fn: () => T): () => T },
     private readonly provider: Provider,
     private readonly checker = new SourceChecker(),
-  ) {}
+  ) {
+    this.judge = new Judge(provider);
+  }
 
   async generateBatch(request: BatchRequest): Promise<BatchOutcome> {
     const promptChunks: PromptChunk[] = request.chunks.map((c) => ({
@@ -122,24 +148,38 @@ export class CardGenerator {
       schemaName: "CardBatch",
     });
     const outcome = emptyOutcome(usage.costUsd ?? 0);
-    // No `await` below: validation and storage are atomic with respect to other batches.
-    this.sqlite.transaction(() => this.store(request, value.cards, outcome))();
+    let candidates = this.screen(request, value.cards, outcome);
+    if (candidates.length > 0) {
+      const verdict = await this.judge.judgeRelevance(
+        candidates.map((c) => ({
+          excerpt: c.chunk.text,
+          text: `${c.card.front.trim()}\n${c.card.back.trim()}`.trim(),
+        })),
+        request.judgeModel,
+        request.scope?.subject ?? null,
+      );
+      outcome.costUsd += verdict.costUsd;
+      const kept: Candidate[] = [];
+      candidates.forEach((candidate, index) => {
+        if (verdict.inScope[index]) kept.push(candidate);
+        else {
+          outcome.outOfScope += 1;
+          note(outcome, `out_of_scope: ${verdict.reasons[index]}`, candidate.card.front);
+        }
+      });
+      candidates = kept;
+    }
+    // No `await` below: duplicates are re-checked and the drafts stored atomically.
+    this.sqlite.transaction(() => this.store(request, candidates, outcome))();
     return outcome;
   }
 
-  private store(request: BatchRequest, cards: CardOut[], outcome: BatchOutcome): void {
+  /** The cards that are well formed, have a verified source and are not duplicates. */
+  private screen(request: BatchRequest, cards: CardOut[], outcome: BatchOutcome): Candidate[] {
     const byId = new Map(request.chunks.map((c) => [c.id, c]));
     const seen = this.existingFronts(request.subtype);
-    const topics: KnownTopics = new Map(
-      this.db
-        .select()
-        .from(topic)
-        .all()
-        .map((row) => [row.name.toLowerCase(), row]),
-    );
-    const remaining = request.remaining();
+    const found: Candidate[] = [];
     for (const card of cards) {
-      if (outcome.accepted >= remaining) break;
       const problem = cardProblem(card, request.subtype);
       if (problem !== null) {
         outcome.invalid += 1;
@@ -158,6 +198,30 @@ export class CardGenerator {
         note(outcome, check.reason ?? "invalid_source", card.front);
         continue;
       }
+      const key = normalize(card.front).text;
+      if (seen.has(key)) {
+        outcome.duplicate += 1;
+        note(outcome, "duplicate", card.front);
+        continue;
+      }
+      seen.add(key);
+      found.push({ card, chunk: source });
+    }
+    return found;
+  }
+
+  private store(request: BatchRequest, candidates: Candidate[], outcome: BatchOutcome): void {
+    const seen = this.existingFronts(request.subtype);
+    const topics: KnownTopics = new Map(
+      this.db
+        .select()
+        .from(topic)
+        .all()
+        .map((row) => [row.name.toLowerCase(), row]),
+    );
+    const remaining = request.remaining();
+    for (const { card, chunk: source } of candidates) {
+      if (outcome.accepted >= remaining) break;
       const key = normalize(card.front).text;
       if (seen.has(key)) {
         outcome.duplicate += 1;

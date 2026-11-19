@@ -48,6 +48,9 @@ function run(overrides: Partial<FakeRun> = {}): FakeRun {
     discardedInvalid: 0,
     discardedDuplicate: 0,
     discardedUnsupported: 0,
+    discardedOutOfScope: 0,
+    rounds: 1,
+    withAnalysis: false,
     approved: 0,
     approvedUnedited: 0,
     discardedReview: 0,
@@ -337,6 +340,42 @@ describe("Generate page", () => {
     await waitFor(() => expect(fake.state.runs[0]?.status).toBe("cancelled"));
   });
 
+  it("counts the items found off the subject and says a second round ran (FR-4, FR-15)", async () => {
+    open("/w/1/generate", {
+      runs: [
+        run({
+          id: 4,
+          requested: 20,
+          generated: 14,
+          discardedNoSource: 0,
+          discardedInvalid: 0,
+          discardedDuplicate: 0,
+          discardedUnsupported: 0,
+          discardedOutOfScope: 5,
+          rounds: 2,
+          discardLog: [
+            {
+              reason: "out_of_scope: tema do texto motivador",
+              front: "O que se desenvolve aos dez anos?",
+            },
+            { reason: "out_of_scope:", front: "Outro" },
+          ],
+        }),
+      ],
+    });
+    const cell = (await screen.findByText(/14\/20/)).closest("td") as HTMLElement;
+    expect(cell).toHaveTextContent(
+      "14/20 · 5 fora do escopo da disciplina · uma segunda rodada em trechos ainda não usados · o material não tinha conteúdo da disciplina para 1 item",
+    );
+    const user = userEvent.setup();
+    await user.click(within(cell).getByText("Por que não completou?"));
+    const list = within(cell).getByRole("list", { name: "Itens descartados" });
+    expect(list).toHaveTextContent(
+      "fora do escopo da disciplina: tema do texto motivador — “O que se desenvolve aos dez anos?”",
+    );
+    expect(list).toHaveTextContent("fora do escopo da disciplina — “Outro”");
+  });
+
   it("explains why a finished run has fewer items than asked", async () => {
     open("/w/1/generate", {
       runs: [
@@ -362,7 +401,7 @@ describe("Generate page", () => {
     });
     const cell = (await screen.findByText(/3\/10/)).closest("td") as HTMLElement;
     expect(cell).toHaveTextContent(
-      "3/10 · 1 sem fonte verificável · 2 inválidos (formato ou conta) · 1 repetido · 1 reprovado pela revisão · o modelo devolveu 2 itens a menos",
+      "3/10 · 1 sem fonte verificável · 2 inválidos (formato ou conta) · 1 repetido · 1 reprovado pela revisão · o material não tinha conteúdo da disciplina para 2 itens",
     );
     const user = userEvent.setup();
     await user.click(within(cell).getByText("Por que não completou?"));

@@ -101,6 +101,31 @@ export function spreadIndices(total: number, wanted: number): number[] {
 }
 
 /**
+ * The batches for a second round: the content the first round did not use, with the missing
+ * quantity split among them. Empty when the first round already went through every batch.
+ */
+export function planMore(
+  chunks: readonly SourceChunk[],
+  planned: readonly PlannedBatch[],
+  missing: number,
+  perBatch = CARDS_PER_BATCH,
+  spread = true,
+): PlannedBatch[] {
+  const used = new Set(planned.map((batch) => batch.chunks[0]?.id));
+  const unused = makeBatches(chunks).filter((batch) => !used.has(batch[0]?.id));
+  if (unused.length === 0 || missing < 1) return [];
+  const wanted = Math.min(Math.ceil(missing / perBatch), unused.length);
+  const indices = spread
+    ? spreadIndices(unused.length, wanted)
+    : Array.from({ length: wanted }, (_, index) => index);
+  const counts = splitQuantity(missing, wanted);
+  return indices.map((index, position) => ({
+    chunks: unused[index] as SourceChunk[],
+    count: counts[position] as number,
+  }));
+}
+
+/**
  * Groups chunks, picks batches and splits the requested quantity among them. By default the
  * batches are spread evenly over the chunks; with `spread = false` the first batches are used.
  */

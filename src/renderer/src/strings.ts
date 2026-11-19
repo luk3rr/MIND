@@ -474,7 +474,11 @@ export const T = {
   discardedDuplicateLabel: (n: number) => `${n} repetido${n === 1 ? "" : "s"}`,
   discardedUnsupportedLabel: (n: number) => `${n} reprovado${n === 1 ? "" : "s"} pela revisão`,
   discardedNoSourceLabel: (n: number) => `${n} sem fonte verificável`,
-  runShortfall: (n: number) => `o modelo devolveu ${n} ${n === 1 ? "item" : "itens"} a menos`,
+  discardedOutOfScopeLabel: (n: number) => `${n} fora do escopo da disciplina`,
+  discardReasonOutOfScope: "fora do escopo da disciplina",
+  runSecondRound: "uma segunda rodada em trechos ainda não usados",
+  runShortfall: (n: number) =>
+    `o material não tinha conteúdo da disciplina para ${n} ${n === 1 ? "item" : "itens"}`,
   runWhyIncomplete: "Por que não completou?",
   runReasonsTitle: "Itens descartados",
   backToGenerate: "Voltar a Gerar",

@@ -35,6 +35,10 @@ function reasonText(reason: string): string {
     const why = reason.slice("unsupported:".length).trim();
     return why ? `${T.discardReasonUnsupported}: ${why}` : T.discardReasonUnsupported;
   }
+  if (reason.startsWith("out_of_scope:")) {
+    const why = reason.slice("out_of_scope:".length).trim();
+    return why ? `${T.discardReasonOutOfScope}: ${why}` : T.discardReasonOutOfScope;
+  }
   return T.discardReasons[reason] ?? reason;
 }
 
@@ -44,7 +48,8 @@ function RunItems({ run }: { run: Run }) {
     run.discardedNoSource +
     run.discardedInvalid +
     run.discardedDuplicate +
-    run.discardedUnsupported;
+    run.discardedUnsupported +
+    run.discardedOutOfScope;
   // What neither became an item nor was discarded: the model simply returned fewer.
   const shortfall = Math.max(run.requested - run.generated - discarded, 0);
   const parts = [
@@ -52,6 +57,8 @@ function RunItems({ run }: { run: Run }) {
     run.discardedInvalid > 0 ? T.discardedInvalidLabel(run.discardedInvalid) : null,
     run.discardedDuplicate > 0 ? T.discardedDuplicateLabel(run.discardedDuplicate) : null,
     run.discardedUnsupported > 0 ? T.discardedUnsupportedLabel(run.discardedUnsupported) : null,
+    run.discardedOutOfScope > 0 ? T.discardedOutOfScopeLabel(run.discardedOutOfScope) : null,
+    run.rounds > 1 ? T.runSecondRound : null,
     shortfall > 0 && run.status === "done" ? T.runShortfall(shortfall) : null,
   ].filter((part): part is string => part !== null);
   return (

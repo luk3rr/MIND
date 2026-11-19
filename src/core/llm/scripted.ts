@@ -22,6 +22,18 @@ function parseExcerpts(prompt: string): Excerpt[] {
   }));
 }
 
+/** The relevance reviewer's answer when every card is about the subject: for tests and offline runs. */
+export const allInScope = (messages: readonly { content: string }[]): unknown => {
+  const total = (messages.at(-1)?.content.match(/\[card \d+\]/g) ?? []).length;
+  return {
+    verdicts: Array.from({ length: total }, (_, index) => ({
+      index,
+      in_scope: true,
+      reason: "ok",
+    })),
+  };
+};
+
 /**
  * A provider that never touches the network and writes plausible cards from the excerpts of the
  * prompt, quoting them verbatim. Used by offline end-to-end runs and by tests.
@@ -230,6 +242,7 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
       citations: [{ chunk_id: first.id, quote: first.text.slice(0, 60) }],
     };
   });
+  provider.script("RelevanceBatch", allInScope);
   provider.script("JudgeBatch", (messages: readonly { content: string }[]) => {
     const total = (messages.at(-1)?.content.match(/\[question \d+\]/g) ?? []).length;
     return {

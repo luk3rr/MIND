@@ -74,6 +74,12 @@ export const generationRun = sqliteTable("generation_run", {
   discardedInvalid: integer("discarded_invalid").notNull().default(0),
   discardedDuplicate: integer("discarded_duplicate").notNull().default(0),
   discardedUnsupported: integer("discarded_unsupported").notNull().default(0),
+  /** Items the relevance judge found to be about something other than the subject. */
+  discardedOutOfScope: integer("discarded_out_of_scope").notNull().default(0),
+  /** 1, or 2 when a second round filled the shortfall. */
+  rounds: integer("rounds").notNull().default(1),
+  /** The run used the roles and units of the analysis (0 for the plain fallback). */
+  withAnalysis: integer("with_analysis").notNull().default(0),
   approved: integer("approved").notNull().default(0),
   approvedUnedited: integer("approved_unedited").notNull().default(0),
   discardedReview: integer("discarded_review").notNull().default(0),

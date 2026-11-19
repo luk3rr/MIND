@@ -74,6 +74,7 @@ describe("migrations", () => {
       "0003_study_session.sql",
       "0004_study_practices.sql",
       "0005_item_runs_by_material.sql",
+      "0006_run_out_of_scope.sql",
     ]);
   });
 
@@ -114,6 +115,37 @@ describe("migrations", () => {
       },
     ]);
     expect(sqlite.prepare("SELECT COUNT(*) AS n FROM pretest_attempt").get()).toEqual({ n: 0 });
+    connection.close();
+  });
+
+  it("adds the out-of-scope counter, rounds and analysis flag to existing runs (NFR-4)", () => {
+    const connection = openDatabase(join(tempDir(), "workspace.db"), {});
+    const { sqlite } = connection;
+    applyMigrations(sqlite, workspaceMigrations.slice(0, 6));
+    sqlite
+      .prepare(
+        "INSERT INTO generation_run (kind, subtype, model, requested, generated, discarded_unsupported, created_at) VALUES ('card','qa','m',5,4,1,'x')",
+      )
+      .run();
+
+    applyMigrations(sqlite, workspaceMigrations);
+
+    expect(
+      sqlite
+        .prepare(
+          "SELECT requested, generated, discarded_unsupported, discarded_out_of_scope, rounds, with_analysis FROM generation_run",
+        )
+        .all(),
+    ).toEqual([
+      {
+        requested: 5,
+        generated: 4,
+        discarded_unsupported: 1,
+        discarded_out_of_scope: 0,
+        rounds: 1,
+        with_analysis: 0,
+      },
+    ]);
     connection.close();
   });
 

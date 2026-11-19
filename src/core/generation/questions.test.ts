@@ -194,10 +194,75 @@ describe("Judge", () => {
     expect(result.reasons).toEqual(["ok", "no_verdict"]);
   });
 
+  it("tells the subject to the question reviewer and keeps the relevance criterion (FR-7)", () => {
+    const [system, user] = buildJudgeMessages(golden.judge_items, false, "Ortografia");
+    expect(system?.content).toContain("about the subject of the material");
+    expect(system?.content).toContain("start the reason with `out_of_scope:`");
+    expect(user?.content.startsWith("Subject of the material: Ortografia.")).toBe(true);
+    expect(buildJudgeMessages(golden.judge_items, true)[0]?.content).toContain(
+      "about the subject of the material",
+    );
+  });
+
   it("makes no model call when there is nothing to judge", async () => {
     const provider = new FakeProvider();
     expect(await new Judge(provider).judge([], "m")).toEqual({
       supported: [],
+      reasons: [],
+      costUsd: 0,
+    });
+    expect(provider.calls).toHaveLength(0);
+  });
+});
+
+describe("Judge.judgeRelevance (FR-6)", () => {
+  const card = (text: string) => ({ excerpt: "trecho", text });
+
+  it("matches each verdict by index, names the subject and reports the cost", async () => {
+    const provider = new FakeProvider({ promptTokens: 1, completionTokens: 1, costUsd: 0.03 });
+    provider.script("RelevanceBatch", {
+      verdicts: [
+        { index: 1, in_scope: false, reason: "tema do texto motivador" },
+        { index: 0, in_scope: true, reason: "" },
+      ],
+    });
+    const result = await new Judge(provider).judgeRelevance(
+      [card("a"), card("b")],
+      "judge/model",
+      "Ortografia",
+    );
+    expect(result).toEqual({
+      inScope: [true, false],
+      reasons: ["in_scope", "tema do texto motivador"],
+      costUsd: 0.03,
+    });
+    expect(provider.calls[0]?.model).toBe("judge/model");
+    expect(provider.calls[0]?.messages[1]?.content).toContain(
+      "Subject of the material: Ortografia.",
+    );
+    expect(provider.calls[0]?.messages[1]?.content).toContain("[card 1]");
+  });
+
+  it("counts missing, repeated or out-of-range verdicts against the card", async () => {
+    const provider = new FakeProvider();
+    provider.script("RelevanceBatch", {
+      verdicts: [
+        { index: 0, in_scope: true, reason: "ok" },
+        { index: 0, in_scope: false, reason: "dup" },
+        { index: 7, in_scope: true, reason: "" },
+        { index: -1, in_scope: true, reason: "" },
+      ],
+    });
+    const result = await new Judge(provider).judgeRelevance([card("a"), card("b")], "m", null);
+    expect(result.inScope).toEqual([true, false]);
+    expect(result.reasons).toEqual(["ok", "no_verdict"]);
+    expect(provider.calls[0]?.messages[1]?.content).not.toContain("Subject of the material");
+  });
+
+  it("makes no model call when there is nothing to judge", async () => {
+    const provider = new FakeProvider();
+    expect(await new Judge(provider).judgeRelevance([], "m", "x")).toEqual({
+      inScope: [],
       reasons: [],
       costUsd: 0,
     });
@@ -258,6 +323,30 @@ describe("QuestionGenerator", () => {
       sourcePage: 1,
     });
     expect(JSON.parse(stored?.payloadJson ?? "{}").answer).toBe("C");
+  });
+
+  it("counts a question the reviewer finds off the subject apart from an unsupported one (FR-7)", async () => {
+    const { batch, provider } = setup(
+      [
+        ce(),
+        ce({ statement: "A respiração ocorre nos cloroplastos.", answer: "E" }),
+        ce({ statement: "A fotossíntese ocorre nas mitocôndrias.", answer: "E" }),
+      ],
+      [
+        { index: 0, supported: true, reason: "" },
+        { index: 1, supported: false, reason: "out_of_scope: tema do texto motivador" },
+        { index: 2, supported: false, reason: "gabarito errado" },
+      ],
+    );
+    const outcome = await batch();
+    expect(outcome).toMatchObject({ accepted: 1, outOfScope: 1, unsupported: 1 });
+    expect(outcome.log.map((entry) => entry.reason)).toEqual([
+      "out_of_scope: tema do texto motivador",
+      "unsupported: gabarito errado",
+    ]);
+    expect(
+      provider.calls.find((c) => c.schemaName === "JudgeBatch")?.messages[1]?.content,
+    ).toContain("[question 2]");
   });
 
   it("discards invalid, unsourced and duplicate questions before judging", async () => {

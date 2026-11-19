@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { AppError } from "../contracts/errors.js";
 import { generationRun, item, topic } from "../db/workspace-schema.js";
 import { FakeProvider } from "../llm/fake.js";
+import { allInScope } from "../llm/scripted.js";
 import { generationRig, TEXTS } from "../test/generation-fixture.js";
 import type { GenerationRig } from "../test/generation-fixture.js";
 import { CardGenerator, cardProblem, cleanTopic, payloadProblem } from "./cards.js";
@@ -43,6 +44,7 @@ function card(overrides: Record<string, unknown> = {}) {
 function setup(cards: unknown[], texts?: string[]) {
   const provider = new FakeProvider({ promptTokens: 10, completionTokens: 5, costUsd: 0.01 });
   provider.script("CardBatch", { cards });
+  provider.script("RelevanceBatch", allInScope);
   rig = generationRig({ provider, ...(texts ? { texts } : {}) });
   const workspace = rig.core.registry.open(rig.workspaceId);
   const run = workspace.connection.db
@@ -63,6 +65,7 @@ function setup(cards: unknown[], texts?: string[]) {
       count: 3,
       chunks,
       model: "m",
+      judgeModel: "j",
       remaining: () => 5,
       ...extra,
     });
@@ -92,7 +95,8 @@ describe("CardGenerator", () => {
   it("stores a valid card as a draft with a copied source and the batch cost", async () => {
     const { workspace, batch } = setup([card()]);
     const outcome = await batch();
-    expect(outcome).toMatchObject({ accepted: 1, noSource: 0, invalid: 0, costUsd: 0.01 });
+    // The batch cost is the generation call plus the relevance review of its cards.
+    expect(outcome).toMatchObject({ accepted: 1, noSource: 0, invalid: 0, costUsd: 0.02 });
     const [stored] = workspace.connection.db.select().from(item).all();
     expect(stored).toMatchObject({
       status: "draft",
@@ -129,12 +133,51 @@ describe("CardGenerator", () => {
     const { batch, provider } = setup([card()]);
     await batch({ scope: { subject: "Língua Portuguesa: acentuação" } });
     await batch({ scope: { subject: null } });
-    expect(provider.calls[0]?.messages[1]?.content).toContain(
+    const [named, unnamed] = provider.calls.filter((call) => call.schemaName === "CardBatch");
+    expect(named?.messages[1]?.content).toContain(
       "Subject of the material: Língua Portuguesa: acentuação.",
     );
-    expect(provider.calls[1]?.messages[1]?.content).not.toContain("Subject of the material");
+    expect(unnamed?.messages[1]?.content).not.toContain("Subject of the material");
     // The scope test lives in the system prompt, so every batch carries it.
-    expect(provider.calls[1]?.messages[0]?.content).toContain("SUBJECT of the material");
+    expect(unnamed?.messages[0]?.content).toContain("SUBJECT of the material");
+    // The relevance reviewer is told the subject too.
+    const reviews = provider.calls.filter((call) => call.schemaName === "RelevanceBatch");
+    expect(reviews[0]?.messages[1]?.content).toContain("Subject of the material: Língua");
+  });
+
+  it("drops cards the relevance judge finds off the subject and logs why (FR-6)", async () => {
+    const { workspace, batch, provider } = setup([
+      card({ front: "Quando a paroxítona leva acento?" }),
+      card({ front: "O que acontece com a adolescência aos dez anos?" }),
+      card({ front: "Sem veredito do juiz" }),
+    ]);
+    provider.script("RelevanceBatch", {
+      verdicts: [
+        { index: 0, in_scope: true, reason: "regra" },
+        { index: 1, in_scope: false, reason: "tema do texto motivador" },
+      ],
+    });
+    const outcome = await batch();
+    // The batch costs the generation call plus the review of its cards.
+    expect(outcome).toMatchObject({ accepted: 1, outOfScope: 2, costUsd: 0.02 });
+    expect(outcome.log.map((entry) => entry.reason)).toEqual([
+      "out_of_scope: tema do texto motivador",
+      "out_of_scope: no_verdict",
+    ]);
+    const stored = workspace.connection.db.select().from(item).all();
+    expect(stored).toHaveLength(1);
+    expect(JSON.parse(stored[0]?.payloadJson ?? "{}").front).toBe(
+      "Quando a paroxítona leva acento?",
+    );
+  });
+
+  it("only reviews the cards that passed the screening, and not at all when none did", async () => {
+    const { batch, provider } = setup([
+      card({ front: "" }),
+      card({ source: { chunk_id: 1, quote: "frase inventada que não existe aqui" } }),
+    ]);
+    expect(await batch()).toMatchObject({ accepted: 0, invalid: 1, noSource: 1, outOfScope: 0 });
+    expect(provider.calls.filter((call) => call.schemaName === "RelevanceBatch")).toHaveLength(0);
   });
 
   it("discards cards whose source cannot be verified and counts them", async () => {
@@ -241,6 +284,7 @@ describe("GenerationService", () => {
   it("finishes a run that gets fewer cards than requested, with the title as the subject (FR-1, FR-3)", async () => {
     const provider = new FakeProvider();
     provider.script("CardBatch", { cards: [card({ front: "só este" })] });
+    provider.script("RelevanceBatch", allInScope);
     rig = generationRig({ provider, texts: [TEXTS[0] as string] });
     const service = rig.core.generation(rig.workspaceId);
     const run = service.start(request({ materialId: rig.materialId, quantity: 5 }));
@@ -256,6 +300,7 @@ describe("GenerationService", () => {
 
   it("counts discard reasons on the run", async () => {
     const provider = new FakeProvider();
+    provider.script("RelevanceBatch", allInScope);
     provider.script("CardBatch", {
       cards: [
         card({ front: "ok" }),
@@ -270,9 +315,107 @@ describe("GenerationService", () => {
     expect(service.get(run.id).discardLog[0]?.reason).toBe("quote_not_in_chunk");
   });
 
+  it("records the cards found off the subject on the run (FR-15)", async () => {
+    const provider = new FakeProvider({ promptTokens: 1, completionTokens: 1, costUsd: 0.01 });
+    provider.script("CardBatch", {
+      cards: [
+        card({ front: "Quando a paroxítona leva acento?" }),
+        card({ front: "Tema do motivador?" }),
+      ],
+    });
+    provider.script("RelevanceBatch", {
+      verdicts: [
+        { index: 0, in_scope: true, reason: "" },
+        { index: 1, in_scope: false, reason: "tema do texto motivador" },
+      ],
+    });
+    rig = generationRig({ provider, texts: [TEXTS[0] as string] });
+    const service = rig.core.generation(rig.workspaceId);
+    const run = service.start(request({ materialId: rig.materialId, quantity: 2 }));
+    await rig.core.queue.wait(rig.workspaceId, run.jobId as number);
+    expect(service.get(run.id)).toMatchObject({
+      status: "done",
+      generated: 1,
+      discardedOutOfScope: 1,
+      rounds: 1,
+      withAnalysis: false,
+    });
+    expect(service.get(run.id).discardLog[0]?.reason).toBe("out_of_scope: tema do texto motivador");
+    // Both the generation call and the review count in the cost of the run.
+    expect(service.get(run.id).costUsd).toBeCloseTo(0.02, 5);
+  });
+
+  describe("second round (FR-4)", () => {
+    const quote = "converte a energia da luz em energia química";
+    const texts = [
+      TEXTS[0] as string,
+      `${quote} ${"y".repeat(6000)}`,
+      `${quote} ${"z".repeat(6000)}`,
+    ];
+    /** A provider that returns one valid card per call, quoting the chunk of the batch. */
+    function oneCardPerCall() {
+      const provider = new FakeProvider({ promptTokens: 1, completionTokens: 1, costUsd: 0.01 });
+      let calls = 0;
+      provider.script("CardBatch", (messages: readonly { content: string }[]) => {
+        calls += 1;
+        const id = Number(/\[excerpt (\d+) /.exec(messages.at(-1)?.content ?? "")?.[1]);
+        return { cards: [card({ front: `Cartão ${calls}?`, source: { chunk_id: id, quote } })] };
+      });
+      provider.script("RelevanceBatch", allInScope);
+      return provider;
+    }
+    const cardCalls = (provider: FakeProvider) =>
+      provider.calls.filter((call) => call.schemaName === "CardBatch").length;
+
+    it("goes through the content the first round did not use, once", async () => {
+      const provider = oneCardPerCall();
+      rig = generationRig({ provider, texts });
+      const service = rig.core.generation(rig.workspaceId);
+      const run = service.start(request({ materialId: rig.materialId, quantity: 5 }));
+      await rig.core.queue.wait(rig.workspaceId, run.jobId as number);
+      // One batch asked for 5 and returned 1; a single extra round asks for the 4 missing.
+      expect(cardCalls(provider)).toBe(2);
+      expect(service.get(run.id)).toMatchObject({ status: "done", generated: 2, rounds: 2 });
+    });
+
+    it("does not run when the first round delivered what was asked", async () => {
+      const provider = oneCardPerCall();
+      rig = generationRig({ provider, texts });
+      const service = rig.core.generation(rig.workspaceId);
+      const run = service.start(request({ materialId: rig.materialId, quantity: 1 }));
+      await rig.core.queue.wait(rig.workspaceId, run.jobId as number);
+      expect(cardCalls(provider)).toBe(1);
+      expect(service.get(run.id)).toMatchObject({ generated: 1, rounds: 1 });
+    });
+
+    it("does not run when there is no content left to try", async () => {
+      const provider = oneCardPerCall();
+      rig = generationRig({ provider, texts: [texts[0] as string] });
+      const service = rig.core.generation(rig.workspaceId);
+      const run = service.start(request({ materialId: rig.materialId, quantity: 5 }));
+      await rig.core.queue.wait(rig.workspaceId, run.jobId as number);
+      expect(cardCalls(provider)).toBe(1);
+      expect(service.get(run.id)).toMatchObject({ generated: 1, rounds: 1 });
+    });
+
+    it("does not start a round after a failure", async () => {
+      const provider = oneCardPerCall();
+      provider.script("CardBatch", () => {
+        throw new AppError("PROVIDER_ERROR", "O provedor falhou.");
+      });
+      rig = generationRig({ provider, texts });
+      const service = rig.core.generation(rig.workspaceId);
+      const run = service.start(request({ materialId: rig.materialId, quantity: 5 }));
+      await rig.core.queue.wait(rig.workspaceId, run.jobId as number);
+      expect(cardCalls(provider)).toBe(1);
+      expect(service.get(run.id)).toMatchObject({ status: "partial", rounds: 1 });
+    });
+  });
+
   it("keeps partial results when the provider fails and fails the job", async () => {
     let calls = 0;
     const provider = new FakeProvider();
+    provider.script("RelevanceBatch", allInScope);
     provider.script("CardBatch", () => {
       calls += 1;
       if (calls === 2) throw new AppError("PROVIDER_ERROR", "O provedor falhou.");
@@ -358,6 +501,15 @@ describe("GenerationService", () => {
         0.000002,
         new Date().toISOString(),
       );
+    // Cards are reviewed by the judge model too, so its price is needed for an estimate (FR-16).
+    expect(
+      service.estimate(request({ materialId: rig.materialId, quantity: 10 })).estimatedUsd,
+    ).toBeNull();
+    rig.core.registry.appDatabase.sqlite
+      .prepare(
+        "INSERT INTO model_price (model, prompt_usd_per_token, completion_usd_per_token, fetched_at) VALUES (?, ?, ?, ?)",
+      )
+      .run(rig.core.llm.settings.get().judgeModel, 0.000003, 0.000006, new Date().toISOString());
     const estimate = service.estimate(request({ materialId: rig.materialId, quantity: 10 }));
     expect(estimate.estimatedUsd).toBeGreaterThan(0);
     expect(estimate.promptChars).toBeGreaterThan(1000);

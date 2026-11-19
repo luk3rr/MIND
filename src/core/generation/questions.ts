@@ -80,6 +80,9 @@ export function payloadFor(question: QuestionOut): QuestionPayload {
   return payload;
 }
 
+/** What the reviewer starts a reason with when a question is not about the subject. */
+export const OUT_OF_SCOPE = "out_of_scope";
+
 interface Candidate {
   question: QuestionOut;
   chunk: SourceChunk;
@@ -154,14 +157,23 @@ export class QuestionGenerator {
         })),
         request.judgeModel,
         PROFILES[request.profile]?.calculation === true,
+        request.scope?.subject ?? null,
       );
       outcome.costUsd += verdict.costUsd;
       const kept: Candidate[] = [];
       candidates.forEach((candidate, index) => {
         if (verdict.supported[index]) kept.push(candidate);
         else {
-          outcome.unsupported += 1;
-          note(outcome, `unsupported: ${verdict.reasons[index]}`, candidate.question.statement);
+          // The reviewer starts the reason with `out_of_scope:` when the question is about
+          // something other than the subject, which is counted apart from an unsupported answer.
+          const reason = verdict.reasons[index] ?? "";
+          if (reason.startsWith(OUT_OF_SCOPE)) {
+            outcome.outOfScope += 1;
+            note(outcome, reason, candidate.question.statement);
+          } else {
+            outcome.unsupported += 1;
+            note(outcome, `unsupported: ${reason}`, candidate.question.statement);
+          }
         }
       });
       candidates = kept;

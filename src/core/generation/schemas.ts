@@ -90,6 +90,15 @@ export const verdictSchema = z.object({
 
 export const judgeBatchSchema = z.object({ verdicts: z.array(verdictSchema) });
 
+export const relevanceVerdictSchema = z.object({
+  index: z.number().int().describe("Number of the card, as given."),
+  in_scope: z.boolean().describe("True only when the card teaches the subject of the material."),
+  reason: z.string().describe("Short reason."),
+});
+
+/** The reviewer's answer on whether cards are about the subject of their material. */
+export const relevanceBatchSchema = z.object({ verdicts: z.array(relevanceVerdictSchema) });
+
 /** What is stored in `item.payload_json` for a question. */
 export interface QuestionPayload {
   statement: string;

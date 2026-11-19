@@ -129,6 +129,12 @@ const runInfo = z.object({
   discardedInvalid: z.number().int(),
   discardedDuplicate: z.number().int(),
   discardedUnsupported: z.number().int(),
+  /** Items the relevance judge found to be about something other than the subject. */
+  discardedOutOfScope: z.number().int(),
+  /** 1, or 2 when a second round went through the content the first one did not use. */
+  rounds: z.number().int(),
+  /** The run used the roles and units of the analysis of the material. */
+  withAnalysis: z.boolean(),
   approved: z.number().int(),
   approvedUnedited: z.number().int(),
   discardedReview: z.number().int(),

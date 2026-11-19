@@ -19,10 +19,21 @@ import type { Llm } from "../core.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 import { CardGenerator, cleanTopic } from "./cards.js";
 import type { BatchOutcome, DiscardNote } from "./cards.js";
-import { CARDS_PER_BATCH, QUESTIONS_PER_BATCH, planBatches, selectChunks } from "./planning.js";
+import {
+  CARDS_PER_BATCH,
+  QUESTIONS_PER_BATCH,
+  planBatches,
+  planMore,
+  selectChunks,
+} from "./planning.js";
 import { QuestionGenerator } from "./questions.js";
-import { JUDGE_SYSTEM, PROFILE_RULES, QUESTION_SYSTEM } from "./question-prompts.js";
-import type { SourceChunk } from "./planning.js";
+import {
+  JUDGE_SYSTEM,
+  PROFILE_RULES,
+  QUESTION_SYSTEM,
+  RELEVANCE_SYSTEM,
+} from "./question-prompts.js";
+import type { PlannedBatch, SourceChunk } from "./planning.js";
 import { MAX_INSTRUCTIONS, SUBTYPE_RULES, SYSTEM } from "./prompts.js";
 import { CARD_SUBTYPES, PROFILES } from "./schemas.js";
 import { isoNow } from "../clock.js";
@@ -33,7 +44,10 @@ export const MAX_QUANTITY = { card: 60, question: 30 } as const;
 export const OUTPUT_TOKENS_PER_QUESTION = 250;
 export const JUDGE_TOKENS_PER_QUESTION = 60;
 export const OUTPUT_TOKENS_PER_CARD = 150;
+export const JUDGE_TOKENS_PER_CARD = 40;
 export const PROMPT_OVERHEAD_CHARS = 400;
+/** Rough size of a card as the relevance judge reads it. */
+export const RELEVANCE_CARD_CHARS = 300;
 export const CONCURRENT_BATCHES = 2;
 const LOG_LIMIT = 20;
 
@@ -79,6 +93,12 @@ export interface RunInfo {
   discardedInvalid: number;
   discardedDuplicate: number;
   discardedUnsupported: number;
+  /** Items the relevance judge found to be about something other than the subject. */
+  discardedOutOfScope: number;
+  /** 1, or 2 when a second round went through the content the first one did not use. */
+  rounds: number;
+  /** The run used the roles and units of the analysis of the material. */
+  withAnalysis: boolean;
   approved: number;
   approvedUnedited: number;
   discardedReview: number;
@@ -114,6 +134,9 @@ function toInfo(row: typeof generationRun.$inferSelect): RunInfo {
     discardedInvalid: row.discardedInvalid,
     discardedDuplicate: row.discardedDuplicate,
     discardedUnsupported: row.discardedUnsupported,
+    discardedOutOfScope: row.discardedOutOfScope,
+    rounds: row.rounds,
+    withAnalysis: row.withAnalysis === 1,
     approved: row.approved,
     approvedUnedited: row.approvedUnedited,
     discardedReview: row.discardedReview,
@@ -300,15 +323,31 @@ export class GenerationService {
       plan.length *
         (SYSTEM.length + (SUBTYPE_RULES[request.subtype]?.length ?? 0) + PROMPT_OVERHEAD_CHARS) +
       chunkChars;
+    // The relevance judge reads, once per batch, its excerpts and the cards written from them.
+    const judgeChars = plan.reduce(
+      (total, batch) =>
+        total +
+        RELEVANCE_SYSTEM.length +
+        PROMPT_OVERHEAD_CHARS +
+        batch.chunks.reduce((sum, c) => sum + c.text.length, 0) +
+        batch.count * RELEVANCE_CARD_CHARS,
+      0,
+    );
+    const generation = this.llm.catalog.estimate(
+      settings.generationModel,
+      promptChars,
+      request.quantity * OUTPUT_TOKENS_PER_CARD,
+    );
+    const judging = this.llm.catalog.estimate(
+      settings.judgeModel,
+      judgeChars,
+      request.quantity * JUDGE_TOKENS_PER_CARD,
+    );
     return {
-      estimatedUsd: this.llm.catalog.estimate(
-        settings.generationModel,
-        promptChars,
-        request.quantity * OUTPUT_TOKENS_PER_CARD,
-      ),
+      estimatedUsd: generation === null || judging === null ? null : generation + judging,
       chunks: plan.reduce((total, batch) => total + batch.chunks.length, 0),
       batches: plan.length,
-      promptChars,
+      promptChars: promptChars + judgeChars,
     };
   }
 
@@ -428,12 +467,11 @@ export class GenerationService {
     context: JobContext,
   ): Promise<void> {
     this.setStatus(runId, "running");
-    const plan = planBatches(
-      this.chunksFor(request),
-      request.quantity,
-      perBatch(request.kind),
-      (request.topicId ?? null) === null,
-    );
+    const chunks = this.chunksFor(request);
+    const spread = (request.topicId ?? null) === null;
+    const plan = planBatches(chunks, request.quantity, perBatch(request.kind), spread);
+    // The batches of the second round (if any) count in the progress once they are known.
+    let total = plan.length;
     // Variations start from the approved items, so the "do not repeat" list would contradict them.
     const seeds = request.variations ? this.variationSeeds(request) : [];
     const avoid =
@@ -492,6 +530,7 @@ export class GenerationService {
                 count,
                 chunks,
                 model,
+                judgeModel,
                 remaining,
                 topicId: forcedTopic,
                 avoid,
@@ -501,16 +540,32 @@ export class GenerationService {
         accepted += outcome.accepted;
         finished += 1;
         this.addOutcome(runId, outcome);
-        context.update(finished / plan.length, `lote ${finished} de ${plan.length}`);
+        context.update(Math.min(finished / total, 1), `lote ${finished} de ${total}`);
       } finally {
         release();
       }
     };
 
-    const results = await Promise.allSettled(
-      plan.map((batch) => runBatch(batch.chunks, batch.count)),
-    );
-    const failure = results.find((result) => result.status === "rejected");
+    const runRound = (batches: readonly PlannedBatch[]) =>
+      Promise.allSettled(batches.map((batch) => runBatch(batch.chunks, batch.count)));
+    const results = await runRound(plan);
+    let failure = results.find((result) => result.status === "rejected");
+    if (!failure && accepted < request.quantity) {
+      // The model may return fewer items than asked ("up to N") and the judge may drop some: one
+      // more round goes through the content the first one did not use.
+      const more = planMore(
+        chunks,
+        plan,
+        request.quantity - accepted,
+        perBatch(request.kind),
+        spread,
+      );
+      if (more.length > 0) {
+        total += more.length;
+        this.db.update(generationRun).set({ rounds: 2 }).where(eq(generationRun.id, runId)).run();
+        failure = (await runRound(more)).find((result) => result.status === "rejected");
+      }
+    }
     const summary = this.db.select().from(generationRun).where(eq(generationRun.id, runId)).get();
     log.info("generation finished", {
       run: runId,
@@ -520,6 +575,8 @@ export class GenerationService {
       invalid: summary?.discardedInvalid,
       duplicate: summary?.discardedDuplicate,
       unsupported: summary?.discardedUnsupported,
+      outOfScope: summary?.discardedOutOfScope,
+      rounds: summary?.rounds,
       costUsd: summary?.costUsd,
     });
     if (!failure) {
@@ -569,6 +626,7 @@ export class GenerationService {
         discardedInvalid: row.discardedInvalid + outcome.invalid,
         discardedDuplicate: row.discardedDuplicate + outcome.duplicate,
         discardedUnsupported: row.discardedUnsupported + outcome.unsupported,
+        discardedOutOfScope: row.discardedOutOfScope + outcome.outOfScope,
         costUsd: row.costUsd + outcome.costUsd,
         ...(room > 0
           ? { discardLog: JSON.stringify([...log, ...outcome.log.slice(0, room)]) }

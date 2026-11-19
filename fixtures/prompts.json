@@ -95,7 +95,7 @@
   "judge_messages": [
     {
       "role": "system",
-      "content": "You are a strict reviewer of exam questions. For each numbered question you receive the source excerpt, the question, its options (if any) and the proposed answer.\n\nA question is `supported` only if ALL of these hold:\n1. The proposed answer is established by the excerpt alone.\n2. Exactly one option (or the right/wrong verdict) is correct; no other option is also defensible.\n3. The statement is unambiguous.\nOtherwise it is not supported. When in doubt, answer `supported: false`. Return one verdict per question, using its `index`, with a short `reason`.\n"
+      "content": "You are a strict reviewer of exam questions. For each numbered question you receive the source excerpt, the question, its options (if any) and the proposed answer.\n\nA question is `supported` only if ALL of these hold:\n1. The proposed answer is established by the excerpt alone.\n2. Exactly one option (or the right/wrong verdict) is correct; no other option is also defensible.\n3. The statement is unambiguous.\n4. The question is about the subject of the material, not about incidental content such as the topic of a motivating text or the facts inside an example.\nOtherwise it is not supported. When in doubt, answer `supported: false`. Return one verdict per question, using its `index`, with a short `reason`; when criterion 4 is the one that fails, start the reason with `out_of_scope:`.\n"
     },
     {
       "role": "user",
