@@ -171,14 +171,22 @@ if (!app.requestSingleInstanceLock()) {
       ...(!app.isPackaged && process.env["MIND_UPDATE_URL"]
         ? { updateUrl: process.env["MIND_UPDATE_URL"] }
         : {}),
+      // A window that was closed or reloaded is destroyed: sending to it throws, and a throw in
+      // the job events would fail the long job that emitted them (an analysis of a material).
       onUpdateAvailable: (release) => {
-        mainWindow?.webContents.send("update:available", release);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("update:available", release);
+        }
       },
       onTimeEvent: (event) => {
-        mainWindow?.webContents.send("time:changed", event);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("time:changed", event);
+        }
       },
       onJobEvent: (event) => {
-        mainWindow?.webContents.send(`job:${event.type}`, event);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(`job:${event.type}`, event);
+        }
       },
     });
     uninstallRedaction = installLogRedaction(core.llm.secrets);
