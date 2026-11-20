@@ -236,6 +236,7 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       provider: "openrouter",
       generationModel: "a",
       judgeModel: "b",
+      analysisModel: "c",
       monthlyLimitUsd: 5,
       keyConfigured: false,
       keySource: null,

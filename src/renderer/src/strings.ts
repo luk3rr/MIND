@@ -58,6 +58,9 @@ export const T = {
   keyRemove: "Remover chave",
   generationModel: "Modelo para gerar",
   judgeModel: "Modelo para verificar",
+  analysisModel: "Modelo para analisar o material",
+  analysisModelHint:
+    "Lê os trechos de cada material e separa conteúdo, questões e textos de apoio. Prefira um modelo rápido e que não raciocine por muito tempo; um modelo de raciocínio costuma estourar o tempo.",
   monthlyLimit: "Limite mensal de custo (US$)",
   continue: "Continuar",
   provider: "Provedor de IA",

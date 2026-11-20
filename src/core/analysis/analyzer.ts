@@ -34,8 +34,6 @@ export const WINDOW_OVERLAP = 2;
 export const ANALYSIS_CONCURRENCY = 3;
 /** How many times a window is asked when the provider fails (a timeout, an answer that is not valid). */
 export const WINDOW_ATTEMPTS = 3;
-/** What one window may cost: twelve verdicts are short, and a reasoning model must not run on. */
-export const WINDOW_MAX_TOKENS = 6000;
 
 /** The job type of an analysis in the queue. */
 export const ANALYSIS_JOB = "analysis";
@@ -183,8 +181,6 @@ export class MaterialAnalyzer {
           model,
           purpose: "analysis",
           schemaName: "ClassifyBatch",
-          maxTokens: WINDOW_MAX_TOKENS,
-          reasoningEffort: "low",
         });
         return value;
       } catch (error) {
@@ -199,7 +195,7 @@ export class MaterialAnalyzer {
 
   private async run(materialId: number, context: JobContext): Promise<void> {
     const started = performance.now();
-    const model = this.llm.settings.get().judgeModel;
+    const model = this.llm.settings.get().analysisModel;
     const chunks = this.db
       .select({ id: chunk.id, text: chunk.text })
       .from(chunk)

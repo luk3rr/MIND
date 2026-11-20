@@ -417,13 +417,17 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       core.llm.settings.update({
         ...(input.generationModel !== undefined ? { generationModel: input.generationModel } : {}),
         ...(input.judgeModel !== undefined ? { judgeModel: input.judgeModel } : {}),
+        ...(input.analysisModel !== undefined ? { analysisModel: input.analysisModel } : {}),
         ...(input.monthlyLimitUsd !== undefined ? { monthlyLimitUsd: input.monthlyLimitUsd } : {}),
       });
       if (input.apiKey?.trim()) core.llm.secrets.save(input.apiKey);
       // Only which settings changed is logged, never the values (the key is one of them).
       log.info("settings saved", {
         key: Boolean(input.apiKey?.trim()),
-        models: input.generationModel !== undefined || input.judgeModel !== undefined,
+        models:
+          input.generationModel !== undefined ||
+          input.judgeModel !== undefined ||
+          input.analysisModel !== undefined,
         limit: input.monthlyLimitUsd !== undefined,
       });
       return {};

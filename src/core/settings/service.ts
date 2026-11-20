@@ -18,6 +18,9 @@ export const DEFAULTS = {
   provider: "openrouter",
   generation_model: "anthropic/claude-haiku-5.5",
   judge_model: "anthropic/claude-sonnet-5.5",
+  // Reading the chunks of a material is a short, mechanical answer: a model that does not
+  // reason is faster, cheaper and does not cut its answer short.
+  analysis_model: "anthropic/claude-haiku-5.5",
   monthly_limit_usd: "5",
 } as const;
 
@@ -26,6 +29,7 @@ export interface ProviderSettings {
   provider: string;
   generationModel: string;
   judgeModel: string;
+  analysisModel: string;
   monthlyLimitUsd: number;
 }
 
@@ -33,6 +37,7 @@ export interface SettingsUpdate {
   provider?: string;
   generationModel?: string;
   judgeModel?: string;
+  analysisModel?: string;
   monthlyLimitUsd?: number;
 }
 
@@ -55,6 +60,7 @@ export class SettingsService {
       provider: merged.provider,
       generationModel: merged.generation_model,
       judgeModel: merged.judge_model,
+      analysisModel: merged.analysis_model,
       monthlyLimitUsd: Number(merged.monthly_limit_usd),
     };
   }
@@ -76,6 +82,7 @@ export class SettingsService {
     for (const [field, key, value] of [
       ["generationModel", "generation_model", update.generationModel],
       ["judgeModel", "judge_model", update.judgeModel],
+      ["analysisModel", "analysis_model", update.analysisModel],
     ] as const) {
       if (value === undefined) continue;
       if (MODEL_PATTERN.test(value.trim())) changes[key] = value.trim();

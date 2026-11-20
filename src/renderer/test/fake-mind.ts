@@ -238,6 +238,7 @@ export interface FakeState {
     consentGiven: boolean;
     generationModel: string;
     judgeModel: string;
+    analysisModel: string;
     monthlyLimitUsd: number;
     spentThisMonth: number;
     knownModels: string[];
@@ -419,6 +420,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       consentGiven: true,
       generationModel: "a/gen",
       judgeModel: "b/judge",
+      analysisModel: "c/analysis",
       monthlyLimitUsd: 5,
       spentThisMonth: 0,
       knownModels: ["a/gen", "b/judge"],
@@ -1278,6 +1280,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           provider: "openrouter",
           generationModel: p.generationModel,
           judgeModel: p.judgeModel,
+          analysisModel: p.analysisModel,
           monthlyLimitUsd: p.monthlyLimitUsd,
           keyConfigured: p.apiKey !== null,
           keySource: p.keySource,
@@ -1304,6 +1307,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         if (input.generationModel !== undefined)
           state.provider.generationModel = input.generationModel;
         if (input.judgeModel !== undefined) state.provider.judgeModel = input.judgeModel;
+        if (input.analysisModel !== undefined) state.provider.analysisModel = input.analysisModel;
         if (input.monthlyLimitUsd !== undefined)
           state.provider.monthlyLimitUsd = input.monthlyLimitUsd;
         return ok({});

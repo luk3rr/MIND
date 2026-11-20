@@ -19,8 +19,11 @@ describe("SettingsService", () => {
       provider: "openrouter",
       generationModel: DEFAULTS.generation_model,
       judgeModel: DEFAULTS.judge_model,
+      analysisModel: DEFAULTS.analysis_model,
       monthlyLimitUsd: 5,
     });
+    // Reading chunks is mechanical: the default analysis model is not the one that reasons.
+    expect(DEFAULTS.analysis_model).toBe(DEFAULTS.generation_model);
     expect(fixture.settings.keyConfigured()).toBe(false);
   });
 
@@ -32,6 +35,11 @@ describe("SettingsService", () => {
       judgeModel: DEFAULTS.judge_model,
       monthlyLimitUsd: 12.5,
     });
+    fixture.settings.update({ analysisModel: " d/analysis " });
+    expect(fixture.settings.get().analysisModel).toBe("d/analysis");
+    expect(() => fixture.settings.update({ analysisModel: "bad model!" })).toThrowError(
+      expect.objectContaining({ fields: [expect.objectContaining({ field: "analysisModel" })] }),
+    );
   });
 
   it("rejects invalid values naming the field and writes nothing", () => {

@@ -36,7 +36,7 @@ acentuação". O que você escrever vale mais do que o que o MIND descobriu; dei
 o que ele descobriu. Em **Gerar** a disciplina em uso aparece acima das opções, com o botão
 **Alterar**.
 
-A análise usa o modelo de revisão e conta no seu limite mensal. Se ela falhar ou parar no limite, a
+A análise usa o **modelo para analisar o material**, que você escolhe em Configurações (prefira um modelo rápido, que não raciocine por muito tempo), e conta no seu limite mensal. Se ela falhar ou parar no limite, a
 Biblioteca mostra o motivo e **Analisar de novo** fica no menu do material. Você pode gerar itens
 mesmo assim: o MIND avisa que está gerando sem a análise e usa só a disciplina e a revisão dos itens.
 

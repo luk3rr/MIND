@@ -103,9 +103,9 @@ describe("MaterialAnalyzer", () => {
     ]);
     expect(row()).toMatchObject({ subjectInferred: "Língua Portuguesa: acentuação" });
     expect(analyzer.status(rig?.materialId ?? 0)).toMatchObject({ state: "done", progress: null });
-    // It uses the judge model, once for a material that fits in a window.
+    // It uses the analysis model, once for a material that fits in a window.
     expect(provider.calls).toHaveLength(1);
-    expect(provider.calls[0]?.model).toBe(rig?.core.llm.settings.get().judgeModel);
+    expect(provider.calls[0]?.model).toBe(rig?.core.llm.settings.get().analysisModel);
   });
 
   it("reads a long material in windows that overlap (A18)", async () => {
@@ -192,22 +192,13 @@ describe("MaterialAnalyzer", () => {
     expect(provider.calls.every((c) => c.schemaName === "ClassifyBatch")).toBe(true);
   });
 
-  it("limits what a window may spend and how hard the model reasons", async () => {
-    const options: unknown[] = [];
+  it("reads the chunks with the analysis model, not the one that judges or generates", async () => {
     const provider = classifier();
-    const original = provider.complete.bind(provider);
-    provider.complete = ((messages, schema, o) => {
-      options.push(o);
-      return original(messages, schema, o);
-    }) as typeof provider.complete;
     const { analyzer, wait } = setup(provider, 3);
+    rig?.core.llm.settings.update({ analysisModel: "x/fast", judgeModel: "y/judge" });
     analyzer.start(rig?.materialId ?? 0);
     await wait();
-    expect(options[0]).toMatchObject({
-      purpose: "analysis",
-      maxTokens: 6000,
-      reasoningEffort: "low",
-    });
+    expect(provider.calls[0]?.model).toBe("x/fast");
   });
 
   it("keeps what the windows found when one keeps failing, and a new request only does what is left (FR-8, NFR-3)", async () => {

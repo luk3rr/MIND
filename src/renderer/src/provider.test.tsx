@@ -32,6 +32,7 @@ const base: ProviderState = {
   consentGiven: false,
   generationModel: "a/gen",
   judgeModel: "b/judge",
+  analysisModel: "c/analysis",
   monthlyLimitUsd: 5,
   spentThisMonth: 0,
   knownModels: ["a/gen", "b/judge"],
@@ -113,6 +114,18 @@ describe("setup wizard", () => {
       "Informe o identificador do modelo.",
     );
     expect(screen.queryByText("Passo 2 de 2: privacidade")).toBeNull();
+  });
+
+  it("saves the model that analyzes the materials with the other models (FR-8)", async () => {
+    const fake = await openSetup({ ...base });
+    const user = userEvent.setup();
+    const field = screen.getByLabelText("Modelo para analisar o material");
+    expect(field).toHaveValue("c/analysis");
+    expect(screen.getByText(/costuma estourar o tempo/)).toBeVisible();
+    await user.clear(field);
+    await user.type(field, "x/fast");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await waitFor(() => expect(fake.state.provider.analysisModel).toBe("x/fast"));
   });
 
   it("rejects a monthly limit that is not a positive number", async () => {

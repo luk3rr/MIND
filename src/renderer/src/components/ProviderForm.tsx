@@ -41,6 +41,7 @@ export function ProviderForm({
   const [apiKey, setApiKey] = useState("");
   const [generationModel, setGenerationModel] = useState(view.generationModel);
   const [judgeModel, setJudgeModel] = useState(view.judgeModel);
+  const [analysisModel, setAnalysisModel] = useState(view.analysisModel);
   const [limit, setLimit] = useState(String(view.monthlyLimitUsd));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export function ProviderForm({
       ...(apiKey.trim() ? { apiKey } : {}),
       generationModel,
       judgeModel,
+      analysisModel,
       ...(Number.isNaN(monthlyLimitUsd) ? {} : { monthlyLimitUsd }),
     });
     setBusy(false);
@@ -162,6 +164,20 @@ export function ProviderForm({
           onChange={(event) => setJudgeModel(event.target.value)}
         />,
       )}
+      {field(
+        "analysisModel",
+        T.analysisModel,
+        <input
+          id={`${id}-analysisModel`}
+          list={`${id}-models`}
+          value={analysisModel}
+          aria-describedby={`${id}-analysisModel-hint`}
+          onChange={(event) => setAnalysisModel(event.target.value)}
+        />,
+      )}
+      <p id={`${id}-analysisModel-hint`} className="muted">
+        {T.analysisModelHint}
+      </p>
       <datalist id={`${id}-models`}>
         {view.knownModels.map((model) => (
           <option key={model} value={model} />

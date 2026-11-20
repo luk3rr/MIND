@@ -1301,6 +1301,7 @@ export const channels = {
       provider: z.string(),
       generationModel: z.string(),
       judgeModel: z.string(),
+      analysisModel: z.string(),
       monthlyLimitUsd: z.number(),
       keyConfigured: z.boolean(),
       keySource: z.enum(["environment", "stored"]).nullable(),
@@ -1317,6 +1318,7 @@ export const channels = {
         apiKey: z.string().max(500).optional(),
         generationModel: z.string().max(200).optional(),
         judgeModel: z.string().max(200).optional(),
+        analysisModel: z.string().max(200).optional(),
         monthlyLimitUsd: z.number().optional(),
       })
       .strict(),
