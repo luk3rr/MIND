@@ -36,6 +36,12 @@ acentuação". O que você escrever vale mais do que o que o MIND descobriu; dei
 o que ele descobriu. Em **Gerar** a disciplina em uso aparece acima das opções, com o botão
 **Alterar**.
 
+Para ver como o MIND rotulou cada trecho, abra o material (clique no nome na **Biblioteca**): cada
+trecho mostra o **papel** (conceito, exemplo, questão de prova, texto motivador, comentário ou outro) e a
+**unidade** a que pertence. Se um rótulo estiver errado, corrija ali mesmo: troque o papel, ou marque
+"Começa uma unidade" para dividir ou juntar unidades. A correção vale na hora para as próximas gerações,
+e o filtro **Mostrar** ajuda a conferir, por exemplo, só as questões. "Analisar de novo" refaz os rótulos.
+
 A análise usa o **modelo para analisar o material**, que você escolhe em Configurações (prefira um modelo rápido, que não raciocine por muito tempo), e conta no seu limite mensal. Se ela falhar ou parar no limite, a
 Biblioteca mostra o motivo e **Analisar de novo** fica no menu do material. Você pode gerar itens
 mesmo assim: o MIND avisa que está gerando sem a análise e usa só a disciplina e a revisão dos itens.

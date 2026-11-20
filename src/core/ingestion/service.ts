@@ -9,7 +9,7 @@ import { logger, since } from "../logging.js";
 const log = logger("ingestion");
 
 export const MAX_TITLE_LENGTH = 200;
-import { and, asc, count, desc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import { copyFileSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { basename, dirname, extname, join, relative } from "node:path";
@@ -19,6 +19,7 @@ import { JobCancelled } from "../jobs/queue.js";
 import { analysisOf } from "../analysis/analyzer.js";
 import type { AnalysisInfo } from "../analysis/analyzer.js";
 import { MAX_SUBJECT } from "../analysis/classifier.js";
+import type { Role } from "../analysis/classifier.js";
 import { resolveSubject } from "../analysis/subject.js";
 import type { Subject } from "../analysis/subject.js";
 import { getJob } from "../jobs/store.js";
@@ -70,6 +71,26 @@ export interface ChunkInfo {
   page: number | null;
   section: string | null;
   text: string;
+  role: Role | null;
+  startsUnit: boolean | null;
+  unit: number | null;
+}
+
+/** The chunks with this role, or the ones with none. */
+export type RoleFilter = Role | "none";
+
+function toChunkInfo(row: typeof chunk.$inferSelect): ChunkInfo {
+  return {
+    id: row.id,
+    materialId: row.materialId,
+    ordinal: row.ordinal,
+    page: row.page,
+    section: row.section,
+    text: row.text,
+    role: row.role as Role | null,
+    startsUnit: row.startsUnit === null ? null : row.startsUnit === 1,
+    unit: row.unit,
+  };
 }
 
 /** Extension to kind. */
@@ -402,13 +423,14 @@ export class MaterialService {
 
   chunks(
     materialId: number,
-    options: { page?: number; offset?: number; limit?: number } = {},
+    options: { page?: number; offset?: number; limit?: number; role?: RoleFilter } = {},
   ): ChunkInfo[] {
     this.get(materialId);
-    const where =
-      options.page === undefined
-        ? eq(chunk.materialId, materialId)
-        : and(eq(chunk.materialId, materialId), eq(chunk.page, options.page));
+    const where = and(
+      eq(chunk.materialId, materialId),
+      options.page === undefined ? undefined : eq(chunk.page, options.page),
+      this.roleCondition(options.role),
+    );
     return this.db
       .select()
       .from(chunk)
@@ -416,7 +438,68 @@ export class MaterialService {
       .orderBy(asc(chunk.ordinal))
       .limit(options.limit ?? 50)
       .offset(options.offset ?? 0)
+      .all()
+      .map(toChunkInfo);
+  }
+
+  private roleCondition(role: RoleFilter | undefined) {
+    if (role === undefined) return undefined;
+    return role === "none" ? isNull(chunk.role) : eq(chunk.role, role);
+  }
+
+  /**
+   * Corrects how a chunk was labelled: its role, and whether it opens a unit. The units of the
+   * whole material are numbered again, since one more or fewer opening moves every later one. It
+   * only works on a material that has been analyzed, and a new analysis redoes the labels.
+   */
+  setChunkLabel(chunkId: number, change: { role?: Role; startsUnit?: boolean }): ChunkInfo {
+    const target = this.db.select().from(chunk).where(eq(chunk.id, chunkId)).get();
+    const fail = (message: string): never => {
+      throw new AppError("VALIDATION_ERROR", message, [{ field: "chunkId", message }]);
+    };
+    if (!target) return fail("Trecho não encontrado.");
+    if (change.role === undefined && change.startsUnit === undefined) {
+      return fail("Informe o papel ou o início de unidade.");
+    }
+    const owner = this.get(target.materialId);
+    if (owner.analysis.state !== "done")
+      return fail("Analise o material antes de corrigir os papéis.");
+    this.workspace.connection.sqlite.transaction(() => {
+      this.db
+        .update(chunk)
+        .set({
+          ...(change.role !== undefined ? { role: change.role } : {}),
+          ...(change.startsUnit !== undefined ? { startsUnit: change.startsUnit ? 1 : 0 } : {}),
+        })
+        .where(eq(chunk.id, chunkId))
+        .run();
+      this.renumberUnits(target.materialId);
+    })();
+    const row = this.db.select().from(chunk).where(eq(chunk.id, chunkId)).get() as typeof target;
+    return toChunkInfo(row);
+  }
+
+  /** Numbers the units again from the chunks that open one (the first always does). */
+  private renumberUnits(materialId: number): void {
+    const rows = this.db
+      .select({ id: chunk.id, role: chunk.role, startsUnit: chunk.startsUnit, unit: chunk.unit })
+      .from(chunk)
+      .where(eq(chunk.materialId, materialId))
+      .orderBy(asc(chunk.ordinal))
       .all();
+    let unit = 0;
+    rows.forEach((row, position) => {
+      // A chunk with no role is a unit of its own, as in the analysis.
+      const opens = position === 0 || row.startsUnit === 1 || row.role === null;
+      if (opens) unit += 1;
+      if (row.unit !== unit || (position === 0 && row.startsUnit !== 1)) {
+        this.db
+          .update(chunk)
+          .set({ unit, ...(position === 0 ? { startsUnit: 1 } : {}) })
+          .where(eq(chunk.id, row.id))
+          .run();
+      }
+    });
   }
 
   /** How many chunks come before `chunkId` in its material (null if it is not there). */
@@ -432,10 +515,13 @@ export class MaterialService {
     );
   }
 
-  chunkCount(materialId: number): number {
+  chunkCount(materialId: number, role?: RoleFilter): number {
     return (
-      this.db.select({ total: count() }).from(chunk).where(eq(chunk.materialId, materialId)).get()
-        ?.total ?? 0
+      this.db
+        .select({ total: count() })
+        .from(chunk)
+        .where(and(eq(chunk.materialId, materialId), this.roleCondition(role)))
+        .get()?.total ?? 0
     );
   }
 

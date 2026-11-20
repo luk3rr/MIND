@@ -179,3 +179,59 @@ describe("material:setSubject (FR-14)", () => {
     ).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
   });
 });
+
+describe("the labels of the chunks over the channels (FR-8)", () => {
+  async function analyzed() {
+    const ctx = open();
+    await ctx.dispatch("material:analyze", { workspaceId: ctx.workspaceId, id: ctx.materialId });
+    const job = ctx.core.registry
+      .open(ctx.workspaceId)
+      .connection.sqlite.prepare("SELECT analysis_job_id AS id FROM material")
+      .get() as { id: number };
+    await ctx.core.queue.wait(ctx.workspaceId, job.id);
+    return ctx;
+  }
+
+  it("lists the role and the unit of each chunk, filters by role and corrects one", async () => {
+    const { dispatch, workspaceId, materialId } = await analyzed();
+    const all = await dispatch("material:chunks", { workspaceId, materialId });
+    expect(all).toMatchObject({
+      ok: true,
+      data: {
+        total: 3,
+        chunks: [
+          { role: "concept", startsUnit: true, unit: 1 },
+          { role: "concept", startsUnit: true, unit: 2 },
+          { role: "concept", startsUnit: true, unit: 3 },
+        ],
+      },
+    });
+    const second = (all as { data: { chunks: { id: number }[] } }).data.chunks[1]?.id as number;
+    expect(
+      await dispatch("material:setChunkLabel", { workspaceId, chunkId: second, role: "other" }),
+    ).toMatchObject({ ok: true, data: { id: second, role: "other", unit: 2 } });
+    expect(
+      await dispatch("material:chunks", { workspaceId, materialId, role: "other" }),
+    ).toMatchObject({ ok: true, data: { total: 1, chunks: [{ id: second }] } });
+    expect(
+      await dispatch("material:chunks", { workspaceId, materialId, role: "concept" }),
+    ).toMatchObject({ ok: true, data: { total: 2, nextOffset: null } });
+  });
+
+  it("rejects an unknown role, an empty change and a material that was not analyzed", async () => {
+    const { dispatch, workspaceId } = open();
+    expect(
+      await dispatch("material:setChunkLabel", { workspaceId, chunkId: 1, role: "x" } as never),
+    ).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+    expect(await dispatch("material:setChunkLabel", { workspaceId, chunkId: 1 })).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+    expect(
+      await dispatch("material:setChunkLabel", { workspaceId, chunkId: 1, role: "other" }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR", fields: [{ field: "chunkId" }] },
+    });
+  });
+});

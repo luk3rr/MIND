@@ -80,6 +80,9 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "material:analyze": () => {
       throw new Error("unused");
     },
+    "material:setChunkLabel": () => {
+      throw new Error("unused");
+    },
     "material:setSubject": () => {
       throw new Error("unused");
     },

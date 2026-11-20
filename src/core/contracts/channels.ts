@@ -95,6 +95,16 @@ const materialInfo = z.object({
   chunkCount: z.number().int(),
 });
 
+/** What a chunk of a material is, as the analysis (or the person) labelled it. */
+const chunkRole = z.enum([
+  "concept",
+  "example",
+  "exam_question",
+  "motivating_text",
+  "commentary",
+  "other",
+]);
+
 const chunkInfo = z.object({
   id: z.number().int(),
   materialId: z.number().int(),
@@ -102,6 +112,12 @@ const chunkInfo = z.object({
   page: z.number().int().nullable(),
   section: z.string().nullable(),
   text: z.string(),
+  /** Null before the material is analyzed (or when the analysis said nothing about the chunk). */
+  role: chunkRole.nullable(),
+  /** True when the chunk opens a new unit (a concept, a whole exam question). */
+  startsUnit: z.boolean().nullable(),
+  /** The unit of the chunk in its material, from 1. */
+  unit: z.number().int().nullable(),
 });
 
 const generationRequest = z
@@ -605,6 +621,18 @@ export const channels = {
       .strict(),
     output: materialInfo,
   },
+  "material:setChunkLabel": {
+    input: z
+      .object({
+        workspaceId,
+        chunkId: z.number().int().positive(),
+        role: chunkRole.optional(),
+        /** Whether the chunk opens a new unit; the first chunk of a material always does. */
+        startsUnit: z.boolean().optional(),
+      })
+      .strict(),
+    output: chunkInfo,
+  },
   "material:analyze": {
     input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),
     output: z.object({ started: z.boolean(), analysis: analysisInfo }),
@@ -621,6 +649,8 @@ export const channels = {
         offset: z.number().int().min(0).optional(),
         limit: z.number().int().min(1).max(200).optional(),
         chunkId: z.number().int().positive().optional(),
+        /** Only the chunks with this role ("none": the ones with no role). */
+        role: z.union([chunkRole, z.literal("none")]).optional(),
       })
       .strict(),
     output: z.object({

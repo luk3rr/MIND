@@ -71,6 +71,16 @@ test("names the subject of a material in the library and sees it where items are
   await expect(dialog).toBeHidden();
   await expect(table.getByText("Língua Portuguesa: acentuação")).toBeVisible();
 
+  // The preview of the chunks shows how the analysis labelled them, and lets the person correct it.
+  await table.getByRole("button", { name: "aula3", exact: true }).click();
+  const role = page.getByLabel("Papel do trecho 1");
+  await expect(role).toHaveValue("concept");
+  await role.selectOption("other");
+  await expect(role).toHaveValue("other");
+  await role.selectOption("concept");
+  await expect(role).toHaveValue("concept");
+  await page.getByRole("button", { name: "Biblioteca", exact: true }).click();
+
   await page.getByRole("button", { name: "Gerar", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Gerar" })).toBeVisible();
   await expect(page.getByText("Disciplina:")).toBeVisible();

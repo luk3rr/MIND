@@ -133,6 +133,11 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       return service.view(service.rename(id, title));
     },
     "material:analyze": ({ workspaceId, id }) => core.analysis(workspaceId).start(id),
+    "material:setChunkLabel": ({ workspaceId, chunkId, role, startsUnit }) =>
+      core.materials(workspaceId).setChunkLabel(chunkId, {
+        ...(role !== undefined ? { role } : {}),
+        ...(startsUnit !== undefined ? { startsUnit } : {}),
+      }),
     "material:setSubject": ({ workspaceId, id, subject }) => {
       const service = core.materials(workspaceId);
       return service.view(service.setSubject(id, subject));
@@ -141,7 +146,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       core.materials(workspaceId).delete(id);
       return {};
     },
-    "material:chunks": ({ workspaceId, materialId, offset, limit, chunkId }) => {
+    "material:chunks": ({ workspaceId, materialId, offset, limit, chunkId, role }) => {
       const service = core.materials(workspaceId);
       const size = limit ?? PREVIEW_PAGE_SIZE;
       let start = Math.max(offset ?? 0, 0);
@@ -149,10 +154,14 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
         const before = service.chunkOffset(materialId, chunkId);
         if (before !== null) start = before - (before % size);
       }
-      const total = service.chunkCount(materialId);
+      const total = service.chunkCount(materialId, role);
       return {
         material: service.view(service.get(materialId)),
-        chunks: service.chunks(materialId, { offset: start, limit: size }),
+        chunks: service.chunks(materialId, {
+          offset: start,
+          limit: size,
+          ...(role !== undefined ? { role } : {}),
+        }),
         total,
         offset: start,
         previousOffset: start > 0 ? Math.max(start - size, 0) : null,

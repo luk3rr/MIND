@@ -48,7 +48,19 @@ function materialOut(entry: FakeMaterial): MaterialOut {
     },
   };
 }
-type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
+type ChunkOut = OutputOf<"material:chunks">["chunks"][number];
+/** A chunk as a test seeds it; the labels of the analysis are empty unless a test sets them. */
+export type FakeChunk = Omit<ChunkOut, "role" | "startsUnit" | "unit"> &
+  Partial<Pick<ChunkOut, "role" | "startsUnit" | "unit">>;
+
+function chunkOut(entry: FakeChunk): ChunkOut {
+  return {
+    ...entry,
+    role: entry.role ?? null,
+    startsUnit: entry.startsUnit ?? null,
+    unit: entry.unit ?? null,
+  };
+}
 /** A run as a test seeds it; the fake adds the number of pending drafts from the items. */
 export type FakeRun = Omit<OutputOf<"generation:list">["runs"][number], "pending">;
 export type FakeItem = OutputOf<"review:list">["items"][number];
@@ -523,6 +535,21 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         found.title = clean;
         return ok(materialOut(found));
       }
+      case "material:setChunkLabel": {
+        const input = payload as InputOf<"material:setChunkLabel">;
+        const target = state.chunks.find((c) => c.id === input.chunkId);
+        if (!target) return failure("VALIDATION_ERROR", "Trecho não encontrado.", "chunkId");
+        if (input.role !== undefined) target.role = input.role;
+        if (input.startsUnit !== undefined) target.startsUnit = input.startsUnit;
+        // The units are numbered again from the chunks that open one, as the core does.
+        let unit = 0;
+        state.chunks.forEach((c, position) => {
+          if (position === 0 || c.startsUnit === true || (c.role ?? null) === null) unit += 1;
+          c.unit = unit;
+          if (position === 0) c.startsUnit = true;
+        });
+        return ok(chunkOut(target));
+      }
       case "material:setSubject": {
         const { id, subject } = payload as InputOf<"material:setSubject">;
         const found = state.materials.find((entry) => entry.id === id);
@@ -563,10 +590,15 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         if (!found) return failure("MATERIAL_NOT_FOUND", "Material não encontrado.");
         const size = input.limit ?? 20;
         const start = input.offset ?? 0;
-        const total = state.chunks.length;
+        const shown = state.chunks.filter(
+          (c) =>
+            input.role === undefined ||
+            (input.role === "none" ? (c.role ?? null) === null : c.role === input.role),
+        );
+        const total = shown.length;
         return ok({
-          material: found,
-          chunks: state.chunks.slice(start, start + size),
+          material: materialOut(found),
+          chunks: shown.slice(start, start + size).map(chunkOut),
           total,
           offset: start,
           previousOffset: start > 0 ? Math.max(start - size, 0) : null,
