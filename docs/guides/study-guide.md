@@ -19,6 +19,39 @@ dos dias, que fixa o conteúdo.
    **Hoje**.
 5. **Confira o progresso** em **Estatísticas**.
 
+## Do material aos itens
+
+Os itens que o MIND gera valem tanto quanto o material de onde saem. Dois cuidados ajudam.
+
+### Diga qual é a disciplina
+
+Depois de importar um material, o MIND o **analisa em segundo plano**: lê os trechos, separa o que
+é conteúdo do que é texto de uma questão, exemplo ou página sem conteúdo (capa, sumário), e descobre
+sobre o que o material trata. Você acompanha isso na **Biblioteca**, ao lado do status (**Analisando**,
+**Analisado**).
+
+O resultado aparece sob o nome do material. Quando o título não diz o assunto (por exemplo, "Aula 3"),
+use **Mais ações > Definir disciplina…** e escreva a disciplina, como "Língua Portuguesa: ortografia e
+acentuação". O que você escrever vale mais do que o que o MIND descobriu; deixar em branco volta a usar
+o que ele descobriu. Em **Gerar** a disciplina em uso aparece acima das opções, com o botão
+**Alterar**.
+
+A análise usa o modelo de revisão e conta no seu limite mensal. Se ela falhar ou parar no limite, a
+Biblioteca mostra o motivo e **Analisar de novo** fica no menu do material. Você pode gerar itens
+mesmo assim: o MIND avisa que está gerando sem a análise e usa só a disciplina e a revisão dos itens.
+
+### Leia o resumo da geração
+
+O que o MIND gera é sobre a **disciplina**, não sobre qualquer trecho. Textos que só apresentam uma
+questão de prova, trechos usados como exercício e o assunto de frases de exemplo não viram cards. Uma
+questão de prova do material inspira uma questão nova, com dados novos, sobre a mesma regra.
+
+Por isso uma geração pode trazer **menos itens do que você pediu**. Em **Gerar**, a coluna do pedido
+explica o que aconteceu: quantos itens foram descartados por estarem **fora do escopo da disciplina**,
+se foi preciso **uma segunda rodada** em trechos ainda não usados e se o material simplesmente não tinha
+conteúdo para o resto. Em material que é só de questões, os cards saem apenas dos gabaritos e
+comentários que explicam a regra; as questões são novas.
+
 ## As dicas
 
 ### Tente lembrar antes de revelar a resposta

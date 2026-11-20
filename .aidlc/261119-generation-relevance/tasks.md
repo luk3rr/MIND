@@ -154,10 +154,17 @@
 - **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (137 arquivos, 1482 testes, linhas 96,19%); `xvfb-run -a pnpm e2e` exit 0 (61 passaram, 1 pulado).
 - **Desvios:** (1) os banners e a pílula "Analisando" de Gerar ficaram sem `role="status"` (colidiam com o `role="status"` do paginador e quebravam testes existentes); o diálogo e a Biblioteca mantêm `role="status"` no estado "analisando"; (2) o texto do custo da geração continua "Custo estimado: ~US$ …", sem o "(inclui a revisão de relevância)" do mockup, porque a mesma frase serve à seleção no leitor e está nos testes; (3) `setSubject` limpa espaços repetidos e aceita no máximo 200 caracteres (o contrato e o serviço validam); (4) o spec e2e do fluxo da disciplina (T-7.1) fica na UNIT-7, como planejado.
 
-### UNIT-7 Verificação final   Status: pending
+### UNIT-7 Verificação final   Status: verified, com T-7.2 pendente do usuário (2026-11-19, exit 0)
 
-- [ ] T-7.1 Spec e2e: definir a disciplina na Biblioteca e vê-la em Gerar, com LLM mockado — covers FR-14, US-5, US-7 — files: `tests/e2e/subject.spec.ts` — test: o próprio spec
-- [ ] T-7.2 Rodar `pnpm eval:generation` com o modelo real e comparar com a meta (0 fora de escopo, ≥ 80% dos bons); ajustar prompts, janelas ou fixtures se não bater, ou registrar o desvio — covers NFR-1, US-9 — files: `construction/build-and-test.md` — test: números registrados
-- [ ] T-7.3 Atualizar `docs/guides/study-guide.md` (disciplina, análise do material e o resumo da geração) — covers US-5, US-8 — files: `docs/guides/study-guide.md` — test: revisão do texto
-- [ ] T-7.4 Atualizar o codekb e propor a memória C1 (emenda da M-11) e o que mais surgir da retrospectiva — covers NFR-6 — files: `.aidlc/codekb/MIND/`, `.aidlc/memory/project.md` — test: arquivos atualizados
-- [ ] T-7.5 Rodar o comando de verificação e o `xvfb-run -a pnpm e2e` completos e conferir a cobertura ≥ 80% — covers NFR-6, NFR-8 — files: `construction/build-and-test.md` — test: exit 0
+- [x] T-7.1 Spec e2e: definir a disciplina na Biblioteca e vê-la em Gerar, com LLM mockado — covers FR-14, US-5, US-7 — files: `tests/e2e/subject.spec.ts` — test: o próprio spec
+- [~] T-7.2 Rodar `pnpm eval:generation` com o modelo real e comparar com a meta (0 fora de escopo, ≥ 80% dos bons); ajustar prompts, janelas ou fixtures se não bater, ou registrar o desvio — covers NFR-1, US-9 — files: `construction/build-and-test.md` — test: números registrados
+- [x] T-7.3 Atualizar `docs/guides/study-guide.md` (disciplina, análise do material e o resumo da geração) — covers US-5, US-8 — files: `docs/guides/study-guide.md` — test: revisão do texto
+- [x] T-7.4 Atualizar o codekb e propor a memória C1 (emenda da M-11) e o que mais surgir da retrospectiva — covers NFR-6 — files: `.aidlc/codekb/MIND/`, `.aidlc/memory/project.md` — test: arquivos atualizados
+- [x] T-7.5 Rodar o comando de verificação e o `xvfb-run -a pnpm e2e` completos e conferir a cobertura ≥ 80% — covers NFR-6, NFR-8 — files: `construction/build-and-test.md` — test: exit 0
+
+**Unit summary (Construction 3.5):**
+
+- **Arquivos novos:** `tests/e2e/subject.spec.ts`.
+- **Arquivos alterados:** `docs/guides/study-guide.md` (seção "Do material aos itens"), `.aidlc/codekb/MIND/` (generation, data-model, api, quality-and-risks, README), `construction/build-and-test.md`.
+- **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (137 arquivos, 1482 testes, linhas 96,19%); `xvfb-run -a pnpm e2e` exit 0 (62 passaram, 1 pulado).
+- **Desvios:** (1) **T-7.2 não foi feita**: a medição com o modelo real precisa da chave e gasta com o provedor; o usuário roda `pnpm eval:generation` e, se a meta não bater, ajusta prompts, janelas ou fixtures; (2) a memória C1 (emenda da M-11) foi reavaliada no fecho da fase (ver `state.md`).

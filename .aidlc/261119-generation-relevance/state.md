@@ -7,7 +7,7 @@
 - Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous (esqueleto UNIT-1 aprovado antes de seguir; falhas e ações irreversíveis ainda param) iteration=unit-major
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-19; UNIT-6 e UNIT-7 somam `xvfb-run -a pnpm e2e`; pnpm em ~/.local/share/pnpm/bin)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.5 Code Generation (UNIT-7)   Updated: 2026-11-19T21:21:50-03:00
+- Current: phase=construction COMPLETE (UNIT-1 a UNIT-7 verificadas; falta medir NFR-1 com o modelo real)   Updated: 2026-11-19T21:27:15-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
@@ -27,13 +27,13 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 - [x] 2.8 Contract Design (aditivo, versão 2)
 - [x] 2.9 Delivery Planning (tasks.md, 55 tarefas, 4 bolts)
 ### Construction
-- [ ] 3.1 Functional Design
-- [ ] 3.2 NFR Requirements
-- [ ] 3.3 NFR Design
-- [ ] 3.4 Infrastructure Design
-- [ ] 3.5 Code Generation
-- [ ] 3.6 Build & Test
-- [ ] 3.7 CI Pipeline
+- [x] 3.1 Functional Design (nota por Unit)
+- [x] 3.2 NFR Requirements (nas notas e na verificação)
+- [x] 3.3 NFR Design (nas notas e na verificação)
+- [S] 3.4 Infrastructure Design (sem infraestrutura)
+- [x] 3.5 Code Generation (UNIT-1 a UNIT-7)
+- [x] 3.6 Build & Test (construction/build-and-test.md)
+- [S] 3.7 CI Pipeline (o CI existente já roda lint, formato, tipos, testes, e2e e pacote)
 ### Operations
 - [S] 4.1–4.7 (perfil mvp não inclui Operations)
 
@@ -46,7 +46,7 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-4 Análise dos trechos | — | verified | 2026-11-19, exit 0 |
 | UNIT-5 Lotes por unidade e papéis | UNIT-1, UNIT-2, UNIT-4 | verified | 2026-11-19, exit 0 |
 | UNIT-6 Disciplina na tela | UNIT-4, UNIT-5 | verified | 2026-11-19, exit 0 (e2e 61 ok) |
-| UNIT-7 Verificação final | UNIT-3, UNIT-6 | pending | |
+| UNIT-7 Verificação final | UNIT-3, UNIT-6 | verified (T-7.2 medição real pendente do usuário) | 2026-11-19, exit 0 (e2e 62 ok) |
 
 ## Open assumptions
 - A1 (0.2): escopo A+B+C; D (importar questões do documento) e o pedido de contexto pelo modelo vão para o backlog (BL-7, BL-8) — confirmed: yes (escolha no início da intent)

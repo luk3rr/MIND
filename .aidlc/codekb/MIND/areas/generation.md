@@ -1,6 +1,6 @@
-# Área: geração, juiz e ingestão de trechos
+# Área: geração, juiz, análise e ingestão de trechos
 
-Status: human-reviewed (2026-11-19, confirmado pelo usuário no intent generation-relevance) · Confiança: alta · Commit: 0c425b9 (`generation/` e `ingestion/` inalterados desde 4e7cc4e)
+Status: draft (reescrito em 2026-11-19, depois do intent generation-relevance; a versão anterior foi confirmada com o usuário no mesmo dia) · Confiança: alta · Commit: c69c420
 
 ## Fluxo atual
 
@@ -9,42 +9,34 @@ flowchart LR
   I[material:import] --> X[extrai e chunkSegments]
   X --> S[storeChunks: chunk ~1200 chars, ordinal, page, section]
   S --> OK[status indexed]
-  G[generation:start] --> P[planBatches: lotes ~6000 chars, espalhados]
-  P --> C[1 chamada por lote]
+  OK -- onIndexed, quando ha chave e consentimento --> AN[job analysis: janelas de 12 trechos, modelo do juiz]
+  AN --> CH[(chunk: role, starts_unit, unit; material: subject_inferred, analyzed_at)]
+  G[generation:start] --> PF{material analisado?}
+  PF -- sim --> UB[unitBatches: unidades inteiras, papeis por tipo, contexto]
+  PF -- nao --> MB[makeBatches: ~6000 chars]
+  UB --> P[planFrom / planMoreFrom]
+  MB --> P
+  P --> C[1 chamada por lote: disciplina, escopo, ate N]
   C --> Q{kind}
-  Q -- card --> CS[store sincrono: valida, fonte verbatim, duplicado]
-  Q -- questao --> SC[screen] --> J[Judge: resposta sustentada, autocontido] --> QS[store]
-  CS --> D[(item draft)]
-  QS --> D
+  Q -- card --> CS[screen] --> RJ[Judge.judgeRelevance] --> ST[store]
+  Q -- questao --> SC[screen] --> J[Judge: sustentacao, autocontido, relevancia] --> ST
+  ST --> D[(item draft)]
+  P -. aceitos < pedido .-> R2[segunda rodada: lotes nao usados, uma vez]
 ```
 
 ## Fatos [src]
 
-- Os trechos nascem em `chunkSegments` (`TARGET_CHARS` 1200, `HARD_MAX_CHARS` 1500) e são gravados em `storeChunks` com `ordinal`, `page` e `section`; ao fim o material vira `indexed`. [src: src/core/ingestion/chunker.ts:9-10; src/core/ingestion/service.ts:305-340]
-- `chunk` tem só `id, material_id, ordinal, page, section, text`; a última migração do workspace é `0005_item_runs_by_material`. [src: src/core/db/workspace-schema.ts:42-55; src/core/db/migrations/workspace]
-- O planejamento agrupa trechos em lotes de até `BATCH_CHARS` = 6000 e distribui `CARDS_PER_BATCH` = 5 / `QUESTIONS_PER_BATCH` = 3 por lote; o pedido é dividido entre lotes espalhados pelo material. [src: src/core/generation/planning.ts:10-12,101-124]
-- Os prompts dizem "Create exactly N" e "Use ONLY information found in the excerpts"; nenhum menciona a disciplina e nenhum permite devolver menos. [src: src/core/generation/prompts.ts:11-24,89-100; question-prompts.ts:60-70]
-- `SELF_CONTAINED_RULES` manda escrever o enunciado de uma questão de prova dentro do item "ou pular". [src: src/core/generation/self-contained.ts:10-16]
-- Cards não passam por juiz: `CardGenerator.generateBatch` chama o modelo e grava tudo num `transaction` síncrono (`store`), sem `await`. Questões fazem `screen` → `Judge.judge` (await) → `store`. [src: src/core/generation/cards.ts:98-130; questions.ts:120-165]
-- Descartes são contados por motivo no `BatchOutcome` e somados em `generation_run` (`discardedNoSource`, `discardedInvalid`, `discardedDuplicate`, `discardedUnsupported`) com um `discardLog` limitado. [src: src/core/generation/service.ts:540-560]
-- Modelos: geração `anthropic/claude-haiku-5.5`, juiz `anthropic/claude-sonnet-5.5`, configuráveis em Configurações; provedor único `openrouter`. [src: src/core/settings/service.ts:18-23]
-- A estimativa de custo soma geração e juízo (`estimate` em `generation/service.ts`). [src: src/core/generation/service.ts:238-295]
-- Os embeddings dos trechos são gerados sob demanda, não na importação. [src: src/core/retrieval/embeddings.ts]
-
-## Decisões do usuário nesta passada [user]
-
-- A classificação de trechos roda **automaticamente depois de indexar**, como job em segundo plano. [user]
-- O modelo da classificação é o **modelo do juiz**, sem campo novo de configuração. [user]
-
-## Pontos de encaixe do intent generation-relevance [inferred]
-
-| Parte | Onde |
-|---|---|
-| A | `prompts.ts`, `question-prompts.ts` (inclui cálculo), `self-contained.ts`, `schemas.ts` ("até N") |
-| B | `judge.ts` e um passo de juízo de cards entre a resposta do modelo e `store` (hoje síncrono) |
-| C | migration em `chunk` (colunas anuláveis), job novo após `storeChunks`, `planning.ts` por unidade |
-| Tela | `LibraryPage` (menu ⋯, diálogo), `GeneratePage` (linha da disciplina), contratos `material:*` e `generation:*` |
-| Descartes | nova coluna/contador "fora do escopo" em `generation_run` e no `BatchOutcome` |
+- A análise é o job `analysis` (`MaterialAnalyzer`): lê os trechos em janelas de `WINDOW_SIZE` = 12 com `WINDOW_OVERLAP` = 2, com o modelo do juiz, e grava por janela `role` e `starts_unit`; ao fim junta as janelas (`mergeWindows`, vale o resultado da janela em que o trecho está mais ao centro), numera as `unit` e grava `subject_inferred` (da primeira janela) e `analyzed_at`. [src: src/core/analysis/analyzer.ts, classifier.ts]
+- O estado da análise (`none`, `analyzing`, `done`, `failed`, `paused`) não é coluna: sai de `analyzed_at` e do job (`analysis_job_id`); `MONTHLY_LIMIT_REACHED` vira `paused` e um job cancelado vira `failed` com o código `CANCELLED`. [src: src/core/analysis/analyzer.ts:analysisOf]
+- A análise começa sozinha depois da indexação (`MaterialService.onIndexed`, ligado em `core.ts`) com `automatic: true`, que fica quieto sem chave ou consentimento; Gerar chama `material:analyze` uma vez para um material que nunca foi analisado. [src: src/core/core.ts, src/core/ingestion/service.ts:notifyIndexed, src/renderer/src/pages/GeneratePage.tsx]
+- A disciplina que os prompts nomeiam é `resolveSubject`: a informada (`subject_user`), senão a inferida, senão o título; o treino por tópico não tem disciplina. [src: src/core/analysis/subject.ts, src/core/generation/service.ts:subjectOf]
+- Os lotes de um material analisado são `unitBatches`: unidades inteiras, só com os papéis permitidos (`SOURCE_ROLES`: cards usam conceito, exemplo e comentário; questões também a questão de prova), trecho sem papel conta como conteúdo, texto motivador e questão de prova entram só como `context` (rótulo `[context ...]`) e páginas `other` nunca vão; teto de 9000 caracteres por unidade. Sem análise vale o corte por tamanho (`makeBatches`, ~6000). [src: src/core/generation/planning.ts]
+- Uma citação num trecho de contexto é descartada como `source_is_context`. [src: src/core/generation/cards.ts, questions.ts]
+- Cards passam por `screen` → `Judge.judgeRelevance` (`RelevanceBatch`, `await`) → `store`; questões usam o juiz de sustentação com o critério de relevância e um motivo que começa com `out_of_scope:`. Em dúvida o juiz descarta. [src: src/core/generation/cards.ts, judge.ts, question-prompts.ts]
+- Os prompts aceitam "até N", levam a disciplina e o teste de escopo; `fixtures/prompts.json` é regenerado por `pnpm fixtures:prompts`. [src: src/core/generation/prompts.ts, scripts/regen-prompt-fixtures.ts]
+- A segunda rodada (`planMoreFrom`) roda no máximo uma vez, quando os aceitos ficam abaixo do pedido e há lotes não usados; `generation_run` guarda `discarded_out_of_scope`, `rounds` e `with_analysis`. [src: src/core/generation/service.ts]
+- Modelos: geração `anthropic/claude-haiku-5.5`, juiz e análise `anthropic/claude-sonnet-5.5`; o custo da análise e do juiz de cards conta no limite mensal e a estimativa inclui o juiz. [src: src/core/settings/service.ts, src/core/generation/service.ts]
+- As fixtures de relevância e a pontuação ficam em `src/core/test/relevance/`; `pnpm eval:generation` mede com o modelo real (manual, fora do CI). [src: scripts/eval-generation.ts]
 
 ## Open questions
-- Como tratar material já indexado antes da migration: classificar no primeiro acesso ou só ao pedir (decidir em 2.6). [inferred]
+- O baseline com o modelo real (`pnpm eval:generation`) ainda não foi medido; a meta é 0 itens fora de escopo e 80% do conteúdo coberto.

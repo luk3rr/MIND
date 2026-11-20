@@ -27,6 +27,8 @@ Status: human-reviewed (2026-11-16) · Confiança: alta
 
 **Verificação parcial em 2026-11-19 (HEAD 0c425b9, intent generation-relevance).** `typecheck` exit 0; `vitest run src/renderer`: 39 arquivos, 410 testes ok; `vitest run` de study, mix e `src/main/ipc`: 18 arquivos, 119 testes ok. A suíte completa e o e2e não foram reexecutados; o baseline completo continua o de 2026-11-17 (1192 testes, 96,45% linhas) e será refeito antes do primeiro commit de código da Construção.
 
+**Baseline depois do intent generation-relevance (2026-11-19, commit c69c420).** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage`: 137 arquivos, 1482 testes, instruções 94,83%, ramos 87,22%, funções 94,63%, linhas 96,19%; `xvfb-run -a pnpm e2e`: 62 passaram, 1 pulado. Instabilidade conhecida: `calibration.test.tsx` (Alt+1 a Alt+3) e `mix.test.tsx` (alternar por material) falharam uma vez sob a carga da cobertura e passam isoladamente. Risco aberto: a qualidade da análise e dos juízes com o modelo real ainda não foi medida (`pnpm eval:generation`).
+
 ## Open questions
 
 - (nenhuma pendente de convenções; a escolha da run sintética para itens manuais e importados fica para o ADR em 2.6)
