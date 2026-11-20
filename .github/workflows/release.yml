@@ -41,6 +41,11 @@ jobs:
         with:
           name: mind-deb
           path: dist/mind_amd64.deb
+      - name: Restore the annotated tag
+        # The checkout turns an annotated tag into a lightweight one, so its message would come
+        # out as the message of the commit it points to (the version bump) in the release notes.
+        if: startsWith(steps.tag.outputs.TAG, 'v')
+        run: git fetch --force --tags origin
       - name: Attach the .deb to the GitHub Release (created when missing)
         if: startsWith(steps.tag.outputs.TAG, 'v')
         run: |
