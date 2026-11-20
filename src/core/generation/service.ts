@@ -22,10 +22,13 @@ import type { BatchOutcome, DiscardNote } from "./cards.js";
 import {
   CARDS_PER_BATCH,
   QUESTIONS_PER_BATCH,
-  planBatches,
-  planMore,
+  makeBatches,
+  planFrom,
+  planMoreFrom,
   selectChunks,
+  unitBatches,
 } from "./planning.js";
+import { resolveSubject } from "../analysis/subject.js";
 import { QuestionGenerator } from "./questions.js";
 import {
   JUDGE_SYSTEM,
@@ -76,6 +79,8 @@ export interface EstimateInfo {
   chunks: number;
   batches: number;
   promptChars: number;
+  /** The material, once analyzed, has exam questions and no content to teach (FR-13). */
+  onlyQuestions: boolean;
 }
 
 export interface RunInfo {
@@ -227,15 +232,60 @@ export class GenerationService {
     return this.workspace.connection.db;
   }
 
-  /** The subject the prompts name: the material's title, or none when training by topic. */
+  /**
+   * The subject the prompts name: what the person said about the material, else what its
+   * analysis found, else its title; none when training by topic (it mixes materials).
+   */
   private subjectOf(request: GenerationRequest): string | null {
     if ((request.topicId ?? null) !== null || request.materialId == null) return null;
-    const row = this.db
-      .select({ title: material.title })
-      .from(material)
-      .where(eq(material.id, request.materialId))
-      .get();
-    return row?.title ?? null;
+    const row = this.db.select().from(material).where(eq(material.id, request.materialId)).get();
+    if (!row) return null;
+    return resolveSubject({
+      title: row.title,
+      subjectUser: row.subjectUser,
+      subjectInferred: row.subjectInferred,
+    }).value;
+  }
+
+  /**
+   * The batches of a request. A material whose chunks were analyzed is cut by unit, with only the
+   * roles that may be a source for the kind of item; any other request (an unanalyzed material,
+   * or training by topic) is cut by size, as before, and the prompts and the reviewers alone keep
+   * the items on the subject (FR-12).
+   */
+  private planFor(request: GenerationRequest): {
+    chunks: SourceChunk[];
+    batches: SourceChunk[][];
+    plan: PlannedBatch[];
+    spread: boolean;
+    withAnalysis: boolean;
+    onlyQuestions: boolean;
+  } {
+    const chunks = this.chunksFor(request);
+    const spread = (request.topicId ?? null) === null;
+    const analyzed =
+      spread &&
+      request.materialId != null &&
+      this.db.select().from(material).where(eq(material.id, request.materialId)).get()
+        ?.analyzedAt != null &&
+      chunks.some((c) => c.role != null);
+    const roles = new Set(chunks.map((c) => c.role));
+    const onlyQuestions =
+      analyzed && !roles.has("concept") && !roles.has("example") && roles.has("exam_question");
+    const batches = analyzed ? unitBatches(chunks, request.kind) : makeBatches(chunks);
+    if (analyzed && batches.length === 0) {
+      throw new AppError("VALIDATION_ERROR", "Este material não tem conteúdo para gerar isso.", [
+        {
+          field: "materialId",
+          message:
+            request.kind === "card"
+              ? "Não há conteúdo conceitual neste recorte (só questões ou páginas que não são conteúdo). Gere questões ou escolha outro intervalo."
+              : "Não há conteúdo para questões neste recorte. Escolha outro intervalo de páginas.",
+        },
+      ]);
+    }
+    const plan = planFrom(batches, request.quantity, perBatch(request.kind), spread);
+    return { chunks, batches, plan, spread, withAnalysis: analyzed, onlyQuestions };
   }
 
   private chunksFor(request: GenerationRequest): SourceChunk[] {
@@ -271,12 +321,7 @@ export class GenerationService {
 
   estimate(request: GenerationRequest): EstimateInfo {
     validateRequest(request);
-    const plan = planBatches(
-      this.chunksFor(request),
-      request.quantity,
-      perBatch(request.kind),
-      (request.topicId ?? null) === null,
-    );
+    const { plan, onlyQuestions } = this.planFor(request);
     const settings = this.llm.settings.get();
     const extraChars =
       (request.instructions ?? "").trim().length + (request.variations ? VARIATION_SEEDS * 200 : 0);
@@ -317,6 +362,7 @@ export class GenerationService {
         chunks: plan.reduce((total, batch) => total + batch.chunks.length, 0),
         batches: plan.length,
         promptChars,
+        onlyQuestions,
       };
     }
     const promptChars =
@@ -348,6 +394,7 @@ export class GenerationService {
       chunks: plan.reduce((total, batch) => total + batch.chunks.length, 0),
       batches: plan.length,
       promptChars: promptChars + judgeChars,
+      onlyQuestions,
     };
   }
 
@@ -404,7 +451,7 @@ export class GenerationService {
   /** Validates, creates the run and queues the job. */
   start(request: GenerationRequest): RunInfo {
     validateRequest(request);
-    this.chunksFor(request);
+    this.planFor(request);
     this.assertSeeds(request);
     this.llm.ensureReady();
     const configured = this.llm.settings.get();
@@ -467,9 +514,14 @@ export class GenerationService {
     context: JobContext,
   ): Promise<void> {
     this.setStatus(runId, "running");
-    const chunks = this.chunksFor(request);
-    const spread = (request.topicId ?? null) === null;
-    const plan = planBatches(chunks, request.quantity, perBatch(request.kind), spread);
+    const { batches, plan, spread, withAnalysis } = this.planFor(request);
+    if (withAnalysis) {
+      this.db
+        .update(generationRun)
+        .set({ withAnalysis: 1 })
+        .where(eq(generationRun.id, runId))
+        .run();
+    }
     // The batches of the second round (if any) count in the progress once they are known.
     let total = plan.length;
     // Variations start from the approved items, so the "do not repeat" list would contradict them.
@@ -553,8 +605,8 @@ export class GenerationService {
     if (!failure && accepted < request.quantity) {
       // The model may return fewer items than asked ("up to N") and the judge may drop some: one
       // more round goes through the content the first one did not use.
-      const more = planMore(
-        chunks,
+      const more = planMoreFrom(
+        batches,
         plan,
         request.quantity - accepted,
         perBatch(request.kind),

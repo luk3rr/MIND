@@ -13,6 +13,7 @@ import { CASES, SUBJECT } from "./cases.js";
 export function seedHandout(
   core: Core,
   workspaceId: number,
+  options: { analyzed?: boolean } = {},
 ): { materialId: number; chunkIds: Map<string, number> } {
   const { connection } = core.registry.open(workspaceId);
   const materialId = connection.db
@@ -23,6 +24,8 @@ export function seedHandout(
       filename: "apostila.md",
       storedPath: join("files", "relevance"),
       status: "indexed",
+      // An analyzed handout has the end of its analysis set: the roles and units come below.
+      ...(options.analyzed ? { analyzedAt: "2026-11-19T00:00:00.000Z" } : {}),
     })
     .returning()
     .get().id;
@@ -36,6 +39,13 @@ export function seedHandout(
         page: Math.floor(ordinal / 3) + 1,
         section: null,
         text: entry.text,
+        ...(options.analyzed
+          ? {
+              role: entry.role,
+              unit: entry.unit,
+              startsUnit: CASES[ordinal - 1]?.unit === entry.unit ? 0 : 1,
+            }
+          : {}),
       })
       .returning()
       .get().id;

@@ -122,6 +122,8 @@ export class QuestionGenerator {
       id: c.id,
       label: chunkLabel(c),
       text: c.text,
+      role: c.role,
+      context: c.context,
     }));
     const { value, usage } = await this.provider.complete(
       withKnownTopics(
@@ -199,9 +201,10 @@ export class QuestionGenerator {
         continue;
       }
       const chunk = byId.get(question.source.chunk_id);
-      if (!chunk) {
+      if (!chunk || chunk.context === true) {
+        // A part sent only as context can never be what a question cites (FR-11).
         outcome.noSource += 1;
-        note(outcome, "chunk_not_in_batch", question.statement);
+        note(outcome, chunk ? "source_is_context" : "chunk_not_in_batch", question.statement);
         continue;
       }
       const check = this.checker.check(question.source.quote, chunk.text);

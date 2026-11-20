@@ -89,10 +89,16 @@ afterEach(async () => {
 });
 
 /** Runs a generation over the handout and returns the accepted items with the text they cite. */
-async function generate(request: { kind: "card" | "question"; subtype: string; quantity: number }) {
-  core = createCore({ dataDir: tempDir(), env: {}, provider: carelessModel() });
+async function generate(
+  request: { kind: "card" | "question"; subtype: string; quantity: number },
+  options: { analyzed?: boolean; provider?: FakeProvider } = {},
+) {
+  const provider = options.provider ?? carelessModel();
+  core = createCore({ dataDir: tempDir(), env: {}, provider });
   const workspaceId = core.registry.create("Relevância").id;
-  const { materialId } = seedHandout(core, workspaceId);
+  const { materialId } = seedHandout(core, workspaceId, {
+    ...(options.analyzed ? { analyzed: true } : {}),
+  });
   const service = core.generation(workspaceId);
   const run = service.start({ materialId, ...request });
   await core.queue.wait(workspaceId, run.jobId as number);
@@ -103,7 +109,7 @@ async function generate(request: { kind: "card" | "question"; subtype: string; q
     .innerJoin(chunk, eq(chunk.id, item.chunkId))
     .where(eq(item.runId, run.id))
     .all();
-  return { run: service.get(run.id), accepted, db };
+  return { run: service.get(run.id), accepted, db, provider };
 }
 
 describe("the labelled handout (FR-17)", () => {
@@ -213,5 +219,83 @@ describe("the pipeline on the handout, with a careless model and the reviewers (
       expect(["concept", "example", "commentary"]).toContain(caseOfText(row.text)?.role);
     }
     expect(db.select().from(generationRun).all()).toHaveLength(1);
+  });
+});
+
+describe("the pipeline on the analyzed handout (FR-10, FR-11)", () => {
+  const promptsOf = (provider: FakeProvider, schema: string): string[] =>
+    provider.calls
+      .filter((call) => call.schemaName === schema)
+      .map((call) => call.messages.at(-1)?.content ?? "");
+
+  it("never sends a motivating text, an exam question or a page of the handout to write cards", async () => {
+    const { run, accepted, provider } = await generate(
+      { kind: "card", subtype: "qa", quantity: 60 },
+      { analyzed: true },
+    );
+    const prompts = promptsOf(provider, "CardBatch").join("\n");
+    for (const id of ["front-matter", "contents", "motivating-adolescence", "exam-question-1"]) {
+      const text = CASES.find((entry) => entry.id === id)?.text ?? "";
+      expect(prompts, id).not.toContain(text.slice(0, 40));
+    }
+    // Content, the worked example and the teacher's comment reach the model, and every item that
+    // comes out of them is kept: the reviewers had nothing off the subject left to drop.
+    expect(prompts).toContain("| concept]");
+    expect(prompts).toContain("| teacher's comment]");
+    expect(score("card", accepted)).toMatchObject({ leaked: 0, covered: 6, met: true });
+    expect(run).toMatchObject({ generated: 8, discardedOutOfScope: 0, withAnalysis: true });
+  });
+
+  it("sends a motivating text to write questions only as context, next to its question", async () => {
+    const { run, accepted, provider } = await generate(
+      { kind: "question", subtype: "certo_errado", quantity: 30 },
+      { analyzed: true },
+    );
+    const prompts = promptsOf(provider, "QuestionBatch").join("\n");
+    expect(prompts).toMatch(/\[context \d+ \| [^\]]*\| motivating text\]/);
+    expect(prompts).toContain("Never use one as a source");
+    // A motivating text with no question, and the pages that are not content, are not sent at all.
+    for (const id of ["motivating-river", "front-matter", "contents"]) {
+      const text = CASES.find((entry) => entry.id === id)?.text ?? "";
+      expect(prompts, id).not.toContain(text.slice(0, 40));
+    }
+    expect(score("question", accepted)).toMatchObject({ leaked: 0, covered: 6, met: true });
+    expect(run).toMatchObject({ generated: 10, discardedOutOfScope: 0, withAnalysis: true });
+  });
+
+  it("discards an item that cites a part sent only as context (FR-11)", async () => {
+    const provider = carelessModel();
+    provider.script("QuestionBatch", (messages: readonly { content: string }[]) => {
+      const content = messages.at(-1)?.content ?? "";
+      const contexts = [...content.matchAll(/\[context (\d+) \|[^\]]*\]\n([^\n]+)/g)];
+      return {
+        questions: contexts.map((match, index) => ({
+          subtype: "certo_errado",
+          statement: `Afirmação ${index + 1} sobre o texto.`,
+          options: [],
+          answer: "C",
+          explanation: "Está no texto.",
+          topic: "Acentuação",
+          source: { chunk_id: Number(match[1]), quote: (match[2] ?? "").slice(0, 60) },
+        })),
+      };
+    });
+    const { run, accepted } = await generate(
+      { kind: "question", subtype: "certo_errado", quantity: 30 },
+      { analyzed: true, provider },
+    );
+    expect(accepted).toHaveLength(0);
+    expect(run.discardedNoSource).toBeGreaterThan(0);
+    expect(run.discardLog.map((entry) => entry.reason)).toContain("source_is_context");
+  });
+
+  it("falls back to the plain batches for a material that was never analyzed (FR-12)", async () => {
+    const { run, provider } = await generate({ kind: "card", subtype: "qa", quantity: 60 });
+    const prompts = promptsOf(provider, "CardBatch").join("\n");
+    // Everything is sent, as an excerpt, with no role: the reviewers do the work.
+    expect(prompts).toContain(CASES.find((entry) => entry.id === "contents")?.text.slice(0, 40));
+    expect(prompts).not.toContain("| concept]");
+    expect(prompts).not.toContain("[context ");
+    expect(run).toMatchObject({ withAnalysis: false });
   });
 });

@@ -885,6 +885,7 @@ export const T = {
     calc_text_mismatch: "o texto da resposta mostra outro número",
     calc_ambiguous: "uma alternativa errada mostra o valor certo",
     chunk_not_in_batch: "trecho citado não existe no pedido",
+    source_is_context: "citação tirada de um trecho que serve só de contexto",
     quote_too_short: "citação curta demais",
     quote_not_in_chunk: "citação não encontrada no trecho",
     invalid_source: "fonte inválida",

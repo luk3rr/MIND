@@ -650,6 +650,8 @@ export const channels = {
       chunks: z.number().int(),
       batches: z.number().int(),
       promptChars: z.number().int(),
+      /** The material, once analyzed, has exam questions and no content to teach (FR-13). */
+      onlyQuestions: z.boolean(),
     }),
   },
   "generation:start": { input: generationRequest, output: runInfo },

@@ -144,6 +144,8 @@ export interface FakeState {
   /** What the Items screen lists; the bulk actions change it. */
   catalog?: OutputOf<"items:list">["items"];
   estimateUsd: number | null;
+  /** What `generation:estimate` says about a material that is only exam questions. */
+  onlyQuestions?: boolean;
   /** The cards the study queue serves, in order; rating one removes it. */
   studyQueue: FakeStudyCard[];
   /** New cards held back by the daily limit; "study more" lets them in. */
@@ -563,7 +565,13 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         if (input.quantity > 60) {
           return failure("VALIDATION_ERROR", "Peça de 1 a 60 cards.", "quantity");
         }
-        return ok({ estimatedUsd: state.estimateUsd, chunks: 3, batches: 1, promptChars: 4000 });
+        return ok({
+          estimatedUsd: state.estimateUsd,
+          chunks: 3,
+          batches: 1,
+          promptChars: 4000,
+          onlyQuestions: state.onlyQuestions ?? false,
+        });
       }
       case "generation:start": {
         const input = payload as InputOf<"generation:start">;

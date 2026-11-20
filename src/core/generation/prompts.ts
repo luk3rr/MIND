@@ -55,10 +55,42 @@ export interface PromptChunk {
   id: number;
   label: string;
   text: string;
+  /** What the excerpt is, once the material has been analyzed. */
+  role?: string | null | undefined;
+  /** The excerpt is only there to understand the others, never to be a source. */
+  context?: boolean | undefined;
 }
 
+/** How the roles of the analysis are named in a prompt. */
+const ROLE_NAMES: Record<string, string> = {
+  concept: "concept",
+  example: "worked example",
+  exam_question: "exam question",
+  motivating_text: "motivating text",
+  commentary: "teacher's comment",
+  other: "other",
+};
+
+/**
+ * The excerpts of a prompt. An excerpt of an analyzed material says what it is after its label,
+ * and one that is only context is written `[context ...]` so it cannot be taken for a source.
+ */
 export function renderChunks(chunks: readonly PromptChunk[]): string {
-  return chunks.map((c) => `[excerpt ${c.id} | ${c.label}]\n${c.text}`).join("\n\n");
+  return chunks
+    .map((c) => {
+      const role = c.role ? ` | ${ROLE_NAMES[c.role] ?? c.role}` : "";
+      return `[${c.context ? "context" : "excerpt"} ${c.id} | ${c.label}${role}]\n${c.text}`;
+    })
+    .join("\n\n");
+}
+
+/** Tells the model what an excerpt marked as context is for; nothing when there are none. */
+export function renderContextNote(chunks: readonly PromptChunk[]): string {
+  if (!chunks.some((c) => c.context === true)) return "";
+  return (
+    "Parts marked [context ...] are only there to understand the [excerpt ...] around them. " +
+    "Never use one as a source: `source.chunk_id` must be the id of an [excerpt ...].\n\n"
+  );
 }
 
 /** What the person asked on top of the type and quantity, and the items to vary (if any). */
@@ -114,7 +146,7 @@ export function buildCardMessages(
   const task =
     `Create up to ${count} flashcards of one type from the excerpts below. ` +
     `${SUBTYPE_RULES[subtype]} Every card must use \`subtype\` = "${subtype}".\n\n` +
-    `${renderSubject(scope)}Excerpts:\n\n${renderChunks(chunks)}${renderAvoid(avoid)}${renderExtra(extra)}`;
+    `${renderSubject(scope)}${renderContextNote(chunks)}Excerpts:\n\n${renderChunks(chunks)}${renderAvoid(avoid)}${renderExtra(extra)}`;
   return [
     { role: "system", content: SYSTEM },
     { role: "user", content: task },

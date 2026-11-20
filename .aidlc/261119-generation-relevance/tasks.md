@@ -117,17 +117,25 @@
 - **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (135 arquivos, 1430 testes, linhas 96,19%); e2e de biblioteca, importação, geração, backup e fluxo de exemplo passaram (12).
 - **Desvios:** (1) a análise guarda `role` e `starts_unit` por janela assim que ela termina (e `unit` só no fim), para que uma falha no meio não perca o já classificado; (2) `material:analyze` com `automatic` (o gancho depois da importação) fica quieto sem chave ou consentimento, em vez de falhar; (3) o provedor offline (`scripted.ts`) passou a responder `ClassifyBatch`, para os specs não terminarem com "falha na análise"; (4) `FakeProvider.requiresConsent` passou de literal `false` a `boolean`, para os testes simularem um provedor que pede chave; (5) os tipos `MaterialInfo` e `MaterialView` ganharam `subject` e `analysis`, e `fake-mind.ts` preenche os padrões para os testes de tela não precisarem mudar.
 
-### UNIT-5 Lotes por unidade e papéis   Status: pending
+### UNIT-5 Lotes por unidade e papéis   Status: verified (2026-11-19, exit 0)
 
-- [ ] T-5.1 Acrescentar `role`, `unit` e `context` a `SourceChunk`/`PromptChunk` e carregá-los em `selectChunks` — covers FR-10 — files: `src/core/generation/planning.ts`, `prompts.ts` — test: `planning.test.ts`
-- [ ] T-5.2 `planBatchesByUnit`: lotes por unidade, papéis permitidos por tipo, teto de 9000 caracteres e contexto vizinho rotulado — covers FR-10, FR-13, US-4 — files: `src/core/generation/planning.ts` — test: `planning.test.ts` (questão dividida em dois trechos no mesmo lote; unidade grande se divide na fronteira)
-- [ ] T-5.3 Rotular cada trecho com o papel no prompt e o contexto como "context only, never a source" — covers FR-10, FR-11 — files: `src/core/generation/prompts.ts` — test: `prompts.test.ts`
-- [ ] T-5.4 Montar `byId` só com trechos que não são contexto, nos dois geradores — covers FR-11, US-3 — files: `src/core/generation/cards.ts`, `questions.ts` — test: gerador com citação em trecho de contexto cai em "sem fonte"
-- [ ] T-5.5 Resolver a disciplina vigente (informada, senão inferida, senão título) e usá-la nos prompts — covers FR-1, US-1, US-2 — files: `src/core/generation/service.ts` — test: `generation.test.ts` (as três origens)
-- [ ] T-5.6 Escolher o modo no `GenerationService`: por unidade quando o material está analisado, senão `planBatches` com o fallback; gravar `with_analysis` — covers FR-12 — files: `src/core/generation/service.ts` — test: `generation.test.ts` (sem análise gera com as regras de prompt)
-- [ ] T-5.7 Material só de questões: questões novas inspiradas e cards só de comentário que explica a regra; aviso quando não há conteúdo — covers FR-13 — files: `src/core/generation/planning.ts`, `service.ts` — test: `generation.test.ts` com fixture só de questões
-- [ ] T-5.8 Teste de aceitação de US-1 a US-4 sobre as fixtures de relevância (cards conceituais, questões práticas, menos lixo, material misto) com LLM scriptado — covers US-1, US-2, US-3, US-4 — files: `src/core/generation/relevance.test.ts` — test: o próprio teste
-- [ ] T-5.9 Rodar o comando de verificação — covers DoD — files: `tasks.md`, `state.md` — test: exit 0
+- [x] T-5.1 Acrescentar `role`, `unit` e `context` a `SourceChunk`/`PromptChunk` e carregá-los em `selectChunks` — covers FR-10 — files: `src/core/generation/planning.ts`, `prompts.ts` — test: `planning.test.ts`
+- [x] T-5.2 `planBatchesByUnit`: lotes por unidade, papéis permitidos por tipo, teto de 9000 caracteres e contexto vizinho rotulado — covers FR-10, FR-13, US-4 — files: `src/core/generation/planning.ts` — test: `planning.test.ts` (questão dividida em dois trechos no mesmo lote; unidade grande se divide na fronteira)
+- [x] T-5.3 Rotular cada trecho com o papel no prompt e o contexto como "context only, never a source" — covers FR-10, FR-11 — files: `src/core/generation/prompts.ts` — test: `prompts.test.ts`
+- [x] T-5.4 Montar `byId` só com trechos que não são contexto, nos dois geradores — covers FR-11, US-3 — files: `src/core/generation/cards.ts`, `questions.ts` — test: gerador com citação em trecho de contexto cai em "sem fonte"
+- [x] T-5.5 Resolver a disciplina vigente (informada, senão inferida, senão título) e usá-la nos prompts — covers FR-1, US-1, US-2 — files: `src/core/generation/service.ts` — test: `generation.test.ts` (as três origens)
+- [x] T-5.6 Escolher o modo no `GenerationService`: por unidade quando o material está analisado, senão `planBatches` com o fallback; gravar `with_analysis` — covers FR-12 — files: `src/core/generation/service.ts` — test: `generation.test.ts` (sem análise gera com as regras de prompt)
+- [x] T-5.7 Material só de questões: questões novas inspiradas e cards só de comentário que explica a regra; aviso quando não há conteúdo — covers FR-13 — files: `src/core/generation/planning.ts`, `service.ts` — test: `generation.test.ts` com fixture só de questões
+- [x] T-5.8 Teste de aceitação de US-1 a US-4 sobre as fixtures de relevância (cards conceituais, questões práticas, menos lixo, material misto) com LLM scriptado — covers US-1, US-2, US-3, US-4 — files: `src/core/generation/relevance.test.ts` — test: o próprio teste
+- [x] T-5.9 Rodar o comando de verificação — covers DoD — files: `tasks.md`, `state.md` — test: exit 0
+
+**Unit summary (Construction 3.5):**
+
+- **Arquivos novos:** `src/core/generation/units.test.ts`.
+- **Arquivos alterados:** `src/core/generation/{planning,prompts,question-prompts,cards,questions,service}.ts` e os testes `planning.test.ts`, `prompts.test.ts`, `relevance.test.ts`; `src/core/contracts/channels.ts` (`onlyQuestions` em `generation:estimate`); `src/core/test/relevance/{cases,seed}.ts` (unidades e semeadura analisada); `src/renderer/src/strings.ts` (motivo "citação de contexto"); `src/renderer/test/fake-mind.ts`.
+- **Como rodar:** `pnpm test src/core/generation`.
+- **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (136 arquivos, 1454 testes, linhas 96,24%).
+- **Desvios:** (1) `generation:estimate` ganhou o campo `onlyQuestions` (aditivo), porque o banner de material só de questões da UNIT-6 precisa saber disso; (2) um material analisado sem nenhuma fonte para o tipo pedido (por exemplo, só questões e cards) falha com um `VALIDATION_ERROR` explicando, em vez de gerar zero itens; (3) a citação em trecho de contexto é descartada como `source_is_context` (um motivo novo, além de `chunk_not_in_batch`); (4) as fixtures de relevância ganharam `unit` e foram reordenadas (o texto motivador junto da sua questão) para o teste de aceitação; (5) o treino por tópico continua em lotes por tamanho (mistura materiais e não tem análise).
 
 ### UNIT-6 Disciplina na tela   Status: pending
 

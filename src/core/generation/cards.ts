@@ -127,6 +127,8 @@ export class CardGenerator {
       id: c.id,
       label: chunkLabel(c),
       text: c.text,
+      role: c.role,
+      context: c.context,
     }));
     const messages = withKnownTopics(
       withSelfContained(
@@ -187,9 +189,10 @@ export class CardGenerator {
         continue;
       }
       const source = byId.get(card.source.chunk_id);
-      if (!source) {
+      if (!source || source.context === true) {
+        // A part sent only as context can never be what a card cites (FR-11).
         outcome.noSource += 1;
-        note(outcome, "chunk_not_in_batch", card.front);
+        note(outcome, source ? "source_is_context" : "chunk_not_in_batch", card.front);
         continue;
       }
       const check = this.checker.check(card.source.quote, source.text);

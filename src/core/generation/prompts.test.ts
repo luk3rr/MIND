@@ -16,6 +16,7 @@ import {
   buildCardMessages,
   renderAvoid,
   renderChunks,
+  renderContextNote,
   renderSubject,
 } from "./prompts.js";
 
@@ -79,6 +80,44 @@ describe("card prompt rules", () => {
     );
     expect(renderSubject({ subject: "  " })).toBe("");
     expect(renderSubject(undefined)).toBe("");
+  });
+
+  it("labels the excerpts of an analyzed material with what they are, and context apart (FR-10)", () => {
+    const chunks = [
+      { id: 1, label: "Apostila p.1", text: "Regra.", role: "concept" },
+      {
+        id: 2,
+        label: "Apostila p.2",
+        text: "Texto motivador.",
+        role: "motivating_text",
+        context: true,
+      },
+      { id: 3, label: "Apostila p.2", text: "Comentário.", role: "commentary" },
+      { id: 4, label: "Apostila p.3", text: "Sem papel.", role: null },
+    ];
+    expect(renderChunks(chunks)).toBe(
+      "[excerpt 1 | Apostila p.1 | concept]\nRegra.\n\n" +
+        "[context 2 | Apostila p.2 | motivating text]\nTexto motivador.\n\n" +
+        "[excerpt 3 | Apostila p.2 | teacher's comment]\nComentário.\n\n" +
+        "[excerpt 4 | Apostila p.3]\nSem papel.",
+    );
+    // Without roles the text is the one of the Python implementation.
+    expect(renderChunks(golden.chunks)).toBe(golden.rendered_chunks);
+  });
+
+  it("tells the model that context is never a source, only when there is some (FR-11)", () => {
+    const withContext = [
+      { id: 1, label: "L", text: "t", context: true },
+      { id: 2, label: "L", text: "u" },
+    ];
+    expect(renderContextNote(withContext)).toContain("Never use one as a source");
+    expect(renderContextNote([{ id: 2, label: "L", text: "u" }])).toBe("");
+    const [, task] = buildCardMessages("qa", 2, withContext);
+    expect(task?.content).toContain("Never use one as a source");
+    expect(task?.content.indexOf("Never use one as a source")).toBeLessThan(
+      task?.content.indexOf("Excerpts:") ?? 0,
+    );
+    expect(buildCardMessages("qa", 2, golden.chunks)[1]?.content).not.toContain("[context");
   });
 
   it("accepts a valid batch and rejects unknown subtypes", () => {

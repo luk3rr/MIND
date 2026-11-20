@@ -5,7 +5,13 @@
  */
 
 import type { Message } from "../llm/types.js";
-import { renderAvoid, renderChunks, renderExtra, renderSubject } from "./prompts.js";
+import {
+  renderAvoid,
+  renderChunks,
+  renderContextNote,
+  renderExtra,
+  renderSubject,
+} from "./prompts.js";
 import type { PromptChunk, PromptExtra, PromptScope } from "./prompts.js";
 
 /**
@@ -75,7 +81,7 @@ export function buildQuestionMessages(
 ): Message[] {
   const task =
     `Create up to ${count} questions from the excerpts below. ${PROFILE_RULES[profile]}\n\n` +
-    `${renderSubject(scope)}Excerpts:\n\n${renderChunks(chunks)}${renderAvoid(avoid)}${renderExtra(extra)}`;
+    `${renderSubject(scope)}${renderContextNote(chunks)}Excerpts:\n\n${renderChunks(chunks)}${renderAvoid(avoid)}${renderExtra(extra)}`;
   const system = profile.startsWith("calculation_") ? CALCULATION_SYSTEM : QUESTION_SYSTEM;
   return [
     { role: "system", content: system },
