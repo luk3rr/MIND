@@ -22,13 +22,20 @@ import {
   mergeWindows,
   windowsOf,
 } from "./classifier.js";
-import type { WindowResult } from "./classifier.js";
+import type { ClassifyBatch, Role, WindowResult } from "./classifier.js";
+import type { Message } from "../llm/types.js";
 
 const log = logger("analysis");
 
 /** How many chunks one call of the model reads, and how many of them the next call reads again. */
 export const WINDOW_SIZE = 12;
 export const WINDOW_OVERLAP = 2;
+/** How many windows are asked at the same time. */
+export const ANALYSIS_CONCURRENCY = 3;
+/** How many times a window is asked when the provider fails (a timeout, an answer that is not valid). */
+export const WINDOW_ATTEMPTS = 3;
+/** What one window may cost: twelve verdicts are short, and a reasoning model must not run on. */
+export const WINDOW_MAX_TOKENS = 6000;
 
 /** The job type of an analysis in the queue. */
 export const ANALYSIS_JOB = "analysis";
@@ -97,7 +104,7 @@ export class MaterialAnalyzer {
     private readonly workspace: OpenWorkspace,
     private readonly queue: JobQueue,
     private readonly llm: Llm,
-    private readonly options: { windowSize?: number; overlap?: number } = {},
+    private readonly options: { windowSize?: number; overlap?: number; concurrency?: number } = {},
   ) {
     this.db = workspace.connection.db;
   }
@@ -160,6 +167,36 @@ export class MaterialAnalyzer {
     return { started: true, analysis: this.status(materialId) };
   }
 
+  /**
+   * One call of the model for one window. A failure of the provider (a timeout, which a model
+   * that reasons for too long causes, or an answer that is not valid) is tried again; a limit, a
+   * missing key or a cancellation never is.
+   */
+  private async ask(
+    messages: Message[],
+    model: string,
+    context: JobContext,
+  ): Promise<ClassifyBatch> {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        const { value } = await this.llm.provider.complete(messages, classifyBatchSchema, {
+          model,
+          purpose: "analysis",
+          schemaName: "ClassifyBatch",
+          maxTokens: WINDOW_MAX_TOKENS,
+          reasoningEffort: "low",
+        });
+        return value;
+      } catch (error) {
+        const again =
+          error instanceof AppError && error.code === "PROVIDER_ERROR" && attempt < WINDOW_ATTEMPTS;
+        if (!again) throw error;
+        context.checkCancelled();
+        log.warn("analysis window tried again", { attempt });
+      }
+    }
+  }
+
   private async run(materialId: number, context: JobContext): Promise<void> {
     const started = performance.now();
     const model = this.llm.settings.get().judgeModel;
@@ -176,22 +213,49 @@ export class MaterialAnalyzer {
       chunks: chunks.length,
       windows: windows.length,
     });
+    // A window whose chunks were all classified by an earlier try is not asked again (the first
+    // one always is: it is where the subject comes from), so a new request after a failure only
+    // does what is left.
+    const stored = this.db
+      .select({ role: chunk.role, startsUnit: chunk.startsUnit })
+      .from(chunk)
+      .where(eq(chunk.materialId, materialId))
+      .orderBy(asc(chunk.ordinal))
+      .all();
     const results: WindowResult[] = [];
-    let subject: string | null = null;
+    const pending: number[] = [];
     for (const [index, window] of windows.entries()) {
-      context.checkCancelled();
-      context.update(index / windows.length, `parte ${index + 1} de ${windows.length}`);
+      const rows = stored.slice(window.start, window.start + window.length);
+      const known = index > 0 && rows.every((row) => row.role !== null);
+      if (known) {
+        results[index] = {
+          start: window.start,
+          length: window.length,
+          verdicts: rows.map((row, position) => ({
+            index: position,
+            role: row.role as Role,
+            starts_unit: row.startsUnit === 1,
+          })),
+        };
+      } else {
+        pending.push(index);
+      }
+    }
+    let subject: string | null = null;
+    let finished = windows.length - pending.length;
+    let failure: unknown = null;
+    const runWindow = async (index: number): Promise<void> => {
+      const window = windows[index] as (typeof windows)[number];
       const part = chunks.slice(window.start, window.start + window.length);
-      const { value } = await this.llm.provider.complete(
+      const value = await this.ask(
         buildClassifyMessages(
           part.map((c) => c.text),
           { number: index + 1, of: windows.length },
         ),
-        classifyBatchSchema,
-        { model, purpose: "analysis", schemaName: "ClassifyBatch" },
+        model,
+        context,
       );
-      if (context.signal.aborted) throw new JobCancelled();
-      results.push({ start: window.start, length: window.length, verdicts: value.chunks });
+      results[index] = { start: window.start, length: window.length, verdicts: value.chunks };
       if (index === 0) subject = cleanSubject(value.subject);
       // What each window found is kept as soon as it is known, so a failure later on does not
       // lose it; the end of the analysis (`analyzed_at`) is only set when every window is in.
@@ -206,7 +270,30 @@ export class MaterialAnalyzer {
             .run();
         }
       })();
-    }
+      finished += 1;
+      context.update(finished / windows.length, `parte ${finished} de ${windows.length}`);
+    };
+    // A few windows at a time; the first failure (after the tries of its window) stops the rest.
+    const next = [...pending];
+    const workers = Array.from(
+      { length: Math.min(this.options.concurrency ?? ANALYSIS_CONCURRENCY, next.length) },
+      async () => {
+        for (;;) {
+          const index = next.shift();
+          if (index === undefined || failure !== null) return;
+          context.checkCancelled();
+          try {
+            await runWindow(index);
+          } catch (error) {
+            failure ??= error;
+            return;
+          }
+        }
+      },
+    );
+    await Promise.all(workers);
+    if (failure !== null) throw failure;
+    if (context.signal.aborted) throw new JobCancelled();
     const merged = mergeWindows(results, chunks.length);
     this.workspace.connection.sqlite.transaction(() => {
       merged.forEach((entry, position) => {

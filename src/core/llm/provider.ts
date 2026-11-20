@@ -15,6 +15,10 @@ export interface CompleteOptions {
   schemaName?: string;
   /** What the call is for; recorded in the cost ledger. */
   purpose?: string;
+  /** Caps what the model may write, reasoning included. */
+  maxTokens?: number;
+  /** For models that reason before answering: how hard they should. Ignored by the others. */
+  reasoningEffort?: "low" | "medium" | "high";
 }
 
 export interface Completion<T> {

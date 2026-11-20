@@ -75,6 +75,23 @@ describe("OpenRouterProvider", () => {
     });
   });
 
+  it("sends the cap on tokens and the reasoning effort only when asked", async () => {
+    const { provider, calls } = setup([
+      reply('{"front":"Q","back":"A"}'),
+      reply('{"front":"Q","back":"A"}'),
+    ]);
+    await provider.complete(messages, Card, options);
+    await provider.complete(messages, Card, {
+      ...options,
+      maxTokens: 4000,
+      reasoningEffort: "low",
+    });
+    expect(calls[0]?.body["max_tokens"]).toBeUndefined();
+    expect(calls[0]?.body["reasoning"]).toBeUndefined();
+    expect(calls[1]?.body["max_tokens"]).toBe(4000);
+    expect(calls[1]?.body["reasoning"]).toEqual({ effort: "low" });
+  });
+
   it("falls back to a schema instruction when structured mode is unsupported", async () => {
     const { provider, calls } = setup([
       new Response('{"error":"unsupported response_format"}', { status: 400 }),

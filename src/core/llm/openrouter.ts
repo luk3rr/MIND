@@ -163,6 +163,10 @@ export class OpenRouterProvider implements Provider {
     structured: boolean,
   ): Record<string, unknown> {
     const body: Record<string, unknown> = { model: options.model, usage: { include: true } };
+    if (options.maxTokens !== undefined) body["max_tokens"] = options.maxTokens;
+    if (options.reasoningEffort !== undefined) {
+      body["reasoning"] = { effort: options.reasoningEffort };
+    }
     if (structured) {
       body["messages"] = conversation;
       body["response_format"] = {

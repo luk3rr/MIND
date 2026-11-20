@@ -146,13 +146,23 @@ describe("MaterialAnalyzer", () => {
     expect(row()?.subjectInferred).toBe("Primeiro assunto");
   });
 
-  it("keeps what the windows found when a later one fails, and starts over on a new request (FR-8, NFR-3)", async () => {
+  /** A model that classifies every excerpt as an example, failing windows as `failing` says. */
+  function flaky(failing: (window: number, call: number) => AppError | null): {
+    provider: FakeProvider;
+    calls: number[];
+  } {
     const provider = new FakeProvider();
-    let calls = 0;
+    const calls: number[] = [];
+    const perWindow = new Map<number, number>();
     provider.script("ClassifyBatch", (messages: readonly { content: string }[]) => {
-      calls += 1;
-      if (calls === 2) throw new AppError("PROVIDER_ERROR", "O provedor falhou.");
-      const total = (messages.at(-1)?.content.match(/\[excerpt \d+\]/g) ?? []).length;
+      const content = messages.at(-1)?.content ?? "";
+      const window = Number(/Window (\d+) of/.exec(content)?.[1] ?? 1);
+      calls.push(window);
+      const call = (perWindow.get(window) ?? 0) + 1;
+      perWindow.set(window, call);
+      const error = failing(window, call);
+      if (error) throw error;
+      const total = (content.match(/\[excerpt \d+\]/g) ?? []).length;
       return {
         subject: "Português",
         chunks: Array.from({ length: total }, (_, index) => ({
@@ -162,7 +172,48 @@ describe("MaterialAnalyzer", () => {
         })),
       };
     });
-    const { analyzer, chunks, row, wait } = setup(provider, 6, 3, 0);
+    return { provider, calls };
+  }
+  const timeout = () => new AppError("PROVIDER_ERROR", "O provedor demorou mais de 120 s.");
+
+  it("asks a window again after a failure of the provider, and still finishes (timeouts of a model that reasons)", async () => {
+    const { provider, calls } = flaky((window, call) =>
+      window === 2 && call < 3 ? timeout() : null,
+    );
+    const { analyzer, chunks, wait } = setup(provider, 6, 3, 0);
+    analyzer.start(rig?.materialId ?? 0);
+    await wait();
+    expect(analyzer.status(rig?.materialId ?? 0).state).toBe("done");
+    // Window 2 failed twice and answered on the third try; window 1 was asked once.
+    expect(calls.filter((w) => w === 2)).toHaveLength(3);
+    expect(calls.filter((w) => w === 1)).toHaveLength(1);
+    expect(chunks().map((c) => c.unit)).toEqual([1, 2, 3, 4, 5, 6]);
+    // Every call is capped, and a reasoning model is told not to go on.
+    expect(provider.calls.every((c) => c.schemaName === "ClassifyBatch")).toBe(true);
+  });
+
+  it("limits what a window may spend and how hard the model reasons", async () => {
+    const options: unknown[] = [];
+    const provider = classifier();
+    const original = provider.complete.bind(provider);
+    provider.complete = ((messages, schema, o) => {
+      options.push(o);
+      return original(messages, schema, o);
+    }) as typeof provider.complete;
+    const { analyzer, wait } = setup(provider, 3);
+    analyzer.start(rig?.materialId ?? 0);
+    await wait();
+    expect(options[0]).toMatchObject({
+      purpose: "analysis",
+      maxTokens: 6000,
+      reasoningEffort: "low",
+    });
+  });
+
+  it("keeps what the windows found when one keeps failing, and a new request only does what is left (FR-8, NFR-3)", async () => {
+    let healthy = false;
+    const { provider, calls } = flaky((window) => (window === 3 && !healthy ? timeout() : null));
+    const { analyzer, chunks, row, wait } = setup(provider, 9, 3, 0);
     analyzer.start(rig?.materialId ?? 0);
     await wait();
     const failed = analyzer.status(rig?.materialId ?? 0);
@@ -171,24 +222,50 @@ describe("MaterialAnalyzer", () => {
       errorCode: "PROVIDER_ERROR",
       analyzedAt: null,
     });
-    // The first window stays on the chunks; the rest was never classified, and nothing is done.
-    expect(chunks().map((c) => c.role)).toEqual([
-      "example",
-      "example",
-      "example",
-      null,
-      null,
-      null,
-    ]);
+    // The failing window was tried three times, never more.
+    expect(calls.filter((w) => w === 3)).toHaveLength(3);
+    // The first two windows stay on the chunks; the last one was never classified.
+    expect(chunks().map((c) => c.role)).toEqual([...Array(6).fill("example"), null, null, null]);
     expect(chunks().every((c) => c.unit === null)).toBe(true);
     expect(row()).toMatchObject({ analyzedAt: null, status: "indexed", subjectInferred: null });
 
-    // A new request starts a new job and finishes the whole material.
+    // The new request asks again for the first window (it carries the subject) and the one that
+    // failed, and skips the window that was already done.
+    healthy = true;
+    calls.length = 0;
     const again = analyzer.start(rig?.materialId ?? 0);
     expect(again.started).toBe(true);
     await wait();
     expect(analyzer.status(rig?.materialId ?? 0).state).toBe("done");
-    expect(chunks().map((c) => c.unit)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect([...calls].sort()).toEqual([1, 3]);
+    expect(chunks().map((c) => c.unit)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(row()?.subjectInferred).toBe("Português");
+  });
+
+  it("asks a few windows at a time, not all at once", async () => {
+    let running = 0;
+    let most = 0;
+    const provider = new FakeProvider(undefined, 20);
+    provider.script("ClassifyBatch", (messages: readonly { content: string }[]) => {
+      running += 1;
+      most = Math.max(most, running);
+      setTimeout(() => (running -= 1), 15);
+      const total = (messages.at(-1)?.content.match(/\[excerpt \d+\]/g) ?? []).length;
+      return {
+        subject: null,
+        chunks: Array.from({ length: total }, (_, index) => ({
+          index,
+          role: "concept",
+          starts_unit: true,
+        })),
+      };
+    });
+    const { analyzer, wait } = setup(provider, 20, 2, 0);
+    analyzer.start(rig?.materialId ?? 0);
+    await wait();
+    expect(analyzer.status(rig?.materialId ?? 0).state).toBe("done");
+    expect(most).toBeGreaterThan(1);
+    expect(most).toBeLessThanOrEqual(3);
   });
 
   it("pauses when the monthly limit is reached (FR-16)", async () => {
@@ -203,6 +280,8 @@ describe("MaterialAnalyzer", () => {
       state: "paused",
       errorCode: "MONTHLY_LIMIT_REACHED",
     });
+    // A limit is not a failure to try again.
+    expect(provider.calls).toHaveLength(1);
   });
 
   it("can be cancelled, and then counts as failed with that reason", async () => {
