@@ -521,6 +521,19 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         found.title = clean;
         return ok(materialOut(found));
       }
+      case "material:setSubject": {
+        const { id, subject } = payload as InputOf<"material:setSubject">;
+        const found = state.materials.find((entry) => entry.id === id);
+        if (!found) return failure("MATERIAL_NOT_FOUND", "Material não encontrado.");
+        const informed = (subject ?? "").split(/\s+/).filter(Boolean).join(" ") || null;
+        const inferred = found.subject?.inferred ?? null;
+        found.subject = informed
+          ? { value: informed, source: "informed", informed, inferred }
+          : inferred
+            ? { value: inferred, source: "inferred", informed: null, inferred }
+            : { value: found.title, source: "title", informed: null, inferred: null };
+        return ok(materialOut(found));
+      }
       case "material:analyze": {
         const { id } = payload as InputOf<"material:analyze">;
         const found = state.materials.find((entry) => entry.id === id);

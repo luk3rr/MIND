@@ -592,6 +592,35 @@ export const T = {
   seeInPdf: "Ver no PDF",
   seeInPdfWindow: "PDF em nova janela",
   renameMaterial: "Renomear",
+  subjectAction: "Definir disciplina…",
+  subjectDialogTitle: (name: string) => `Disciplina de “${name}”`,
+  subjectLabel: "Disciplina ou assunto (opcional)",
+  subjectPlaceholder: "Ex.: Língua Portuguesa, Direito Constitucional",
+  subjectHint:
+    'Informe a disciplina quando o título não diz o assunto (ex.: "Aula 3"). Vazio usa a que o app inferiu do conteúdo.',
+  subjectInferredLabel: "Inferida pelo app:",
+  subjectNotFound: "Não identificada",
+  subjectSources: { informed: "Informada", inferred: "Inferida", title: "Título" } as Record<
+    string,
+    string
+  >,
+  analysisAnalyzing: "Analisando o material…",
+  analysisAnalyzingPercent: (percent: number) => `Analisando ${percent}%`,
+  analysisDone: "Analisado",
+  analysisFailed: "Falha na análise",
+  analysisPaused: "Análise pausada: limite mensal",
+  analysisPausedNote: "A análise parou no limite mensal; ela volta quando você pedir de novo.",
+  analyzeAgain: "Analisar de novo",
+  analysisLimitBanner:
+    "O limite mensal foi atingido. Aumente o limite em Configurações para retomar a análise.",
+  analysisSetupBanner: "Sem chave do provedor ou sem consentimento: a análise automática não roda.",
+  analysisSettings: "Ir às Configurações",
+  generateSubject: "Disciplina:",
+  generateChangeSubject: "Alterar",
+  generateFallbackBanner:
+    "Gerando sem a análise do material: os itens usam só a disciplina e a revisão de relevância, sem separar texto motivador por trecho. A análise pode terminar depois.",
+  generateOnlyQuestions:
+    "Este material parece ser só de questões. Serão geradas questões novas inspiradas nelas e cards apenas das regras que o gabarito ou o comentário explicam.",
   renameMaterialTitle: "Renomear material",
   renameMaterialLabel: "Nome do material",
   backToSection: {

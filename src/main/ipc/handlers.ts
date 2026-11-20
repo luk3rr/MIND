@@ -133,6 +133,10 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       return service.view(service.rename(id, title));
     },
     "material:analyze": ({ workspaceId, id }) => core.analysis(workspaceId).start(id),
+    "material:setSubject": ({ workspaceId, id, subject }) => {
+      const service = core.materials(workspaceId);
+      return service.view(service.setSubject(id, subject));
+    },
     "material:delete": ({ workspaceId, id }) => {
       core.materials(workspaceId).delete(id);
       return {};

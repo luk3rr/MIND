@@ -359,11 +359,12 @@ describe("the actions menu of a material", () => {
       "Histórico de pré-testes",
       "Abrir no sistema",
       "Renomear",
+      "Definir disciplina…",
       "Excluir",
     ]);
     expect(items[0]).toHaveFocus();
     await user.keyboard("{ArrowUp}");
-    expect(items[3]).toHaveFocus();
+    expect(items[4]).toHaveFocus();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();

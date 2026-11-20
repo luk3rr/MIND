@@ -4,7 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { ErrorInfo, OutputOf } from "../../../core/contracts/index.js";
 import { useInvoke } from "../hooks.js";
@@ -12,6 +12,7 @@ import { sectionPath, useRouter } from "../router.js";
 import type { Route } from "../router.js";
 import { T } from "../strings.js";
 import { SearchCombobox } from "../components/SearchCombobox.js";
+import { SubjectDialog } from "../components/SubjectDialog.js";
 import { ListSearch, Pager, usePagedList } from "../components/ListControls.js";
 
 type Run = OutputOf<"generation:list">["runs"][number];
@@ -265,6 +266,9 @@ export function GeneratePage({
   const [topicName, setTopicName] = useState("");
   const [variations, setVariations] = useState(false);
   const [estimate, setEstimate] = useState<string | null>(null);
+  // The material is only exam questions: the screen says what will be generated from it.
+  const [onlyQuestions, setOnlyQuestions] = useState(false);
+  const [subjectOpen, setSubjectOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -274,6 +278,26 @@ export function GeneratePage({
       ? materials.state.data.materials.filter((m) => m.status === "indexed")
       : [];
   const selected = materialId ?? indexed[0]?.id ?? null;
+  const current = indexed.find((entry) => entry.id === selected) ?? null;
+
+  // Opening Generate on a material that was never analyzed starts its analysis, once, in the
+  // background; the generation does not wait for it and says so (FR-12).
+  const asked = useRef(new Set<number>());
+  const reloadMaterials = materials.reload;
+  const analysisState = current?.analysis.state;
+  useEffect(() => {
+    if (current === null || trainTopic !== null || analysisState !== "none") return;
+    if (asked.current.has(current.id)) return;
+    asked.current.add(current.id);
+    void window.mind
+      .invoke("material:analyze", { workspaceId, id: current.id })
+      .then(() => reloadMaterials());
+  }, [current?.id, analysisState, trainTopic, workspaceId]);
+  useEffect(() => {
+    if (analysisState !== "analyzing") return undefined;
+    const timer = setInterval(reloadMaterials, 1500);
+    return () => clearInterval(timer);
+  }, [analysisState, reloadMaterials]);
 
   const request = (): Parameters<typeof window.mind.invoke<"generation:start">>[1] | null => {
     const count = Number(quantity);
@@ -329,14 +353,17 @@ export function GeneratePage({
     const payload = request();
     if (!payload) {
       setEstimate(null);
+      setOnlyQuestions(false);
       return undefined;
     }
     const timer = setTimeout(() => {
       void window.mind.invoke("generation:estimate", payload).then((result) => {
         if (!result.ok) {
           setEstimate(null);
+          setOnlyQuestions(false);
           return;
         }
+        setOnlyQuestions(result.data.onlyQuestions);
         setEstimate(
           result.data.estimatedUsd === null
             ? T.generateEstimateUnknown
@@ -428,6 +455,31 @@ export function GeneratePage({
                 ))}
               </select>
             </div>
+          )}
+          {trainTopic === null && current !== null && (
+            <>
+              <div className="row">
+                <span className="muted">{T.generateSubject}</span>
+                <span className="pill">{T.subjectSources[current.subject.source]}</span>
+                <span>{current.subject.value}</span>
+                {current.analysis.state === "analyzing" && (
+                  <span className="pill warn">{T.analysisAnalyzing}</span>
+                )}
+                {current.analysis.state === "failed" && (
+                  <span className="pill bad">{T.analysisFailed}</span>
+                )}
+                {current.analysis.state === "paused" && (
+                  <span className="pill warn">{T.analysisPaused}</span>
+                )}
+                <button type="button" className="btn ghost sm" onClick={() => setSubjectOpen(true)}>
+                  {T.generateChangeSubject}
+                </button>
+              </div>
+              {current.analysis.state !== "done" && (
+                <p className="banner info">{T.generateFallbackBanner}</p>
+              )}
+              {onlyQuestions && <p className="banner info">{T.generateOnlyQuestions}</p>}
+            </>
           )}
           {trainTopic === null && (
             <div className="row">
@@ -617,6 +669,14 @@ export function GeneratePage({
           />
         )}
       </section>
+      {subjectOpen && current !== null && (
+        <SubjectDialog
+          workspaceId={workspaceId}
+          material={current}
+          onClose={() => setSubjectOpen(false)}
+          onChanged={reloadMaterials}
+        />
+      )}
     </section>
   );
 }

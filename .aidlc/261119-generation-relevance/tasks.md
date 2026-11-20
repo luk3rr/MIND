@@ -137,14 +137,22 @@
 - **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (136 arquivos, 1454 testes, linhas 96,24%).
 - **Desvios:** (1) `generation:estimate` ganhou o campo `onlyQuestions` (aditivo), porque o banner de material só de questões da UNIT-6 precisa saber disso; (2) um material analisado sem nenhuma fonte para o tipo pedido (por exemplo, só questões e cards) falha com um `VALIDATION_ERROR` explicando, em vez de gerar zero itens; (3) a citação em trecho de contexto é descartada como `source_is_context` (um motivo novo, além de `chunk_not_in_batch`); (4) as fixtures de relevância ganharam `unit` e foram reordenadas (o texto motivador junto da sua questão) para o teste de aceitação; (5) o treino por tópico continua em lotes por tamanho (mistura materiais e não tem análise).
 
-### UNIT-6 Disciplina na tela   Status: pending
+### UNIT-6 Disciplina na tela   Status: verified (2026-11-19, exit 0)
 
-- [ ] T-6.1 Acrescentar `MaterialService.setSubject` e o canal `material:setSubject`; `subject` passa a refletir a informada — covers FR-14, NFR-8 — files: `src/core/ingestion/service.ts`, `src/core/contracts/channels.ts`, `channel-names.ts`, `src/main/ipc/handlers.ts`, `fake-mind.ts` — test: testes dos handlers e do serviço (informada prevalece; vazio volta à inferida)
-- [ ] T-6.2 Criar o diálogo da disciplina (campo, inferida ao lado, estados do mockup) — covers FR-14, US-5, NFR-7 — files: `src/renderer/src/components/SubjectDialog.tsx`, `strings.ts` — test: teste de componente (todos os estados)
-- [ ] T-6.3 Biblioteca: ação "Definir disciplina…", "Analisar de novo", disciplina sob o nome e status da análise com progresso — covers FR-14, FR-9, US-6 — files: `src/renderer/src/pages/LibraryPage.tsx`, `strings.ts` — test: teste de componente
-- [ ] T-6.4 Gerar: linha da disciplina com "Alterar", banners de fallback e de material só de questões, e disparo de `material:analyze` ao abrir um material sem análise — covers FR-12, FR-13, US-7 — files: `src/renderer/src/pages/GeneratePage.tsx`, `strings.ts` — test: teste de componente (os estados do mockup)
-- [ ] T-6.5 Atalho às Configurações quando a análise falha por chave ou consentimento — covers FR-9, FR-16, US-6 — files: `LibraryPage.tsx`, `SubjectDialog.tsx` — test: teste de componente
-- [ ] T-6.6 Rodar o comando de verificação e o `xvfb-run -a pnpm e2e` — covers DoD — files: `tasks.md`, `state.md` — test: exit 0
+- [x] T-6.1 Acrescentar `MaterialService.setSubject` e o canal `material:setSubject`; `subject` passa a refletir a informada — covers FR-14, NFR-8 — files: `src/core/ingestion/service.ts`, `src/core/contracts/channels.ts`, `channel-names.ts`, `src/main/ipc/handlers.ts`, `fake-mind.ts` — test: testes dos handlers e do serviço (informada prevalece; vazio volta à inferida)
+- [x] T-6.2 Criar o diálogo da disciplina (campo, inferida ao lado, estados do mockup) — covers FR-14, US-5, NFR-7 — files: `src/renderer/src/components/SubjectDialog.tsx`, `strings.ts` — test: teste de componente (todos os estados)
+- [x] T-6.3 Biblioteca: ação "Definir disciplina…", "Analisar de novo", disciplina sob o nome e status da análise com progresso — covers FR-14, FR-9, US-6 — files: `src/renderer/src/pages/LibraryPage.tsx`, `strings.ts` — test: teste de componente
+- [x] T-6.4 Gerar: linha da disciplina com "Alterar", banners de fallback e de material só de questões, e disparo de `material:analyze` ao abrir um material sem análise — covers FR-12, FR-13, US-7 — files: `src/renderer/src/pages/GeneratePage.tsx`, `strings.ts` — test: teste de componente (os estados do mockup)
+- [x] T-6.5 Atalho às Configurações quando a análise falha por chave ou consentimento — covers FR-9, FR-16, US-6 — files: `LibraryPage.tsx`, `SubjectDialog.tsx` — test: teste de componente
+- [x] T-6.6 Rodar o comando de verificação e o `xvfb-run -a pnpm e2e` — covers DoD — files: `tasks.md`, `state.md` — test: exit 0
+
+**Unit summary (Construction 3.5):**
+
+- **Arquivos novos:** `src/renderer/src/components/SubjectDialog.tsx`, `src/renderer/src/subject.test.tsx`.
+- **Arquivos alterados:** `src/core/ingestion/service.ts` (`setSubject`), `src/core/contracts/{channels,channel-names}.ts` (`material:setSubject`), `src/main/ipc/{handlers.ts,analysis-handlers.test.ts,router.test.ts}`, `src/renderer/src/pages/{LibraryPage,GeneratePage}.tsx`, `src/renderer/src/strings.ts`, `src/renderer/src/library.test.tsx`, `src/renderer/test/fake-mind.ts`.
+- **Como rodar:** `pnpm test src/renderer/src/subject.test.tsx src/main/ipc/analysis-handlers.test.ts`; `xvfb-run -a pnpm e2e`.
+- **Resultado (2026-11-19):** `pnpm lint`, `format:check`, `typecheck` exit 0; `pnpm test --coverage` exit 0 (137 arquivos, 1482 testes, linhas 96,19%); `xvfb-run -a pnpm e2e` exit 0 (61 passaram, 1 pulado).
+- **Desvios:** (1) os banners e a pílula "Analisando" de Gerar ficaram sem `role="status"` (colidiam com o `role="status"` do paginador e quebravam testes existentes); o diálogo e a Biblioteca mantêm `role="status"` no estado "analisando"; (2) o texto do custo da geração continua "Custo estimado: ~US$ …", sem o "(inclui a revisão de relevância)" do mockup, porque a mesma frase serve à seleção no leitor e está nos testes; (3) `setSubject` limpa espaços repetidos e aceita no máximo 200 caracteres (o contrato e o serviço validam); (4) o spec e2e do fluxo da disciplina (T-7.1) fica na UNIT-7, como planejado.
 
 ### UNIT-7 Verificação final   Status: pending
 

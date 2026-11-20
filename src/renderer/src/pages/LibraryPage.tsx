@@ -10,6 +10,7 @@ import type { OutputOf } from "../../../core/contracts/index.js";
 import { ActionMenu } from "../components/ActionMenu.js";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
 import { PromptDialog } from "../components/PromptDialog.js";
+import { SubjectDialog } from "../components/SubjectDialog.js";
 import { useInvoke } from "../hooks.js";
 import {
   materialPath,
@@ -56,8 +57,54 @@ function StatusCell({ material }: { material: Material }) {
         </span>
       )}
       {material.errorDetail && <p className="muted">{material.errorDetail}</p>}
+      {material.status === "indexed" && <AnalysisPill material={material} />}
     </>
   );
+}
+
+/** Where the analysis of the chunks of a material stands, next to its import status. */
+function AnalysisPill({ material }: { material: Material }) {
+  const { analysis } = material;
+  if (analysis.state === "analyzing") {
+    const percent = Math.round((analysis.progress ?? 0) * 100);
+    return (
+      <>
+        {" "}
+        <span className="pill warn" role="status">
+          {T.analysisAnalyzingPercent(percent)}
+        </span>
+      </>
+    );
+  }
+  if (analysis.state === "done") {
+    return (
+      <>
+        {" "}
+        <span className="pill ok">{T.analysisDone}</span>
+      </>
+    );
+  }
+  if (analysis.state === "failed") {
+    return (
+      <>
+        {" "}
+        <span className="pill bad" title={analysis.errorDetail ?? undefined}>
+          {T.analysisFailed}
+        </span>
+      </>
+    );
+  }
+  if (analysis.state === "paused") {
+    return (
+      <>
+        {" "}
+        <span className="pill warn" title={T.analysisPausedNote}>
+          {T.analysisPaused}
+        </span>
+      </>
+    );
+  }
+  return null;
 }
 
 /** The library: import files, follow the progress, search the text and open a preview. */
@@ -80,6 +127,7 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
   const [openError, setOpenError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<Material | null>(null);
   const [toRename, setToRename] = useState<Material | null>(null);
+  const [subjectId, setSubjectId] = useState<number | null>(null);
   const [pretestFor, setPretestFor] = useState<Material | null>(null);
   const [askUrl, setAskUrl] = useState(false);
   const [query, setQuery] = useState("");
@@ -101,8 +149,11 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
     MATERIALS_PER_PAGE,
     (material) => `${material.title} ${material.kind} ${material.filename}`,
   );
+  // The dialog shows the material as the list has it now, so a running analysis moves on in it.
+  const toSubject = materials.find((m) => m.id === subjectId) ?? null;
   const anyActive =
-    state.status === "ready" && state.data.materials.some((m) => ACTIVE.has(m.status));
+    state.status === "ready" &&
+    state.data.materials.some((m) => ACTIVE.has(m.status) || m.analysis.state === "analyzing");
   useEffect(() => {
     if (!anyActive) return undefined;
     const timer = setInterval(reload, 1000);
@@ -280,6 +331,9 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                     >
                       {material.title}
                     </button>
+                    {material.subject.source !== "title" && (
+                      <div className="muted">{material.subject.value}</div>
+                    )}
                   </td>
                   <td>{material.kind}</td>
                   <td>{material.pageCount ?? "—"}</td>
@@ -350,6 +404,29 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
                               ]
                             : []),
                           { label: T.renameMaterial, onSelect: () => setToRename(material) },
+                          ...(material.status === "indexed"
+                            ? [
+                                {
+                                  label: T.subjectAction,
+                                  onSelect: () => setSubjectId(material.id),
+                                },
+                                ...(["failed", "paused"].includes(material.analysis.state)
+                                  ? [
+                                      {
+                                        label: T.analyzeAgain,
+                                        onSelect: () => {
+                                          void window.mind
+                                            .invoke("material:analyze", {
+                                              workspaceId,
+                                              id: material.id,
+                                            })
+                                            .then(reload);
+                                        },
+                                      },
+                                    ]
+                                  : []),
+                              ]
+                            : []),
                           {
                             label: T.deleteWorkspace,
                             danger: true,
@@ -411,6 +488,14 @@ export function LibraryPage({ workspaceId }: { workspaceId: number }) {
             reload();
             return null;
           }}
+        />
+      )}
+      {toSubject && (
+        <SubjectDialog
+          workspaceId={workspaceId}
+          material={toSubject}
+          onClose={() => setSubjectId(null)}
+          onChanged={reload}
         />
       )}
       {toDelete && (

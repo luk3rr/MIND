@@ -99,3 +99,83 @@ describe("material:analyze and the analysis in the material list (FR-9, NFR-8)",
     ).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
   });
 });
+
+describe("material:setSubject (FR-14)", () => {
+  it("makes the subject the person names win, tidied, and clearing it goes back to the inferred one", async () => {
+    const { dispatch, workspaceId, materialId, core } = open();
+    await dispatch("material:analyze", { workspaceId, id: materialId });
+    const jobId = core.registry
+      .open(workspaceId)
+      .connection.sqlite.prepare("SELECT analysis_job_id AS id FROM material")
+      .get() as { id: number };
+    await core.queue.wait(workspaceId, jobId.id);
+
+    const named = await dispatch("material:setSubject", {
+      workspaceId,
+      id: materialId,
+      subject: "  Fotossíntese   e respiração ",
+    });
+    expect(named).toMatchObject({
+      ok: true,
+      data: {
+        subject: {
+          value: "Fotossíntese e respiração",
+          source: "informed",
+          informed: "Fotossíntese e respiração",
+          inferred: "Biologia celular",
+        },
+        analysis: { state: "done" },
+      },
+    });
+    // Naming a subject analyzes nothing again.
+    expect(
+      (
+        core.registry
+          .open(workspaceId)
+          .connection.sqlite.prepare("SELECT analysis_job_id AS id FROM material")
+          .get() as { id: number }
+      ).id,
+    ).toBe(jobId.id);
+
+    for (const cleared of [null, "   "]) {
+      const back = await dispatch("material:setSubject", {
+        workspaceId,
+        id: materialId,
+        subject: cleared,
+      });
+      expect(back).toMatchObject({
+        ok: true,
+        data: { subject: { value: "Biologia celular", source: "inferred", informed: null } },
+      });
+    }
+  });
+
+  it("falls back to the title when there is nothing inferred either", async () => {
+    const { dispatch, workspaceId, materialId } = open();
+    expect(
+      await dispatch("material:setSubject", { workspaceId, id: materialId, subject: null }),
+    ).toMatchObject({ ok: true, data: { subject: { value: "Biologia", source: "title" } } });
+  });
+
+  it("rejects a subject that is too long, an unknown material and extra fields", async () => {
+    const { dispatch, workspaceId, materialId } = open();
+    expect(
+      await dispatch("material:setSubject", {
+        workspaceId,
+        id: materialId,
+        subject: "x".repeat(201),
+      }),
+    ).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+    expect(
+      await dispatch("material:setSubject", { workspaceId, id: 999, subject: "x" }),
+    ).toMatchObject({ ok: false, error: { code: "MATERIAL_NOT_FOUND" } });
+    expect(
+      await dispatch("material:setSubject", {
+        workspaceId,
+        id: materialId,
+        subject: "x",
+        extra: 1,
+      } as never),
+    ).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+  });
+});

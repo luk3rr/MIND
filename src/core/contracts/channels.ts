@@ -594,6 +594,17 @@ export const channels = {
       .strict(),
     output: materialInfo,
   },
+  "material:setSubject": {
+    input: z
+      .object({
+        workspaceId,
+        id: z.number().int().positive(),
+        /** The subject of the material; null or empty goes back to the one the analysis found. */
+        subject: z.string().max(200).nullable(),
+      })
+      .strict(),
+    output: materialInfo,
+  },
   "material:analyze": {
     input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),
     output: z.object({ started: z.boolean(), analysis: analysisInfo }),

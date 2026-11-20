@@ -18,6 +18,7 @@ import { chunk, generationRun, item, material } from "../db/workspace-schema.js"
 import { JobCancelled } from "../jobs/queue.js";
 import { analysisOf } from "../analysis/analyzer.js";
 import type { AnalysisInfo } from "../analysis/analyzer.js";
+import { MAX_SUBJECT } from "../analysis/classifier.js";
 import { resolveSubject } from "../analysis/subject.js";
 import type { Subject } from "../analysis/subject.js";
 import { getJob } from "../jobs/store.js";
@@ -442,6 +443,28 @@ export class MaterialService {
    * Changes the title of a material. The file on disk keeps its name; the title is what the app
    * shows, including on the cards and questions generated from it, which carry a copy of it.
    */
+  /**
+   * Sets the subject the person names for a material, which the prompts use over the one the
+   * analysis found. Empty (or null) goes back to the inferred one. Nothing is analyzed again.
+   */
+  setSubject(id: number, raw: string | null): MaterialInfo {
+    this.get(id);
+    const subject = (raw ?? "").split(/\s+/).filter(Boolean).join(" ");
+    if (subject.length > MAX_SUBJECT) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        `A disciplina pode ter no máximo ${MAX_SUBJECT} caracteres.`,
+        [{ field: "subject", message: `No máximo ${MAX_SUBJECT} caracteres.` }],
+      );
+    }
+    this.db
+      .update(material)
+      .set({ subjectUser: subject || null })
+      .where(eq(material.id, id))
+      .run();
+    return this.get(id);
+  }
+
   rename(id: number, rawTitle: string): MaterialInfo {
     this.get(id);
     const title = rawTitle.split(/\s+/).filter(Boolean).join(" ");

@@ -7,7 +7,7 @@
 - Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous (esqueleto UNIT-1 aprovado antes de seguir; falhas e ações irreversíveis ainda param) iteration=unit-major
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-19; UNIT-6 e UNIT-7 somam `xvfb-run -a pnpm e2e`; pnpm em ~/.local/share/pnpm/bin)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction stage=3.5 Code Generation (UNIT-6)   Updated: 2026-11-19T21:11:17-03:00
+- Current: phase=construction stage=3.5 Code Generation (UNIT-7)   Updated: 2026-11-19T21:21:50-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
@@ -45,7 +45,7 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 | UNIT-3 Fixtures e avaliação | UNIT-2 | verified (T-3.4 baseline real pendente do usuário) | 2026-11-19, exit 0 |
 | UNIT-4 Análise dos trechos | — | verified | 2026-11-19, exit 0 |
 | UNIT-5 Lotes por unidade e papéis | UNIT-1, UNIT-2, UNIT-4 | verified | 2026-11-19, exit 0 |
-| UNIT-6 Disciplina na tela | UNIT-4, UNIT-5 | pending | |
+| UNIT-6 Disciplina na tela | UNIT-4, UNIT-5 | verified | 2026-11-19, exit 0 (e2e 61 ok) |
 | UNIT-7 Verificação final | UNIT-3, UNIT-6 | pending | |
 
 ## Open assumptions
