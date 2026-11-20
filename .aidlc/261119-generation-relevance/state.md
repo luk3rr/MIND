@@ -1,13 +1,13 @@
 # AI-DLC State — generation-relevance
 
 - Intent: 261119-generation-relevance
-- Status: IN_PROGRESS
+- Status: COMPLETE (com uma pendência humana: medir o NFR-1 com `pnpm eval:generation`)
 - Profile: mvp   Depth: Standard   Tests: Standard
 - Project type: brownfield   Repos: ~/Projects/MIND
 - Switches: collaborators=off reviewers=off plan_approval=off walking_skeleton=on autonomy=autonomous (esqueleto UNIT-1 aprovado antes de seguir; falhas e ações irreversíveis ainda param) iteration=unit-major
 - Verification command: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test --coverage` (approved 2026-11-19; UNIT-6 e UNIT-7 somam `xvfb-run -a pnpm e2e`; pnpm em ~/.local/share/pnpm/bin)
 - Language: chat=pt-BR files=pt-BR
-- Current: phase=construction COMPLETE (UNIT-1 a UNIT-7 verificadas; falta medir NFR-1 com o modelo real)   Updated: 2026-11-19T21:27:15-03:00
+- Current: workflow concluído (Inception e Construction); Operations fora da rota do perfil mvp   Updated: 2026-11-19T21:29:13-03:00
 
 ## Route
 Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] needs redo
