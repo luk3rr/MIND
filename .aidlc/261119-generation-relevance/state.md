@@ -76,5 +76,5 @@ Legend: [x] done · [>] current · [ ] pending · [S] skipped (reason) · [!] ne
 - A25 (2.8): CONTRACT_VERSION continua 2 (mudanças aditivas) — confirmed: no
 
 ## Memory candidates  (proposed, not yet approved — see protocols.md §Memory)
-- C1 (gate 2.2, não aprovada na retrospectiva de 2026-11-19; reavaliar na Construção): "Quando os prompts de geração mudam por decisão, regenerar as entradas de cards, questões e juiz de fixtures/prompts.json por script TS e anotar a divergência em fixtures/README.md" — scope guess: project (emenda da M-11)
-- C3 (retrospectiva da Inception, não aprovada): "Trabalho de IA em segundo plano deriva o estado do job, sem coluna de status" — scope guess: project
+- C1 (gate 2.2): não aprovada na retrospectiva da Inception nem na da Construção; a exceção à M-11 vale só como decisão desta intent (ADR-6).
+- C3 (ADR-2): não aprovada; fica como prática desta intent.
