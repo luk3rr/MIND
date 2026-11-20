@@ -16,7 +16,12 @@ import { basename, dirname, extname, join, relative } from "node:path";
 import { AppError } from "../contracts/errors.js";
 import { chunk, generationRun, item, material } from "../db/workspace-schema.js";
 import { JobCancelled } from "../jobs/queue.js";
+import { analysisOf } from "../analysis/analyzer.js";
+import type { AnalysisInfo } from "../analysis/analyzer.js";
+import { resolveSubject } from "../analysis/subject.js";
+import type { Subject } from "../analysis/subject.js";
 import { getJob } from "../jobs/store.js";
+import type { WorkspaceDb } from "../jobs/store.js";
 import type { JobContext, JobQueue } from "../jobs/queue.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
 import { chunkSegments } from "./chunker.js";
@@ -46,6 +51,10 @@ export interface MaterialInfo {
   errorDetail: string | null;
   createdAt: string;
   sourceUrl: string | null;
+  /** The subject the prompts name: informed, else inferred by the analysis, else the title. */
+  subject: Subject;
+  /** Whether the chunks have been analyzed (roles, units, subject). */
+  analysis: AnalysisInfo;
 }
 
 export interface MaterialView extends MaterialInfo {
@@ -109,7 +118,7 @@ export const extractInProcess: ExtractFn = async (kind, path, hooks) => {
   throw new AppError("UNSUPPORTED_FILE", "Formato não suportado.");
 };
 
-function toInfo(row: typeof material.$inferSelect): MaterialInfo {
+function toInfo(db: WorkspaceDb, row: typeof material.$inferSelect): MaterialInfo {
   return {
     id: row.id,
     title: row.title,
@@ -124,6 +133,12 @@ function toInfo(row: typeof material.$inferSelect): MaterialInfo {
     errorDetail: row.errorDetail,
     createdAt: row.createdAt,
     sourceUrl: row.sourceUrl,
+    subject: resolveSubject({
+      title: row.title,
+      subjectUser: row.subjectUser,
+      subjectInferred: row.subjectInferred,
+    }),
+    analysis: analysisOf(db, row),
   };
 }
 
@@ -134,6 +149,8 @@ export interface MaterialServiceOptions {
   tessdataDir?: string;
   /** How pages are downloaded; tests replace it. */
   fetch?: FetchLike;
+  /** Called once the chunks of a material are stored (its analysis starts from here). */
+  onIndexed?: (materialId: number) => void;
 }
 
 /** Imports, indexes and lists the materials of one workspace. */
@@ -266,6 +283,7 @@ export class MaterialService {
       });
       context.checkCancelled();
       this.storeChunks(materialId, result);
+      this.notifyIndexed(materialId);
       log.info("import indexed", {
         material: materialId,
         pages: result.pageCount,
@@ -293,6 +311,18 @@ export class MaterialService {
       const detail = error instanceof Error ? error.message : String(error);
       this.setStatus(materialId, "failed", "EXTRACTION_FAILED", detail);
       throw new AppError("EXTRACTION_FAILED", "Falha inesperada ao ler o arquivo.");
+    }
+  }
+
+  /** Tells whoever wants to know that a material is indexed; its failure never fails the import. */
+  private notifyIndexed(materialId: number): void {
+    try {
+      this.options.onIndexed?.(materialId);
+    } catch (error) {
+      log.warn("indexed hook failed", {
+        material: materialId,
+        error: error instanceof Error ? error.name : "unknown",
+      });
     }
   }
 
@@ -355,13 +385,18 @@ export class MaterialService {
   }
 
   list(): MaterialInfo[] {
-    return this.db.select().from(material).orderBy(desc(material.id)).all().map(toInfo);
+    return this.db
+      .select()
+      .from(material)
+      .orderBy(desc(material.id))
+      .all()
+      .map((row) => toInfo(this.db, row));
   }
 
   get(id: number): MaterialInfo {
     const row = this.db.select().from(material).where(eq(material.id, id)).get();
     if (!row) throw new AppError("MATERIAL_NOT_FOUND", `Não existe material com id ${id}.`);
-    return toInfo(row);
+    return toInfo(this.db, row);
   }
 
   chunks(

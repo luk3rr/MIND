@@ -423,6 +423,38 @@ describe("exportWorkspace and importWorkspace (FR-22)", () => {
     ]);
   });
 
+  it("takes the analysis of the chunks and the subjects of a material along (NFR-4)", async () => {
+    const registry = newRegistry();
+    const source = populated(registry);
+    const { sqlite } = registry.open(source).connection;
+    const materialId = (sqlite.prepare("SELECT id FROM material LIMIT 1").get() as { id: number })
+      .id;
+    sqlite
+      .prepare(
+        "UPDATE material SET subject_user = 'Gramática', subject_inferred = 'Língua Portuguesa', analyzed_at = '2026-11-19T10:00:00.000Z' WHERE id = ?",
+      )
+      .run(materialId);
+    sqlite
+      .prepare("UPDATE chunk SET role = 'concept', starts_unit = 1, unit = 1 WHERE material_id = ?")
+      .run(materialId);
+
+    const archive = await exportWorkspace(registry, source, join(tempDir(), "analysis.zip"));
+    const copy = await importWorkspace(registry, archive);
+    const restored = registry.open(copy.id).connection.sqlite;
+
+    expect(
+      restored.prepare("SELECT subject_user, subject_inferred, analyzed_at FROM material").all(),
+    ).toEqual([
+      {
+        subject_user: "Gramática",
+        subject_inferred: "Língua Portuguesa",
+        analyzed_at: "2026-11-19T10:00:00.000Z",
+      },
+    ]);
+    const roles = restored.prepare("SELECT DISTINCT role, starts_unit FROM chunk").all();
+    expect(roles).toEqual([{ role: "concept", starts_unit: 1 }]);
+  });
+
   it("imports a backup made before the study sessions existed and adds the table (FR-11)", async () => {
     const registry = newRegistry();
     const dir = tempDir();

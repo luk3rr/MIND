@@ -243,6 +243,18 @@ export function scriptedCardProvider(usage?: Usage, latencyMs = 0): FakeProvider
     };
   });
   provider.script("RelevanceBatch", allInScope);
+  // The analysis of a material: every excerpt is content, each one a unit, and the subject is unknown.
+  provider.script("ClassifyBatch", (messages: readonly { content: string }[]) => {
+    const total = (messages.at(-1)?.content.match(/\[excerpt \d+\]/g) ?? []).length;
+    return {
+      subject: null,
+      chunks: Array.from({ length: total }, (_, index) => ({
+        index,
+        role: "concept",
+        starts_unit: true,
+      })),
+    };
+  });
   provider.script("JudgeBatch", (messages: readonly { content: string }[]) => {
     const total = (messages.at(-1)?.content.match(/\[question \d+\]/g) ?? []).length;
     return {

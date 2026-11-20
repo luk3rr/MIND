@@ -132,6 +132,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       const service = core.materials(workspaceId);
       return service.view(service.rename(id, title));
     },
+    "material:analyze": ({ workspaceId, id }) => core.analysis(workspaceId).start(id),
     "material:delete": ({ workspaceId, id }) => {
       core.materials(workspaceId).delete(id);
       return {};

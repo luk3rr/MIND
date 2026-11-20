@@ -77,6 +77,9 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     "material:rename": () => {
       throw new Error("unused");
     },
+    "material:analyze": () => {
+      throw new Error("unused");
+    },
     "material:delete": () => ({}),
     "material:chunks": () => {
       throw new Error("unused");

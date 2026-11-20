@@ -17,6 +17,7 @@ export const CHANNEL_NAMES = [
   "material:import",
   "material:importUrl",
   "material:rename",
+  "material:analyze",
   "material:delete",
   "material:chunks",
   "material:search",

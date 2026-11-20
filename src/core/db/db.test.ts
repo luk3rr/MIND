@@ -75,6 +75,7 @@ describe("migrations", () => {
       "0004_study_practices.sql",
       "0005_item_runs_by_material.sql",
       "0006_run_out_of_scope.sql",
+      "0007_material_analysis.sql",
     ]);
   });
 
@@ -146,6 +147,49 @@ describe("migrations", () => {
         with_analysis: 0,
       },
     ]);
+    connection.close();
+  });
+
+  it("adds the analysis columns to existing materials and chunks without touching them (NFR-4)", () => {
+    const connection = openDatabase(join(tempDir(), "workspace.db"), {});
+    const { sqlite } = connection;
+    applyMigrations(sqlite, workspaceMigrations.slice(0, 7));
+    sqlite
+      .prepare(
+        "INSERT INTO material (title, kind, filename, stored_path, status, created_at) VALUES ('Apostila','pdf','a.pdf','files/a','indexed','x')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO chunk (material_id, ordinal, page, text) VALUES (1, 0, 1, 'A paroxítona leva acento.')",
+      )
+      .run();
+
+    applyMigrations(sqlite, workspaceMigrations);
+
+    expect(
+      sqlite
+        .prepare(
+          "SELECT title, status, subject_user, subject_inferred, analysis_job_id, analyzed_at FROM material",
+        )
+        .all(),
+    ).toEqual([
+      {
+        title: "Apostila",
+        status: "indexed",
+        subject_user: null,
+        subject_inferred: null,
+        analysis_job_id: null,
+        analyzed_at: null,
+      },
+    ]);
+    expect(sqlite.prepare("SELECT text, role, starts_unit, unit FROM chunk").all()).toEqual([
+      { text: "A paroxítona leva acento.", role: null, starts_unit: null, unit: null },
+    ]);
+    // The search index still finds the chunk.
+    expect(
+      sqlite.prepare("SELECT rowid FROM chunk_fts WHERE chunk_fts MATCH 'paroxítona'").all(),
+    ).toHaveLength(1);
     connection.close();
   });
 

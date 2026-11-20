@@ -36,6 +36,14 @@ export const material = sqliteTable("material", {
   errorCode: text("error_code"),
   errorDetail: text("error_detail"),
   sourceUrl: text("source_url"),
+  /** The subject the person named for the material; wins over the inferred one. */
+  subjectUser: text("subject_user"),
+  /** The subject the analysis of the material found. */
+  subjectInferred: text("subject_inferred"),
+  /** The job that analyzes (or last analyzed) the chunks of the material. */
+  analysisJobId: integer("analysis_job_id"),
+  /** When the analysis of every chunk finished; null while it has not. */
+  analyzedAt: text("analyzed_at"),
   createdAt: text("created_at").notNull().$defaultFn(now),
 });
 
@@ -50,6 +58,12 @@ export const chunk = sqliteTable(
     page: integer("page"),
     section: text("section"),
     text: text("text").notNull(),
+    /** What the chunk is (concept, example, exam question...); null before the analysis. */
+    role: text("role"),
+    /** 1 when the chunk opens a new unit (a concept, a whole exam question). */
+    startsUnit: integer("starts_unit"),
+    /** The unit of the chunk in its material, from 1; chunks of one unit are never split. */
+    unit: integer("unit"),
   },
   (table) => [index("ix_chunk_material_page").on(table.materialId, table.page, table.ordinal)],
 );

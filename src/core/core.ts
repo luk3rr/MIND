@@ -8,6 +8,7 @@ import { loggedFetch } from "./net-log.js";
 import { join } from "node:path";
 import type { Clock } from "./clock.js";
 import { systemClock } from "./clock.js";
+import { MaterialAnalyzer } from "./analysis/analyzer.js";
 import { MaterialService, extractInProcess } from "./ingestion/service.js";
 import type { ExtractFn } from "./ingestion/types.js";
 import { Bm25Retriever } from "./retrieval/retriever.js";
@@ -112,6 +113,8 @@ export interface Core {
   /** Asks the model to polish the text of an item the person wrote; never stores anything. */
   assist: AssistService;
   materials(workspaceId: number): MaterialService;
+  /** Reads the chunks of a material and says what each one is and what the material is about. */
+  analysis(workspaceId: number): MaterialAnalyzer;
   generation(workspaceId: number): GenerationService;
   review(workspaceId: number): ReviewService;
   /** Spreadsheet templates and imports of items. */
@@ -215,6 +218,8 @@ export function createCore(options: CoreOptions): Core {
     ? new WorkerReader(options.createReaderWorker)
     : new InProcessReader();
   const pageCache = new PageCache();
+  const analyzer = (workspaceId: number): MaterialAnalyzer =>
+    new MaterialAnalyzer(registry.open(workspaceId), queue, llm);
   return {
     registry,
     updates,
@@ -267,8 +272,11 @@ export function createCore(options: CoreOptions): Core {
         clock,
         ...(options.tzOffset ? { offset: options.tzOffset } : {}),
       }),
+    analysis: analyzer,
     materials: (workspaceId) =>
       new MaterialService(registry.open(workspaceId), queue, {
+        // A freshly indexed material is analyzed in the background, when a model can be used.
+        onIndexed: (materialId) => analyzer(workspaceId).start(materialId, { automatic: true }),
         maxUploadBytes: (options.maxUploadMb ?? 200) * 1024 * 1024,
         extract: options.extract ?? extractInProcess,
         ...(options.tessdataDir ? { tessdataDir: options.tessdataDir } : {}),

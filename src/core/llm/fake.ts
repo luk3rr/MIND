@@ -20,7 +20,7 @@ type Handler = (messages: readonly Message[], model: string) => unknown;
 /** Answers with scripted responses chosen by the schema name; never touches the network. */
 export class FakeProvider implements Provider {
   readonly name: string;
-  readonly requiresConsent = false;
+  readonly requiresConsent: boolean = false;
   readonly calls: Call[] = [];
   private readonly handlers = new Map<string, Handler>();
 

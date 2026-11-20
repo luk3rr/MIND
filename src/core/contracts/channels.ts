@@ -54,6 +54,26 @@ const costLine = z.object({
   costUsd: z.number(),
 });
 
+/** Whether the chunks of a material have been analyzed (roles, units, subject). */
+const analysisInfo = z.object({
+  /** none: never analyzed; analyzing: job active; done; failed; paused: monthly limit reached. */
+  state: z.enum(["none", "analyzing", "done", "failed", "paused"]),
+  /** 0 to 1 while analyzing, otherwise null. */
+  progress: z.number().nullable(),
+  errorCode: z.string().nullable(),
+  errorDetail: z.string().nullable(),
+  analyzedAt: z.string().nullable(),
+});
+
+/** The subject the prompts name for a material. */
+const subjectInfo = z.object({
+  /** The subject in force: informed, else inferred, else the title. */
+  value: z.string(),
+  source: z.enum(["informed", "inferred", "title"]),
+  informed: z.string().nullable(),
+  inferred: z.string().nullable(),
+});
+
 const materialInfo = z.object({
   id: z.number().int(),
   title: z.string(),
@@ -68,6 +88,8 @@ const materialInfo = z.object({
   errorDetail: z.string().nullable(),
   createdAt: z.string(),
   sourceUrl: z.string().nullable(),
+  subject: subjectInfo,
+  analysis: analysisInfo,
   /** Progress (0 to 1) of an active import, otherwise null. */
   progress: z.number().nullable(),
   chunkCount: z.number().int(),
@@ -571,6 +593,10 @@ export const channels = {
       .object({ workspaceId, id: z.number().int().positive(), title: z.string().max(1000) })
       .strict(),
     output: materialInfo,
+  },
+  "material:analyze": {
+    input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),
+    output: z.object({ started: z.boolean(), analysis: analysisInfo }),
   },
   "material:delete": {
     input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),

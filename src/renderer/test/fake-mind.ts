@@ -18,13 +18,36 @@ interface Workspace {
 }
 
 export type ProviderState = FakeState["provider"];
-export type FakeMaterial = Omit<
-  OutputOf<"material:list">["materials"][number],
-  "pretestEligible"
-> & {
+type MaterialOut = OutputOf<"material:list">["materials"][number];
+export type FakeMaterial = Omit<MaterialOut, "pretestEligible" | "subject" | "analysis"> & {
   /** Questions a pre-test of the material could use; 0 unless a test says otherwise. */
   pretestEligible?: number;
+  /** The subject in force; the title unless a test says otherwise. */
+  subject?: MaterialOut["subject"];
+  /** The analysis of the chunks; never analyzed unless a test says otherwise. */
+  analysis?: MaterialOut["analysis"];
 };
+
+/** A material as the window receives it, with the defaults of what a test left out. */
+function materialOut(entry: FakeMaterial): MaterialOut {
+  return {
+    ...entry,
+    pretestEligible: entry.pretestEligible ?? 0,
+    subject: entry.subject ?? {
+      value: entry.title,
+      source: "title",
+      informed: null,
+      inferred: null,
+    },
+    analysis: entry.analysis ?? {
+      state: "none",
+      progress: null,
+      errorCode: null,
+      errorDetail: null,
+      analyzedAt: null,
+    },
+  };
+}
 type FakeChunk = OutputOf<"material:chunks">["chunks"][number];
 /** A run as a test seeds it; the fake adds the number of pending drafts from the items. */
 export type FakeRun = Omit<OutputOf<"generation:list">["runs"][number], "pending">;
@@ -173,7 +196,7 @@ export interface FakeState {
   /** Name of the workspace the next import creates; null means the user cancels the dialog. */
   importName: string | null;
   backupFailure: string | null;
-  importResult: OutputOf<"material:import">;
+  importResult: { materials: FakeMaterial[]; errors: OutputOf<"material:import">["errors"] };
   searchHits: OutputOf<"material:search">["hits"];
   reader: {
     info: OutputOf<"reader:info">;
@@ -465,15 +488,13 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         return ok({});
       }
       case "material:list":
-        return ok({
-          materials: state.materials.map((m) => ({
-            ...m,
-            pretestEligible: m.pretestEligible ?? 0,
-          })),
-        });
+        return ok({ materials: state.materials.map(materialOut) });
       case "material:import":
         state.materials = [...state.importResult.materials, ...state.materials];
-        return ok(state.importResult);
+        return ok({
+          materials: state.importResult.materials.map(materialOut),
+          errors: state.importResult.errors,
+        });
       case "material:importUrl": {
         const { url } = payload as InputOf<"material:importUrl">;
         if (!/^https?:\/\//.test(url)) {
@@ -486,7 +507,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         const created = state.importResult.materials[0];
         if (!created) return failure("INTERNAL_ERROR", "unscripted");
         state.materials = [created, ...state.materials];
-        return ok(created);
+        return ok(materialOut(created));
       }
       case "material:rename": {
         const { id, title } = payload as InputOf<"material:rename">;
@@ -496,7 +517,23 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
         if (!clean)
           return failure("VALIDATION_ERROR", "O nome do material não pode ser vazio.", "title");
         found.title = clean;
-        return ok(found);
+        return ok(materialOut(found));
+      }
+      case "material:analyze": {
+        const { id } = payload as InputOf<"material:analyze">;
+        const found = state.materials.find((entry) => entry.id === id);
+        if (!found) return failure("MATERIAL_NOT_FOUND", "Material não encontrado.");
+        const running = found.analysis?.state === "analyzing";
+        if (!running) {
+          found.analysis = {
+            state: "analyzing",
+            progress: 0,
+            errorCode: null,
+            errorDetail: null,
+            analyzedAt: null,
+          };
+        }
+        return ok({ started: !running, analysis: found.analysis as MaterialOut["analysis"] });
       }
       case "material:delete": {
         const { id } = payload as InputOf<"material:delete">;

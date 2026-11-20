@@ -50,6 +50,13 @@
       "when": 1795131466713,
       "tag": "0006_run_out_of_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1795132238791,
+      "tag": "0007_material_analysis",
+      "breakpoints": true
     }
   ]
 }
