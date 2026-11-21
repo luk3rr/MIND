@@ -1,0 +1,150 @@
+<!doctype html>
+<!--
+  Filename: refined.html
+  Created on: November 21, 2026
+  Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+-->
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockups refinados: imagens em cards e questões</title>
+<style>
+/* Tokens copied from src/renderer/src/styles/tokens.css (dark default, light override). */
+:root{--bg:#1e1f29;--panel:#282a36;--panel-2:#303243;--line:#44475a;--fg:#f8f8f2;--muted:#a4a9c3;--accent:#bd93f9;--on-accent:#282a36;--success:#50fa7b;--side:#44337a;--side-ink:#f8f8f2;--side-active:rgba(255,255,255,.18);--danger:#ff6e6e;--warn:#ffb86c;--info:#8be9fd;--radius:12px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--shadow:0 1px 0 rgba(255,255,255,.04),0 8px 24px rgba(0,0,0,.25);color-scheme:dark}
+:root[data-theme="light"]{--bg:#f3f5f7;--panel:#fff;--panel-2:#eef1f4;--line:#d8dde3;--fg:#1f2328;--muted:#5b6472;--accent:#6f42c1;--on-accent:#fff;--success:#177a41;--side:#5b3fa8;--side-ink:#fff;--side-active:rgba(255,255,255,.22);--danger:#c62828;--warn:#8f4411;--info:#0b6e99;--shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08);color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px Inter,"Segoe UI",system-ui,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.n{color:var(--muted);margin:0 0 12px;max-width:980px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.tabs button{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit}
+.tabs button.on{border-color:var(--accent);outline:1px solid var(--accent)}
+.tabs .sep{width:1px;height:22px;background:var(--line)}
+.app{display:grid;grid-template-columns:200px 1fr;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;max-width:1240px;min-height:620px;background:var(--bg)}
+.sidebar{background:var(--side);color:var(--side-ink);padding:var(--space-4) var(--space-3);display:flex;flex-direction:column;gap:var(--space-1)}
+.sidebar b{font-size:16px;margin-bottom:var(--space-3)}
+.sidebar span{padding:8px 12px;border-radius:8px}.sidebar span.on{background:var(--side-active);font-weight:700}
+.sidebar .sp{flex:1}
+.content{padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4)}
+.content h2{margin:0;font-size:22px}
+.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.row{display:flex;gap:var(--space-4);flex-wrap:wrap;align-items:center}
+.actions{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:var(--on-accent);border:0;border-radius:999px;padding:9px 18px;font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn.sm{padding:5px 12px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:default}
+.pill{padding:2px 10px;border-radius:999px;font-size:12px;background:var(--panel-2);border:1px solid var(--line)}
+.pill.ok{color:var(--success)}.pill.bad{color:var(--danger)}.pill.warn{color:var(--warn)}.pill.info{color:var(--info)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--muted);font-size:12px;text-transform:uppercase}
+td.num,th.num{text-align:right}
+.stack{display:flex;flex-direction:column;gap:var(--space-3)}
+.banner{border:1px solid var(--warn);color:var(--warn);border-radius:8px;padding:8px 12px}
+.banner.info{border-color:var(--info);color:var(--info)}
+.banner.ok{border-color:var(--success);color:var(--success)}
+.banner.bad{border-color:var(--danger);color:var(--danger)}
+.option{display:block;width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:transparent;color:var(--fg);font:inherit;text-align:left}
+.option.chosen{border-color:var(--info)}
+.option.right{border-color:var(--success);background:rgba(80,250,123,.12)}
+.option.wrong{border-color:var(--danger);background:rgba(255,110,110,.12)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}.seg span{padding:5px 14px;border-radius:999px;border:1px solid var(--line);color:var(--muted);cursor:pointer}.seg span.on{border-color:var(--accent);color:var(--fg);font-weight:700}
+.subtabs{display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:var(--space-2)}
+.subtabs span{padding:4px 12px;border-radius:8px;color:var(--muted)}.subtabs span.on{background:var(--panel-2);color:var(--fg);font-weight:700}
+.source{border-left:3px solid var(--line);margin:0;padding:4px 12px;color:var(--muted)}
+.bar{height:10px;border-radius:999px;background:var(--panel-2);overflow:hidden;min-width:120px}.bar i{display:block;height:100%;background:var(--accent)}
+.bar.ok i{background:var(--success)}.bar.warn i{background:var(--warn)}
+.field{display:flex;flex-direction:column;gap:var(--space-1);max-width:520px}
+.field label,.lbl{font-weight:600}
+.radio{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.radio.on{border-color:var(--accent)}
+.radio i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);margin-top:3px;flex:none}.radio.on i{border-color:var(--accent);background:var(--accent)}
+.check{display:flex;gap:10px;align-items:flex-start}.check i{width:16px;height:16px;border-radius:4px;border:2px solid var(--line);margin-top:2px;flex:none}.check.on i{border-color:var(--accent);background:var(--accent)}
+.sk{height:14px;border-radius:6px;background:var(--panel-2)}
+.note{color:var(--muted);font-size:12px;border-top:1px dashed var(--line);padding-top:var(--space-2);margin-top:var(--space-2)}
+.screen{display:none}.screen.on{display:block}
+.hint{font-size:12px;color:var(--muted)}
+.tag{font-size:11px;padding:1px 8px;border-radius:999px;border:1px dashed var(--accent);color:var(--accent)}
+
+.menu{position:absolute;right:8px;top:36px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;min-width:210px;z-index:2}
+.menu span{padding:7px 12px;border-radius:6px}.menu span.on{background:var(--panel-2);font-weight:700}
+.rel{position:relative}
+.dialog{max-width:520px;margin:24px auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:var(--space-3)}
+.dialog h3{margin:0;font-size:18px}
+input.f,textarea.f,select.f{background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;width:100%}
+.scrim{background:rgba(0,0,0,.35);border-radius:var(--radius);padding:8px}
+.hide{display:none}
+.note{border-left:3px solid var(--accent);padding:6px 12px;color:var(--muted);max-width:980px;margin:0 0 12px}
+</style>
+</head>
+<body>
+<style>
+.fig{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);overflow:hidden}
+.fig svg{display:block}
+.thumb{width:96px;height:72px;position:relative;cursor:pointer}
+.thumb b{position:absolute;top:2px;right:2px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:14px;color:var(--muted);text-align:center}
+.drop.hover{border-color:var(--accent);color:var(--fg);background:var(--panel-2)}
+.big{width:100%;max-width:520px;height:220px}
+.sel{position:absolute;border:2px solid var(--accent);background:rgba(189,147,249,.18)}
+.page{position:relative;background:#fff;color:#222;border-radius:6px;padding:18px;width:360px;height:420px;overflow:hidden}
+.page p{margin:0 0 8px;font-size:12px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;border-radius:var(--radius)}
+.crop{position:relative;width:360px;height:240px;background:var(--panel-2);border-radius:8px;overflow:hidden}
+.crop .win{position:absolute;left:50px;top:30px;width:240px;height:150px;border:2px solid var(--accent);box-shadow:0 0 0 999px rgba(0,0,0,.45)}
+</style>
+<h1>Imagens em cards e questões</h1>
+<p class="n">Mockups refinados (2.5) para a intent 261121-images-in-cards. Valores fictícios; as figuras são marcadores. Alterne tela, estado e tema pelos botões. Telas que mudam: <b>Editor de item</b> (anexar), <b>Editor de imagem</b>, <b>Leitor</b> (recorte), <b>Estudo e Prática</b>, <b>Revisão de questão importada</b>, <b>Importar planilha</b> e <b>Configurações</b>.</p>
+<div class="tabs" id="screens"></div>
+<div class="tabs" id="states"></div>
+<div class="note" id="note"></div>
+<div id="stage"></div>
+<script>
+const frame=(active,body)=>`<div class="app" style="position:relative"><nav class="sidebar"><b>MIND</b>${['Hoje','Biblioteca','Gerar','Revisar','Estudar','Praticar','Estatísticas','Configurações'].map(n=>`<span class="${n===active?'on':''}">${n}</span>`).join('')}<span class="sp"></span></nav><main class="content">${body}</main></div>`;
+const FIG=(w,h,t)=>`<span class="fig" style="width:${w}px;height:${h}px"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="none"/><path d="M${w*.12} ${h*.75} L${w*.4} ${h*.35} L${w*.6} ${h*.6} L${w*.75} ${h*.45} L${w*.9} ${h*.75}Z" fill="currentColor" opacity=".35"/><circle cx="${w*.75}" cy="${h*.25}" r="${Math.min(w,h)*.08}" fill="currentColor" opacity=".5"/></svg></span>`;
+const thumb=(t)=>`<span class="fig thumb">${FIG(96,72)}<b>×</b></span>`;
+const field=(label,inner)=>`<div class="field" style="max-width:none"><label>${label}</label>${inner}</div>`;
+const slot=(s,id)=>{
+  const attach=`<div class="actions"><button class="btn sm ghost">＋ Imagem</button><span class="hint">ou cole (Ctrl+V) ou arraste um arquivo aqui</span></div>`;
+  if(s==='empty')return attach;
+  if(s==='hover')return `<div class="drop hover">Solte a imagem aqui</div>`;
+  if(s==='one')return `<div class="stack"><div class="actions">${thumb()}<div class="stack" style="gap:4px"><input class="f" style="width:280px" placeholder="Texto alternativo ou legenda (opcional)" value="Gráfico de oferta e demanda"><span class="hint">PNG · 1.2 MB · 1600×900</span><div class="actions"><button class="btn sm ghost">Editar</button><button class="btn sm ghost">Remover</button></div></div></div>${attach}</div>`;
+  if(s==='many')return `<div class="stack">${[1,2,3].map(i=>`<div class="actions" style="align-items:flex-start"><b class="muted">${i}</b><span class="fig thumb">${FIG(96,72)}<b>×</b></span><div class="stack" style="gap:4px"><input class="f" style="width:280px" placeholder="Texto alternativo ou legenda (opcional)" value="${i===1?'Figura 1':''}"><span class="hint">${i===3?'GIF animado · 2.4 MB · cortar/girar usa só o 1º quadro':'PNG · 1.2 MB · 1600×900'}</span><div class="actions"><button class="btn sm ghost" ${i===1?'disabled':''}>↑</button><button class="btn sm ghost" ${i===3?'disabled':''}>↓</button><button class="btn sm ghost">Editar</button><button class="btn sm ghost">Substituir</button><button class="btn sm ghost">Remover</button></div></div></div>`).join('')}${attach}<div class="hint">Dica: evite legenda ou texto dentro da imagem que entregue a resposta.</div></div>`;
+  if(s==='bad')return `<div class="stack">${attach}<div class="banner bad">“figura.svg” não é aceito. Use PNG, JPEG, WebP ou GIF.</div></div>`;
+  if(s==='huge')return `<div class="stack">${attach}<div class="banner warn">Arquivo de 86 MB. Vai ocupar espaço no workspace e no backup. <a>Anexar mesmo assim</a> · <a>Cancelar</a></div></div>`;
+  if(s==='corrupt')return `<div class="stack">${attach}<div class="banner bad">Não foi possível ler esta imagem (arquivo corrompido ou grande demais em pixels).</div></div>`;
+};
+const cardEditor=(s)=>frame('Biblioteca',`<h2>Novo card</h2><div class="card stack">${field('Frente',`<textarea class="f" rows="3">Qual a região indicada pela seta na figura?</textarea>${slot(s)}`)}${field('Verso',`<textarea class="f" rows="2">Ponto de equilíbrio (preço p*, quantidade q*)</textarea><div class="actions"><button class="btn sm ghost">＋ Imagem</button></div>`)}<div class="actions"><button class="btn">Salvar</button><button class="btn ghost">Cancelar</button></div><div class="note">Dica: evite que a imagem da frente traga a resposta escrita (legenda dentro da figura).</div></div>`);
+const qEditor=(s)=>frame('Biblioteca',`<h2>Nova questão</h2><div class="card stack">${field('Enunciado',`<textarea class="f" rows="3">Observe o gráfico e assinale a alternativa correta.</textarea>${slot(s==='opt'?'one':s)}`)}${field('Alternativas',['A','B','C'].map((k,i)=>`<div class="row" style="align-items:flex-start"><b>${k})</b><div class="stack" style="flex:1;gap:6px"><input class="f" value="${i===1?'':'Texto da alternativa '+k}">${i===1?`<div class="actions">${thumb()}<input class="f" style="width:240px" placeholder="Texto alternativo (opcional)"></div>`:'<div class="actions"><button class="btn sm ghost">＋ Imagem</button></div>'}<input class="f" placeholder="Por que está certa ou errada"></div></div>`).join(''))}${field('Explicação',`<textarea class="f" rows="2"></textarea><div class="actions"><button class="btn sm ghost">＋ Imagem</button></div>`)}<div class="actions"><button class="btn">Salvar</button><button class="btn ghost">Cancelar</button></div><div class="note">Uma alternativa pode ter só imagem; basta uma imagem ou um texto para a alternativa valer.</div></div>`);
+const imageEditor=()=>frame('Biblioteca',`<h2>Novo card</h2><div class="overlay"><div class="dialog"><h3>Ajustar imagem</h3><div class="crop">${FIG(360,240)}<div class="win"></div></div><div class="actions"><button class="btn sm ghost">↺ Girar à esquerda</button><button class="btn sm ghost">↻ Girar à direita</button><button class="btn sm ghost">Restaurar</button></div><span class="hint">O arquivo original é guardado; o recorte é aplicado só na cópia usada no item.</span><div class="actions"><button class="btn">Usar imagem</button><button class="btn ghost">Cancelar</button></div></div></div>`);
+const reader=(s)=>frame('Biblioteca',`<h2>Lista de exercícios comentada <span class="muted" style="font-size:14px">· pág. 12 de 36</span></h2><div class="row" style="align-items:flex-start"><div class="page"><p><b>Questão 7.</b> Observe o gráfico a seguir.</p><div style="margin:8px 0">${FIG(300,150)}</div><p>Qual das afirmações sobre o ponto E é correta?</p><p>A) …<br>B) …<br>C) …</p>${s!=='idle'?'<div class="sel" style="left:28px;top:62px;width:310px;height:162px"></div>':''}</div><div class="stack" style="max-width:300px"><div class="actions"><button class="btn sm ghost">Selecionar texto</button><button class="btn sm ${s==='idle'?'ghost':''}">Recortar figura</button></div>${s==='idle'?'<span class="hint">Escolha “Recortar figura” e arraste sobre a página.</span>':`<div class="card stack" style="padding:10px 12px"><b>Recorte da página 12</b><div>${FIG(150,75)}</div><input class="f" placeholder="Texto alternativo (opcional)"><div class="actions"><button class="btn sm">Novo card…</button><button class="btn sm">Nova questão…</button><button class="btn sm ghost">Anexar a um item…</button></div><span class="hint">Resolução alta: renderizada a 200 dpi.</span></div>`}</div></div>`);
+const study=(s)=>frame('Estudar',`<h2>Estudar</h2><div class="card stack"><div class="row"><span class="pill">Card</span></div><p style="margin:0"><b>Qual a região indicada pela seta na figura?</b></p><div class="actions" style="${s==='broken'?'':''}">${s==='broken'?`<span class="fig big" style="height:120px">Imagem indisponível (arquivo não encontrado) · <a style="margin-left:6px">Substituir</a></span>`:`<span class="fig big" style="cursor:zoom-in">${FIG(520,220)}</span>`}</div>${s==='alt'?'<span class="hint">Descrição: gráfico de oferta e demanda com seta no cruzamento das curvas</span>':''}<button class="btn" style="align-self:flex-start">Mostrar resposta</button>${s==='zoom'?`<div class="overlay"><div class="stack" style="align-items:center"><span class="fig" style="width:640px;height:360px">${FIG(640,360)}</span><span class="muted" style="color:#ddd">Gráfico de oferta e demanda · Esc para fechar</span></div></div>`:''}</div>`);
+const practice=(s)=>frame('Praticar',`<h2>Praticar</h2><div class="card stack"><div class="row"><span class="pill">Múltipla escolha</span><span class="pill info">Importada do documento</span></div><p style="margin:0"><b>Questão 7.</b> Observe o gráfico e assinale a alternativa correta.</p><span class="fig" style="width:420px;height:200px">${FIG(420,200)}</span><button class="option"><b>A)</b> O ponto E é o equilíbrio</button><button class="option ${s==='opt'?'':'chosen'}"><div class="row"><b>B)</b> ${FIG(160,90)}</div></button><button class="option"><b>C)</b> A oferta é inelástica</button><div class="actions"><button class="btn">Responder</button></div>${s==='feedback'?'<div class="source"><b>Explicação</b><br>O ponto E marca o cruzamento das curvas. <span class="fig" style="margin-top:6px">'+FIG(200,100)+'</span></div>':''}</div>`);
+const reviewImp=(s)=>frame('Revisar',`<h2>Revisar</h2><div class="card stack"><div class="row"><span class="pill info">Importada do documento</span><span class="pill ok">Completa</span>${s==='none'?'<span class="pill warn">Figura não encontrada</span>':'<span class="pill info">Figura sugerida</span>'}<span class="muted">Pág. 12</span></div><p style="margin:0"><b>Questão 7.</b> Observe o gráfico a seguir e assinale a alternativa correta.</p>${s==='none'?'<div class="banner warn">O enunciado cita uma figura, mas não achei imagem nesta página. <a>Recortar do PDF…</a></div>':`<div class="stack" style="gap:6px"><span class="fig big" style="height:180px">${FIG(520,180)}</span><div class="actions"><button class="btn sm ghost">Trocar figura</button><button class="btn sm ghost">Recortar do PDF…</button><button class="btn sm ghost">Remover</button><button class="btn sm ghost">Ver no PDF</button></div><span class="hint">Sugerida da página 12, faixa da questão 7. Confira se é a figura certa.</span></div>`}<div class="actions"><button class="btn">Aprovar</button><button class="btn ghost">Editar</button><button class="btn ghost">Descartar</button></div></div>`);
+const sheet=(s)=>frame('Biblioteca',`<h2>Importar cards e questões</h2><div class="scrim"><div class="dialog"><h3>Importar de planilha</h3><div class="radio on"><i></i><div><b>Arquivo .zip com planilha e imagens</b><div class="hint">Na planilha, uma coluna “imagem_frente” (ou “imagem_verso”, “imagem_enunciado”, “imagem_a”…) traz o nome do arquivo no zip.</div></div></div><div class="radio"><i></i><div><b>Só a planilha (.csv ou .xlsx)</b></div></div>${s==='ok'?'<div class="card stack" style="padding:10px 12px"><span class="pill ok">24 linhas</span><span class="muted">18 imagens encontradas no zip · 2 linhas citam imagem que falta no zip</span></div>':'<div class="banner bad">Linha 5: a imagem “fig-03.png” não está no zip. A linha será importada sem imagem, ou você pode corrigir o arquivo.</div>'}<div class="actions"><button class="btn ghost">Cancelar</button><button class="btn">Importar</button></div></div></div>`);
+const chat=(s)=>frame('Gerar',`<h2>Conversa</h2><div class="card stack"><div class="banner info">As imagens dos itens não são enviadas ao modelo; só o texto.</div><div class="source"><b>Questão 7</b> (com 1 imagem) · enunciado: “Observe o gráfico e assinale…”</div><div class="row"><span class="fig" style="width:160px;height:90px">${FIG(160,90)}</span><span class="muted">Imagem exibida aqui, mas omitida da conversa.</span></div></div>`);
+const settings=(s)=>frame('Configurações',`<h2>Configurações</h2><div class="card stack"><h3 style="margin:0">Armazenamento</h3><div class="row"><span>Imagens dos itens</span><b>312 MB</b><span class="muted">· 148 imagens</span></div><div class="bar"><i style="width:30%"></i></div>${s==='orphans'?'<div class="banner info">9 imagens não são usadas por nenhum item (12 MB). <button class="btn sm ghost">Limpar agora</button></div>':'<span class="hint">Nenhuma imagem sem uso.</span>'}<span class="hint">As imagens ficam na pasta do workspace e entram no backup (.zip).</span></div>`);
+const SCREENS={
+ card:{label:'Editor de card',note:'Cada campo de texto ganha o botão "＋ Imagem", colar e arrastar. Estados: vazio, arrastando, com imagem (texto alternativo, tamanho, remover), formato recusado, arquivo muito grande (aviso, não bloqueio) e arquivo ilegível.',states:{empty:['Vazio',()=>cardEditor('empty')],hover:['Arrastando',()=>cardEditor('hover')],one:['Com imagem',()=>cardEditor('one')],many:['Várias imagens',()=>cardEditor('many')],bad:['Formato recusado',()=>cardEditor('bad')],huge:['Arquivo enorme',()=>cardEditor('huge')],corrupt:['Ilegível',()=>cardEditor('corrupt')]}},
+ question:{label:'Editor de questão',note:'Imagem no enunciado, em cada alternativa (a alternativa vale com só imagem) e na explicação.',states:{one:['Enunciado e alternativa com imagem',()=>qEditor('opt')],empty:['Sem imagens',()=>qEditor('empty')]}},
+ imgedit:{label:'Editor de imagem',note:'Aberto ao colar ou escolher uma imagem: cortar bordas e girar 90°. O original é preservado.',states:{crop:['Cortar e girar',()=>imageEditor()]}},
+ reader:{label:'Leitor (recorte)',note:'Modo "Recortar figura": arrastar sobre a página, nomear e criar item novo ou anexar a um existente.',states:{idle:['Sem seleção',()=>reader('idle')],sel:['Região selecionada',()=>reader('sel')]}},
+ study:{label:'Estudo',note:'A imagem aparece na frente e no verso; clique amplia; arquivo faltando mostra um aviso com ação de substituir; texto alternativo opcional abaixo da imagem.',states:{normal:['Normal',()=>study('normal')],zoom:['Ampliada',()=>study('zoom')],alt:['Com descrição',()=>study('alt')],broken:['Arquivo ausente',()=>study('broken')]}},
+ practice:{label:'Prática',note:'Enunciado com figura, alternativa só com imagem e explicação com figura após responder.',states:{opt:['Respondendo',()=>practice('opt')],feedback:['Com explicação',()=>practice('feedback')]}},
+ review:{label:'Revisão (prova)',note:'Questão importada de prova com a figura sugerida pela região da página; trocar, recortar ou remover. Sem figura achada, aviso e atalho para recortar.',states:{sug:['Figura sugerida',()=>reviewImp('sug')],none:['Figura não encontrada',()=>reviewImp('none')]}},
+ sheet:{label:'Importar planilha',note:'Planilha com imagens em .zip; linha que cita imagem ausente entra sem imagem e é avisada.',states:{ok:['Tudo certo',()=>sheet('ok')],missing:['Imagem faltando',()=>sheet('missing')]}},
+ chat:{label:'Chat',note:'O chat mostra a imagem ao estudante e avisa que ela não vai ao modelo (FR-18).',states:{n:['Com imagem',()=>chat('n')]}},
+ settings:{label:'Configurações',note:'Peso das imagens e limpeza de imagens sem uso.',states:{clean:['Sem sobras',()=>settings('clean')],orphans:['Com sobras',()=>settings('orphans')]}}
+};
+let screen='card',st=null;
+function draw(){const S=SCREENS[screen];const keys=Object.keys(S.states);if(!st||!S.states[st])st=keys[0];
+ document.getElementById('screens').innerHTML=Object.entries(SCREENS).map(([k,v])=>`<button class="${k===screen?'on':''}" data-s="${k}">${v.label}</button>`).join('')+'<span class="sep"></span><button id="theme">Tema claro/escuro</button>';
+ document.getElementById('states').innerHTML=keys.map(k=>`<button class="${k===st?'on':''}" data-st="${k}">${S.states[k][0]}</button>`).join('');
+ document.getElementById('note').textContent=S.note;document.getElementById('stage').innerHTML=S.states[st][1]();}
+document.addEventListener('click',e=>{const t=e.target;if(t.dataset.s){screen=t.dataset.s;st=null;draw();}else if(t.dataset.st){st=t.dataset.st;draw();}else if(t.id==='theme'){const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';}});
+draw();
+</script>
+</body>
+</html>
