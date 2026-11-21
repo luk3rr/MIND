@@ -11,6 +11,8 @@ import type { Clock } from "../clock.js";
 import { chunk, generationRun, item, material, topic } from "../db/workspace-schema.js";
 import { cleanTopic } from "../generation/cards.js";
 import { locateQuote, MIN_QUOTE_CHARS, normalize } from "../verification/source-checker.js";
+import { hashesOf } from "../images/refs.js";
+import { ImageService } from "../images/service.js";
 import { draftProblem, payloadOf } from "./validate.js";
 import type { ItemDraft } from "./validate.js";
 import type { OpenWorkspace } from "../workspaces/registry.js";
@@ -105,6 +107,7 @@ export class ItemAuthoringService {
     const { draft } = input;
     const problem = draftProblem(draft);
     if (problem !== null) throw new AppError("VALIDATION_ERROR", problem.message, [problem]);
+    this.checkImages(draft);
     const payload = payloadOf(draft);
     const source = input.source
       ? this.resolveSource({
@@ -139,6 +142,19 @@ export class ItemAuthoringService {
       result = { itemId: row.id, topicCreated, sourceLinked: source?.chunkId != null };
     })();
     return result as Created;
+  }
+
+  /** Every picture an item points to must be stored; otherwise the field at fault is named. */
+  private checkImages(draft: ItemDraft): void {
+    if (!draft.images) return;
+    const images = new ImageService(this.workspace, this.clock);
+    for (const [field, refs] of Object.entries(draft.images)) {
+      const gone = images.missing(hashesOf({ [field]: refs }));
+      if (gone.length > 0) {
+        const message = "A imagem não foi encontrada. Anexe-a de novo.";
+        throw new AppError("IMAGE_NOT_FOUND", message, [{ field: `images.${field}`, message }]);
+      }
+    }
   }
 
   /**

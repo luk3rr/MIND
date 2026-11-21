@@ -13,6 +13,8 @@ import { materialFile } from "./files.js";
 import type { Box, PageSize, SearchHit, TextLine } from "./pdf-reader.js";
 
 export const MIN_SCALE = 0.25;
+/** The resolution of a rectangle cut from a page. */
+export const REGION_DPI = 200;
 export const MAX_SCALE = 4;
 const PAGE_CACHE_SIZE = 12;
 
@@ -125,6 +127,17 @@ export class ReaderService {
     };
     this.cache.set(key, image);
     return image;
+  }
+
+  /** A rectangle of a page as PNG bytes at 200 dpi, for a picture of an item. */
+  async region(
+    materialId: number,
+    page: number,
+    rect: { x: number; y: number; width: number; height: number },
+  ): Promise<Buffer> {
+    const { path } = this.pdf(materialId);
+    const rendered = await this.backend.call("renderRegion", [path, page, rect, REGION_DPI]);
+    return Buffer.from(rendered.png);
   }
 
   async text(

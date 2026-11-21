@@ -210,7 +210,21 @@ if (!app.requestSingleInstanceLock()) {
           const options = {
             defaultPath: app.getPath("documents"),
             properties: ["openFile"] as "openFile"[],
-            filters: [{ name: "Planilhas", extensions: ["csv", "xlsx"] }],
+            filters: [{ name: "Planilhas", extensions: ["csv", "xlsx", "zip"] }],
+          };
+          const result = mainWindow
+            ? await dialog.showOpenDialog(mainWindow, options)
+            : await dialog.showOpenDialog(options);
+          return result.canceled ? null : (result.filePaths[0] ?? null);
+        },
+        pickImage: async () => {
+          const options = {
+            defaultPath: app.getPath("pictures"),
+            properties: ["openFile"] as "openFile"[],
+            filters: [
+              { name: "Imagens", extensions: ["png", "jpg", "jpeg", "webp", "gif"] },
+              { name: "Todos os arquivos", extensions: ["*"] },
+            ],
           };
           const result = mainWindow
             ? await dialog.showOpenDialog(mainWindow, options)

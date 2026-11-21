@@ -7,6 +7,7 @@
 import { draftProblem } from "../authoring/validate.js";
 import type { ItemDraft } from "../authoring/validate.js";
 import { MAX_TOPIC_CHARS } from "../generation/cards.js";
+import type { ImageField } from "../images/refs.js";
 import { CARD_SUBTYPE_NAMES, QUESTION_SUBTYPE_NAMES, columnsOf } from "./templates.js";
 import type { ImportKind } from "./templates.js";
 
@@ -43,10 +44,47 @@ export function mapColumns(
   return missing.length > 0 ? { missing } : { columns };
 }
 
+/** The optional columns that name the picture files of a row, and the field each one fills. */
+export const IMAGE_COLUMNS: Record<ImportKind, Record<string, ImageField>> = {
+  card: { imagem_frente: "front", imagem_verso: "back" },
+  question: {
+    imagem_enunciado: "statement",
+    imagem_a: "option.A",
+    imagem_b: "option.B",
+    imagem_c: "option.C",
+    imagem_d: "option.D",
+    imagem_e: "option.E",
+    imagem_explicacao: "explanation",
+  },
+};
+
+/** Where the picture columns are in the header; empty for a file that has none. */
+export function mapImageColumns(
+  kind: ImportKind,
+  header: readonly string[],
+): Map<ImageField, number> {
+  const found = new Map<ImageField, number>();
+  header.forEach((raw, index) => {
+    const field = IMAGE_COLUMNS[kind][columnName(raw)];
+    if (field !== undefined && !found.has(field)) found.set(field, index);
+  });
+  return found;
+}
+
+/** The file names of a cell: several are separated by `;`. */
+export function fileNames(cell: string): string[] {
+  return cell
+    .split(";")
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
 export interface ParsedRow {
   draft: ItemDraft;
   /** The topic label, already tidied; null when the row has none. */
   topic: string | null;
+  /** The picture files the row names, by field; empty when it names none. */
+  imageNames: Partial<Record<ImageField, string[]>>;
 }
 
 export type RowResult = { ok: true; row: ParsedRow } | { ok: false; problem: string };
@@ -73,6 +111,7 @@ export function parseRow(
   kind: ImportKind,
   columns: ReadonlyMap<string, number>,
   cells: readonly string[],
+  imageColumns: ReadonlyMap<ImageField, number> = new Map(),
 ): RowResult {
   const get = (name: string): string => {
     const index = columns.get(name);
@@ -82,9 +121,18 @@ export function parseRow(
   if ("problem" in topic) return bad(topic.problem);
   const draft = kind === "card" ? cardDraft(get) : questionDraft(get);
   if ("problem" in draft) return bad(draft.problem);
-  const found = draftProblem(draft.draft);
+  const imageNames: Partial<Record<ImageField, string[]>> = {};
+  for (const [field, index] of imageColumns) {
+    const names = fileNames(cells[index] ?? "");
+    if (names.length > 0) imageNames[field] = names;
+  }
+  // A field that names a picture may be only that picture: the names stand in for the pictures
+  // while the row is checked, and the real ones replace them once the zip has been read.
+  const standIn = { hash: "0".repeat(64) };
+  const stood = Object.fromEntries(Object.keys(imageNames).map((field) => [field, [standIn]]));
+  const found = draftProblem({ ...draft.draft, images: stood } as ItemDraft);
   if (found !== null) return bad(describe(found.field, found.message));
-  return { ok: true, row: { draft: draft.draft, topic: topic.topic } };
+  return { ok: true, row: { draft: draft.draft, topic: topic.topic, imageNames } };
 }
 
 type Get = (name: string) => string;

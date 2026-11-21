@@ -13,6 +13,7 @@ import { createCore } from "../core.js";
 import type { Core } from "../core.js";
 import { material } from "../db/workspace-schema.js";
 import { tempDir } from "../test/helpers.js";
+import { probeImage } from "../images/probe.js";
 import { MAX_HITS, MAX_PIXELS, PdfReader, findOccurrences } from "./pdf-reader.js";
 import type { Glyph } from "./pdf-reader.js";
 
@@ -262,5 +263,65 @@ describe("quote location and reading position (FR-22, FR-23)", () => {
       expect.objectContaining({ code: "UNSUPPORTED_FILE" }),
     );
     expect(workspace.root).toBeTruthy();
+  });
+});
+
+describe("cutting a region of a page (FR-12, ADR-4)", () => {
+  const dimensions = (bytes: Buffer) => ({
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20),
+  });
+
+  it("draws only the rectangle, at 200 dpi, from the fractions of the page", async () => {
+    const { add, reader } = rig();
+    const id = add("three.pdf", { copy: join(FIXTURES, "three-pages.pdf") });
+    const bytes = await reader.region(id, 1, { x: 0.1, y: 0.1, width: 0.5, height: 0.25 });
+    // A4 is 595 x 842 points: half the width at 200 dpi is about 827 pixels.
+    const size = dimensions(bytes);
+    expect(Math.abs(size.width - (595 * 0.5 * 200) / 72)).toBeLessThanOrEqual(2);
+    expect(Math.abs(size.height - (842 * 0.25 * 200) / 72)).toBeLessThanOrEqual(2);
+    expect(probeImage(bytes)).toMatchObject({ ok: true, info: { format: "png" } });
+  });
+
+  it("draws what is on the page: a rectangle over the text differs from a blank one", async () => {
+    const { add, reader } = rig();
+    const id = add("three.pdf", { copy: join(FIXTURES, "three-pages.pdf") });
+    const [box] = await reader.locate(id, 1, "Primeira página com função");
+    if (!box) throw new Error("the fixture text was not found");
+    const over = {
+      x: box.x / 595,
+      y: box.y / 842,
+      width: Math.max(box.width / 595, 0.05),
+      height: Math.max(box.height / 842, 0.02),
+    };
+    const blank = { ...over, y: 0.9 };
+    const text = await reader.region(id, 1, over);
+    const empty = await reader.region(id, 1, blank);
+    // The same rectangle moved down: equal up to the rounding of the pixel edges.
+    expect(Math.abs(dimensions(text).width - dimensions(empty).width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(dimensions(text).height - dimensions(empty).height)).toBeLessThanOrEqual(1);
+    expect(text.equals(empty)).toBe(false);
+    expect(text.length).toBeGreaterThan(empty.length);
+  });
+
+  it("lowers the resolution of a huge region and keeps the picture inside the pixel limit", async () => {
+    const { add, reader } = rig();
+    const id = add("three.pdf", { copy: join(FIXTURES, "three-pages.pdf") });
+    const bytes = await reader.region(id, 2, { x: 0, y: 0, width: 1, height: 1 });
+    const size = dimensions(bytes);
+    expect(size.width * size.height).toBeLessThanOrEqual(MAX_PIXELS);
+    expect(size.width).toBeGreaterThan(1000);
+  });
+
+  it("clamps a rectangle that leaves the page and refuses a page or file that is not there", async () => {
+    const { add, reader } = rig();
+    const id = add("three.pdf", { copy: join(FIXTURES, "three-pages.pdf") });
+    const bytes = await reader.region(id, 1, { x: 0.9, y: 0.9, width: 1, height: 1 });
+    expect(dimensions(bytes).width).toBeGreaterThan(0);
+    await expect(reader.region(id, 9, { x: 0, y: 0, width: 1, height: 1 })).rejects.toThrow();
+    const md = add("n.md", "# x", "md");
+    await expect(reader.region(md, 1, { x: 0, y: 0, width: 1, height: 1 })).rejects.toMatchObject({
+      code: "UNSUPPORTED_FILE",
+    });
   });
 });

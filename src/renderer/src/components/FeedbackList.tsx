@@ -4,9 +4,11 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { imagesFor } from "../../../core/images/refs.js";
 import { useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { MathText } from "../MathText.js";
+import { ItemImageList } from "./ItemImageList.js";
 import { T } from "../strings.js";
 import { SeeInPdf } from "./SeeInPdf.js";
 
@@ -34,7 +36,7 @@ function ConfidenceNote({ entry }: { entry: Feedback }) {
  * label (not only a color) and each alternative says why it is right or wrong. Without
  * alternatives it falls back to a single line with the two letters.
  */
-function AnswerOptions({ entry }: { entry: Feedback }) {
+function AnswerOptions({ workspaceId, entry }: { workspaceId: number; entry: Feedback }) {
   if (entry.options.length === 0) {
     return (
       <p className="muted">
@@ -61,6 +63,10 @@ function AnswerOptions({ entry }: { entry: Feedback }) {
             className={`option static${isKey ? " right" : ""}${isChosen && !isKey ? " wrong" : ""}`}
           >
             <strong>{option.key}</strong> · <MathText text={option.text} />
+            <ItemImageList
+              workspaceId={workspaceId}
+              images={imagesFor(entry.images, `option.${option.key}`)}
+            />
             {mark && (
               <>
                 {" "}
@@ -102,6 +108,7 @@ export function FeedbackEntry({
       <p>
         <MathText text={entry.explanation} />
       </p>
+      <ItemImageList workspaceId={workspaceId} images={entry.images?.explanation} />
       <blockquote className="source">
         <span className="muted">
           {T.source}: {entry.sourceTitle}
@@ -209,11 +216,13 @@ export function FeedbackList({
                 <MathText text={entry.statement} />
               </strong>
             </p>
-            <AnswerOptions entry={entry} />
+            <ItemImageList workspaceId={workspaceId} images={entry.images?.statement} />
+            <AnswerOptions workspaceId={workspaceId} entry={entry} />
             <ConfidenceNote entry={entry} />
             <p>
               <MathText text={entry.explanation} />
             </p>
+            <ItemImageList workspaceId={workspaceId} images={entry.images?.explanation} />
             <blockquote className="source">
               <span className="muted">
                 {T.source}: {entry.sourceTitle}

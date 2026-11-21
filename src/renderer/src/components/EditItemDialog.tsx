@@ -10,6 +10,9 @@ import type { InputOf, OutputOf } from "../../../core/contracts/index.js";
 import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
+import { cleanImages } from "../../../core/images/refs.js";
+import type { ImageRef, ItemImages } from "../../../core/images/refs.js";
+import { ImageField } from "./ImageField.js";
 import { changedFields, ImproveProposal } from "./ImproveProposal.js";
 import type { ProposedField } from "./ImproveProposal.js";
 import { SearchCombobox } from "./SearchCombobox.js";
@@ -44,6 +47,12 @@ export function EditItemDialog({
   const [topic, setTopic] = useState(item.topic ?? "");
   const [options, setOptions] = useState(item.options);
   const [answer, setAnswer] = useState(item.answer ?? "");
+  const [images, setImages] = useState<ItemImages>(item.images ?? {});
+  const imagesOf = (field: string): ImageRef[] => images[field as keyof ItemImages] ?? [];
+  const setField =
+    (field: string) =>
+    (list: ImageRef[]): void =>
+      setImages((all) => ({ ...all, [field]: list }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const topics = useInvoke("topics:list", { workspaceId });
   const { navigate } = useRouter();
@@ -172,6 +181,10 @@ export function EditItemDialog({
       back,
       topic: topic.trim() || null,
       ...(isQuestion && options.length > 0 ? { answer, ...(rewritable ? { options } : {}) } : {}),
+      // Sent only when the pictures changed, so an edit of the text leaves them untouched.
+      ...(JSON.stringify(cleanImages(images) ?? {}) !== JSON.stringify(item.images ?? {})
+        ? { images: cleanImages(images) ?? {} }
+        : {}),
     });
     if (!result.ok) {
       setErrors(Object.fromEntries((result.error.fields ?? []).map((f) => [f.field, f.message])));
@@ -201,12 +214,19 @@ export function EditItemDialog({
           <label htmlFor="edit-front">
             {item.kind === "question" ? T.editStatement : T.editFront}
           </label>
-          <textarea
-            id="edit-front"
-            rows={3}
-            value={front}
-            onChange={(event) => setFront(event.target.value)}
-          />
+          <ImageField
+            workspaceId={workspaceId}
+            value={imagesOf(isQuestion ? "statement" : "front")}
+            onChange={setField(isQuestion ? "statement" : "front")}
+            warnAnswer
+          >
+            <textarea
+              id="edit-front"
+              rows={3}
+              value={front}
+              onChange={(event) => setFront(event.target.value)}
+            />
+          </ImageField>
           {errors["front"] && (
             <p className="field-error" role="alert">
               {errors["front"]}
@@ -230,15 +250,24 @@ export function EditItemDialog({
                   />
                   <strong>{option.key}</strong>
                   {rewritable ? (
-                    <input
-                      aria-label={T.editOptionText(option.key)}
-                      value={option.text}
-                      onChange={(event) =>
-                        setOptions((all) =>
-                          all.map((o, i) => (i === index ? { ...o, text: event.target.value } : o)),
-                        )
-                      }
-                    />
+                    <ImageField
+                      workspaceId={workspaceId}
+                      value={imagesOf(`option.${option.key}`)}
+                      onChange={setField(`option.${option.key}`)}
+                      warnAnswer
+                    >
+                      <input
+                        aria-label={T.editOptionText(option.key)}
+                        value={option.text}
+                        onChange={(event) =>
+                          setOptions((all) =>
+                            all.map((o, i) =>
+                              i === index ? { ...o, text: event.target.value } : o,
+                            ),
+                          )
+                        }
+                      />
+                    </ImageField>
                   ) : (
                     <span>{option.text}</span>
                   )}
@@ -272,12 +301,18 @@ export function EditItemDialog({
         )}
         <div className="field">
           <label htmlFor="edit-back">{item.kind === "question" ? T.editComment : T.editBack}</label>
-          <textarea
-            id="edit-back"
-            rows={3}
-            value={back}
-            onChange={(event) => setBack(event.target.value)}
-          />
+          <ImageField
+            workspaceId={workspaceId}
+            value={imagesOf(isQuestion ? "explanation" : "back")}
+            onChange={setField(isQuestion ? "explanation" : "back")}
+          >
+            <textarea
+              id="edit-back"
+              rows={3}
+              value={back}
+              onChange={(event) => setBack(event.target.value)}
+            />
+          </ImageField>
           {errors["back"] && (
             <p className="field-error" role="alert">
               {errors["back"]}

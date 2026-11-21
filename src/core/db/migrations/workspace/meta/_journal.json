@@ -57,6 +57,13 @@
       "when": 1795132238791,
       "tag": "0007_material_analysis",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795268558239,
+      "tag": "0008_item_images",
+      "breakpoints": true
     }
   ]
 }

@@ -69,6 +69,8 @@ test("asks the model to fix the text, compares, accepts and saves with Ctrl+Ente
   const panel = page.getByRole("dialog", { name: "Novo cartão" });
   await expect(panel.getByLabel("Frente")).toBeFocused();
   await page.keyboard.type("Qual a funcao da mitocondria?");
+  // The "＋ Imagem" button of the front field sits between it and the back field.
+  await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   await page.keyboard.type("Produz energia.");
   await panel.getByRole("button", { name: /Melhorar com IA/ }).click();

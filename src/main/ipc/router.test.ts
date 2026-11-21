@@ -46,6 +46,21 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     }),
     "time:sessions": () => ({ sessions: [] }),
     "time:deleteSession": () => ({}),
+    "image:put": () => {
+      throw new Error("unused");
+    },
+    "image:get": () => {
+      throw new Error("unused");
+    },
+    "image:stats": () => {
+      throw new Error("unused");
+    },
+    "image:sweep": () => {
+      throw new Error("unused");
+    },
+    "reader:cropRegion": () => {
+      throw new Error("unused");
+    },
     "reader:info": () => ({ title: "t", pageCount: 0, pages: [], lastPage: null }),
     "reader:page": () => ({ dataUrl: "data:image/png;base64,AA", width: 1, height: 1 }),
     "reader:text": () => ({ width: 1, height: 1, lines: [] }),

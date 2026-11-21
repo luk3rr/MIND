@@ -7,6 +7,7 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Crop,
   ExternalLink,
   Maximize2,
   Rows3,
@@ -20,6 +21,11 @@ import type { FormEvent } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { useHotkeys, useInvoke } from "../hooks.js";
 import { BackLink } from "../components/BackLink.js";
+import { AttachToItem } from "../components/AttachToItem.js";
+import { CropOverlay } from "../components/CropOverlay.js";
+import type { PageRect } from "../components/CropOverlay.js";
+import { CropPanel } from "../components/CropPanel.js";
+import type { ImageRef } from "../../../core/images/refs.js";
 import { GenerateFromSelection } from "../components/GenerateFromSelection.js";
 import { ItemEditor } from "../components/ItemEditor.js";
 import { SelectionBar, usePassageSelection } from "../components/SelectionBar.js";
@@ -145,6 +151,7 @@ function PageSurface({
   hits,
   cited,
   style,
+  onCrop,
 }: {
   number: number;
   size: PageSize;
@@ -153,6 +160,8 @@ function PageSurface({
   hits: PageHit[];
   cited: Lines | null;
   style?: React.CSSProperties;
+  /** When given, a layer over the page lets the person drag a rectangle to cut a picture. */
+  onCrop?: (page: number, rect: PageRect) => void;
 }) {
   const width = size.width * zoom;
   const height = size.height * zoom;
@@ -197,6 +206,7 @@ function PageSurface({
             <LineText key={`${number}-${index}`} line={line} zoom={zoom} />
           ))}
       </div>
+      {onCrop && <CropOverlay onSelect={(rect) => onCrop(number, rect)} />}
     </div>
   );
 }
@@ -212,6 +222,7 @@ function ScrollPage({
   near,
   hits,
   cited,
+  onCrop,
 }: {
   workspaceId: number;
   materialId: number;
@@ -222,6 +233,7 @@ function ScrollPage({
   near: boolean;
   hits: PageHit[];
   cited: Lines | null;
+  onCrop?: (page: number, rect: PageRect) => void;
 }) {
   const data = usePageData(workspaceId, materialId, number, scale, near);
   const style = { margin: `0 auto ${GAP}px` };
@@ -243,6 +255,7 @@ function ScrollPage({
       hits={hits}
       cited={cited}
       style={style}
+      {...(onCrop ? { onCrop } : {})}
     />
   );
 }
@@ -264,6 +277,7 @@ function ScrollPages({
   cited,
   citedPage,
   onVisiblePage,
+  onCrop,
 }: {
   workspaceId: number;
   materialId: number;
@@ -281,6 +295,7 @@ function ScrollPages({
   cited: Lines | null;
   citedPage: number | undefined;
   onVisiblePage: (page: number) => void;
+  onCrop?: (page: number, rect: PageRect) => void;
 }) {
   // With "fit" every page gets its own zoom, so a wide page never rescales the others: the
   // position of each page depends only on the pages before it and does not change while reading.
@@ -421,6 +436,7 @@ function ScrollPages({
           near={index >= range[0] && index <= range[1]}
           hits={hitsByPage.get(index + 1) ?? []}
           cited={citedPage === index + 1 ? cited : null}
+          {...(onCrop ? { onCrop } : {})}
         />
       ))}
     </div>
@@ -454,6 +470,13 @@ export function ReaderPage({
   const [selection, clearSelection] = usePassageSelection(viewport);
   const [creating, setCreating] = useState<{ page: number; quote: string } | null>(null);
   const [generating, setGenerating] = useState<{ page: number; text: string } | null>(null);
+  const [cropMode, setCropMode] = useState(false);
+  const [cropped, setCropped] = useState<{ page: number; rect: PageRect } | null>(null);
+  const [fromCrop, setFromCrop] = useState<{ kind: "card" | "question"; image: ImageRef } | null>(
+    null,
+  );
+  const [attaching, setAttaching] = useState<ImageRef | null>(null);
+  const [attached, setAttached] = useState(false);
   const [mode, setMode] = useState<"page" | "scroll">(savedMode);
   const [scrollRequest, setScrollRequest] = useState<{ page: number } | null>({
     page: initialPage ?? 1,
@@ -782,6 +805,19 @@ export function ReaderPage({
             >
               <Rows3 size={16} aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              className="btn ghost"
+              aria-label={T.cropMode}
+              aria-pressed={cropMode}
+              title={T.cropMode}
+              onClick={() => {
+                setCropMode((on) => !on);
+                setCropped(null);
+              }}
+            >
+              <Crop size={16} aria-hidden="true" />
+            </button>
           </div>
           <form className="group" role="search" onSubmit={search}>
             <input
@@ -854,6 +890,9 @@ export function ReaderPage({
               data={data}
               hits={hitsByPage.get(current) ?? []}
               cited={current === initialPage ? cited : null}
+              {...(cropMode
+                ? { onCrop: (page: number, rect: PageRect) => setCropped({ page, rect }) }
+                : {})}
             />
           ) : (
             <ScrollPages
@@ -869,6 +908,9 @@ export function ReaderPage({
               cited={cited}
               citedPage={initialPage}
               onVisiblePage={visiblePage}
+              {...(cropMode
+                ? { onCrop: (page: number, rect: PageRect) => setCropped({ page, rect }) }
+                : {})}
             />
           )}
         </div>
@@ -887,6 +929,73 @@ export function ReaderPage({
           }}
           onDismiss={clearSelection}
         />
+      )}
+      {cropMode && !cropped && (
+        <p className="muted" role="status">
+          {T.cropHelp}
+        </p>
+      )}
+      {cropped && !fromCrop && !attaching && (
+        <CropPanel
+          key={`${cropped.page}:${cropped.rect.x}:${cropped.rect.y}:${cropped.rect.width}:${cropped.rect.height}`}
+          workspaceId={workspaceId}
+          materialId={materialId}
+          page={cropped.page}
+          rect={cropped.rect}
+          onClose={() => setCropped(null)}
+          onChoose={(action, image) => {
+            if (action === "attach") setAttaching(image);
+            else setFromCrop({ kind: action, image });
+          }}
+        />
+      )}
+      {attaching && (
+        <AttachToItem
+          workspaceId={workspaceId}
+          image={attaching}
+          onClose={() => setAttaching(null)}
+          onDone={() => {
+            setAttaching(null);
+            setCropped(null);
+            setAttached(true);
+          }}
+        />
+      )}
+      {fromCrop && (
+        <ItemEditor
+          key={`crop-${fromCrop.image.hash}`}
+          workspaceId={workspaceId}
+          origin="reader"
+          initialDraft={
+            fromCrop.kind === "card"
+              ? {
+                  kind: "card",
+                  subtype: "qa",
+                  front: "",
+                  back: "",
+                  images: { front: [fromCrop.image] },
+                }
+              : {
+                  kind: "question",
+                  subtype: "multiple_choice",
+                  statement: "",
+                  options: [],
+                  answer: "A",
+                  explanation: "",
+                  images: { statement: [fromCrop.image] },
+                }
+          }
+          onClose={() => {
+            setFromCrop(null);
+            setCropped(null);
+          }}
+          onSaved={() => undefined}
+        />
+      )}
+      {attached && (
+        <p role="status" className="muted">
+          {T.attachDone}
+        </p>
       )}
       {generating && (
         <GenerateFromSelection

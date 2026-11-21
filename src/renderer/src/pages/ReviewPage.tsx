@@ -4,11 +4,13 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { imagesFor } from "../../../core/images/refs.js";
 import { useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { EditItemDialog } from "../components/EditItemDialog.js";
 import { useInvoke } from "../hooks.js";
 import { MathText } from "../MathText.js";
+import { ItemImageList } from "../components/ItemImageList.js";
 import { clozePlain } from "../math.js";
 import { BackLink } from "../components/BackLink.js";
 import { T } from "../strings.js";
@@ -106,6 +108,10 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
                     <MathText text={clozePlain(item.front)} />
                   </strong>
                 </p>
+                <ItemImageList
+                  workspaceId={workspaceId}
+                  images={item.images?.[item.kind === "question" ? "statement" : "front"]}
+                />
                 {item.kind === "question" && (
                   <ul className="stack" style={{ listStyle: "none", padding: 0 }}>
                     {item.options.map((option) => (
@@ -114,6 +120,10 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
                         className={option.key === item.answer ? "ok" : undefined}
                       >
                         <strong>{option.key}</strong> · <MathText text={option.text} />
+                        <ItemImageList
+                          workspaceId={workspaceId}
+                          images={imagesFor(item.images, `option.${option.key}`)}
+                        />
                         {option.why && <span className="muted"> — {option.why}</span>}
                       </li>
                     ))}
@@ -129,6 +139,10 @@ export function ReviewPage({ workspaceId, runId }: { workspaceId: number; runId:
                     <MathText text={item.back} />
                   </p>
                 )}
+                <ItemImageList
+                  workspaceId={workspaceId}
+                  images={item.images?.[item.kind === "question" ? "explanation" : "back"]}
+                />
                 <blockquote className="source">
                   <span className="muted">
                     {T.source}: {item.sourceTitle}

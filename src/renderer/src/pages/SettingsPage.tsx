@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { ImageStorage } from "../components/ImageStorage.js";
 import { ProviderForm } from "../components/ProviderForm.js";
 import { useInvoke } from "../hooks.js";
 import { useSettingsStatus } from "../settings-status.js";
@@ -162,6 +163,7 @@ export function SettingsPage({ workspaceId }: { workspaceId: number }) {
           </span>
         </p>
       </section>
+      <ImageStorage workspaceId={workspaceId} />
       <CostPanel key={`${view.month}-${version}`} month={view.month} />
     </section>
   );

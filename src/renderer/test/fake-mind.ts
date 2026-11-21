@@ -8,6 +8,7 @@ import { vi } from "vitest";
 import type { MindApi } from "../../core/contracts/api.js";
 import type { ChannelName, ErrorInfo, InputOf, OutputOf } from "../../core/contracts/index.js";
 import { ok } from "../../core/contracts/index.js";
+import { beforeAnswer } from "../../core/images/refs.js";
 import { pick } from "../../core/study/interleave.js";
 import type { Result } from "../../core/contracts/index.js";
 
@@ -125,6 +126,8 @@ export interface FakeState {
     error?: { code: ErrorInfo["code"]; message: string };
     cancel?: boolean;
     gate?: Promise<void>;
+    /** A `.zip` with pictures: how many were linked and how many were missing. */
+    zip?: { images: number; missingImages: number };
   };
   discarded?: string[];
   /** The confirmations the window sent, newest last; `commitError` makes the next one fail. */
@@ -212,6 +215,25 @@ export interface FakeState {
   backupFailure: string | null;
   importResult: { materials: FakeMaterial[]; errors: OutputOf<"material:import">["errors"] };
   searchHits: OutputOf<"material:search">["hits"];
+  /** The pictures the window attached: what `image:put` answers and what it was asked. */
+  images: {
+    /** The answer of the next `image:put`; a stored picture with a new hash when null. */
+    next: OutputOf<"image:put"> | null;
+    /** When set, `image:put` fails with this error. */
+    failure: ErrorInfo | null;
+    /** Every `image:put` request, newest last. */
+    puts: InputOf<"image:put">[];
+    /** Hashes `image:get` cannot find (the file is gone). */
+    missing: string[];
+    /** When true `image:get` answers with a GIF. */
+    gif: boolean;
+    /** What `image:stats` answers; a few pictures, none unused, unless a test says otherwise. */
+    stats: OutputOf<"image:stats">;
+    /** Every `image:sweep` request, newest last. */
+    sweeps: InputOf<"image:sweep">[];
+    /** Every `reader:cropRegion` request, newest last. */
+    crops: InputOf<"reader:cropRegion">[];
+  };
   reader: {
     info: OutputOf<"reader:info">;
     /** Text lines by page number; a page without lines has no text. */
@@ -348,6 +370,7 @@ function fakeFeedback(
     sourcePage: found?.item.sourcePage ?? null,
     quote: found?.item.quote ?? "",
     pdfSource: found?.item.pdfSource ?? null,
+    ...(found?.item.images ? { images: found.item.images } : {}),
   };
 }
 
@@ -392,6 +415,16 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
     backupFailure: null,
     importResult: { materials: [], errors: [] },
     searchHits: [],
+    images: {
+      next: null,
+      failure: null,
+      puts: [],
+      missing: [],
+      gif: false,
+      stats: { count: 0, bytes: 0, unusedCount: 0, unusedBytes: 0 },
+      sweeps: [],
+      crops: [],
+    },
     reader: {
       info: {
         title: "apostila",
@@ -818,6 +851,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             valid: count("valid"),
             errors: count("error"),
             duplicates: count("duplicate"),
+            ...(state.importFile?.zip ? state.importFile.zip : {}),
           },
           newTopics: state.importFile?.newTopics ?? [],
           rows: rows.slice(0, 500),
@@ -853,6 +887,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             included.filter((row) => row.status === "duplicate").length,
           skippedErrors: rows.filter((row) => row.status === "error").length,
           topicsCreated: topics.size,
+          ...(state.importFile?.zip ? { images: state.importFile.zip.images } : {}),
         });
       }
       case "import:discard": {
@@ -972,7 +1007,10 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
       }
       case "review:edit": {
         const input = payload as InputOf<"review:edit">;
-        if (!input.front.trim())
+        const onlyPicture = Object.values(input.images ?? {}).some(
+          (refs) => (refs?.length ?? 0) > 0,
+        );
+        if (!input.front.trim() && !onlyPicture)
           return failure("VALIDATION_ERROR", "A frente do card não pode ficar vazia.", "front");
         let edited: FakeItem | undefined;
         state.items = state.items.map((i) => {
@@ -984,6 +1022,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             topic: input.topic,
             ...(input.options !== undefined ? { options: input.options } : {}),
             ...(input.answer !== undefined ? { answer: input.answer } : {}),
+            ...(input.images !== undefined ? { images: input.images } : {}),
             edited: true,
           };
           return edited;
@@ -1135,6 +1174,7 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
             subtype: found.item.subtype,
             topic: found.item.topic,
             options: found.item.options.map(({ key, text }) => ({ key, text })),
+            ...(beforeAnswer(found.item.images) ? { images: beforeAnswer(found.item.images) } : {}),
           },
           attempts: found.attempts,
           lastCorrect: found.lastCorrect,
@@ -1388,6 +1428,57 @@ export function installFakeMind(initial: Partial<FakeState> = {}) {
           state.time = { ...state.time, status: "running", pausedReason: null };
         }
         return ok(state.time);
+      case "image:put": {
+        const request = payload as InputOf<"image:put">;
+        state.images.puts.push(request);
+        if (state.images.failure) return { ok: false, error: state.images.failure };
+        if (state.images.next) return ok(state.images.next);
+        const hash = String(state.images.puts.length).padStart(64, "0");
+        return ok({
+          cancelled: false,
+          stored: true,
+          ref: { hash },
+          info: { mime: "image/png", bytes: 97, width: 16, height: 12, animated: false },
+          warning: null,
+          token: null,
+        });
+      }
+      case "reader:cropRegion": {
+        if (state.reader.failure) return { ok: false, error: state.reader.failure };
+        state.images.crops.push(payload as InputOf<"reader:cropRegion">);
+        const hash = String(500 + state.images.crops.length).padStart(64, "0");
+        return ok({
+          ref: { hash },
+          info: { mime: "image/png", bytes: 97, width: 120, height: 80, animated: false },
+        });
+      }
+      case "image:stats":
+        return ok(state.images.stats);
+      case "image:sweep": {
+        state.images.sweeps.push(payload as InputOf<"image:sweep">);
+        const freed = state.images;
+        const result = { removed: freed.stats.unusedCount, freedBytes: freed.stats.unusedBytes };
+        freed.stats = { ...freed.stats, unusedCount: 0, unusedBytes: 0 };
+        return ok(result);
+      }
+      case "image:get": {
+        const { hash } = payload as InputOf<"image:get">;
+        if (state.images.missing.includes(hash)) {
+          return {
+            ok: false,
+            error: { code: "IMAGE_NOT_FOUND", message: "A imagem não foi encontrada." },
+          };
+        }
+        return ok({
+          dataUrl: state.images.gif
+            ? "data:image/gif;base64,R0lGODlhAQABAAAAADs="
+            : "data:image/png;base64,iVBORw0KGgo=",
+          mime: state.images.gif ? "image/gif" : "image/png",
+          bytes: 97,
+          width: 16,
+          height: 12,
+        });
+      }
       case "reader:info":
         return state.reader.failure
           ? { ok: false, error: state.reader.failure }

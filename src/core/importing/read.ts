@@ -108,7 +108,14 @@ export async function readTable(path: string): Promise<{ table: Table; format: "
   const info = await stat(path).catch(() => null);
   if (info === null || !info.isFile()) throw fail("IMPORT_FILE_INVALID", MESSAGES.unreadable);
   if (info.size > MAX_IMPORT_BYTES) throw fail("IMPORT_LIMIT_EXCEEDED", MESSAGES.tooBig);
-  const buffer = await readFile(path);
+  return tableFromBuffer(await readFile(path), extension);
+}
+
+/** The table of a spreadsheet already in memory (the one inside a `.zip` bundle). */
+export async function tableFromBuffer(
+  buffer: Buffer,
+  extension: ".csv" | ".xlsx",
+): Promise<{ table: Table; format: "csv" | "xlsx" }> {
   if (extension === ".csv") {
     return { table: toTable(readCsv(buffer.toString("utf8"))), format: "csv" };
   }

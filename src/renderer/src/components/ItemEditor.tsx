@@ -10,6 +10,9 @@ import type { InputOf, OutputOf } from "../../../core/contracts/index.js";
 import { useInvoke } from "../hooks.js";
 import { sectionPath, useRouter } from "../router.js";
 import { T } from "../strings.js";
+import { cleanImages } from "../../../core/images/refs.js";
+import type { ImageRef, ItemImages } from "../../../core/images/refs.js";
+import { ImageField } from "./ImageField.js";
 import { ImproveProposal } from "./ImproveProposal.js";
 import { changedFields } from "./ImproveProposal.js";
 import type { ProposedField } from "./ImproveProposal.js";
@@ -99,6 +102,12 @@ export function ItemEditor({
   );
   const [front, setFront] = useState(initialDraft?.kind === "card" ? initialDraft.front : "");
   const [back, setBack] = useState(initialDraft?.kind === "card" ? initialDraft.back : "");
+  const [images, setImages] = useState<ItemImages>(initialDraft?.images ?? {});
+  const imagesOf = (field: keyof ItemImages): ImageRef[] => images[field] ?? [];
+  const setField =
+    (field: keyof ItemImages) =>
+    (list: ImageRef[]): void =>
+      setImages((all) => ({ ...all, [field]: list }));
   const [statement, setStatement] = useState(
     initialDraft?.kind === "question" ? initialDraft.statement : "",
   );
@@ -138,9 +147,17 @@ export function ItemEditor({
   const isQuestion = kind === "question";
   const trueFalse = isQuestion && questionSubtype === "certo_errado";
 
+  /** The pictures of the given fields, or nothing when there are none. */
+  const withImages = (fields: (keyof ItemImages)[]): { images?: ItemImages } => {
+    const kept = cleanImages(
+      Object.fromEntries(fields.map((field) => [field, images[field] ?? []])) as ItemImages,
+    );
+    return kept ? { images: kept } : {};
+  };
+
   const draft = (): Draft =>
     kind === "card"
-      ? { kind, subtype: cardSubtype, front, back }
+      ? { kind, subtype: cardSubtype, front, back, ...withImages(["front", "back"]) }
       : {
           kind,
           subtype: questionSubtype,
@@ -151,6 +168,13 @@ export function ItemEditor({
               : options.map((option, index) => ({ key: LETTERS[index] ?? "", ...option })),
           answer,
           explanation,
+          ...withImages([
+            "statement",
+            "explanation",
+            ...(questionSubtype === "certo_errado"
+              ? []
+              : options.map((_, index) => `option.${LETTERS[index]}` as keyof ItemImages)),
+          ]),
         };
 
   const changeSubtype = (value: QuestionSubtype): void => {
@@ -163,6 +187,16 @@ export function ItemEditor({
 
   const removeOption = (index: number): void => {
     setOptions((all) => all.filter((_, i) => i !== index));
+    // The pictures follow their alternative when the letters are reassigned.
+    setImages((all) => {
+      const next: ItemImages = { ...all };
+      for (let at = index; at < LETTERS.length; at += 1) {
+        const from = all[`option.${LETTERS[at + 1]}` as keyof ItemImages];
+        const key = `option.${LETTERS[at]}` as keyof ItemImages;
+        next[key] = from;
+      }
+      return cleanImages(next) ?? {};
+    });
     // The letters are reassigned in order, so an answer past the new end falls back to the last.
     setAnswer((current) => {
       const position = LETTERS.indexOf(current);
@@ -307,6 +341,7 @@ export function ItemEditor({
     // The next item keeps the type, the number of alternatives and the topic; the text starts over.
     setFront("");
     setBack("");
+    setImages({});
     setStatement("");
     setExplanation("");
     setOptions((all) => blankOptions(all.length));
@@ -393,27 +428,40 @@ export function ItemEditor({
             </div>
             <div className="field">
               <label htmlFor="new-front">{T.editFront}</label>
-              <textarea
-                id="new-front"
-                ref={firstField}
-                autoFocus
-                rows={3}
-                value={front}
-                onChange={(event) => setFront(event.target.value)}
-                aria-describedby={errors["front"] ? "new-front-error" : undefined}
-              />
+              <ImageField
+                workspaceId={workspaceId}
+                value={imagesOf("front")}
+                onChange={setField("front")}
+                warnAnswer
+              >
+                <textarea
+                  id="new-front"
+                  ref={firstField}
+                  autoFocus
+                  rows={3}
+                  value={front}
+                  onChange={(event) => setFront(event.target.value)}
+                  aria-describedby={errors["front"] ? "new-front-error" : undefined}
+                />
+              </ImageField>
               {cardSubtype === "cloze" && <p className="muted">{T.newItemClozeHint}</p>}
               <FieldError id="new-front-error" message={errors["front"]} />
             </div>
             <div className="field">
               <label htmlFor="new-back">{T.editBack}</label>
-              <textarea
-                id="new-back"
-                rows={3}
-                value={back}
-                onChange={(event) => setBack(event.target.value)}
-                aria-describedby={errors["back"] ? "new-back-error" : undefined}
-              />
+              <ImageField
+                workspaceId={workspaceId}
+                value={imagesOf("back")}
+                onChange={setField("back")}
+              >
+                <textarea
+                  id="new-back"
+                  rows={3}
+                  value={back}
+                  onChange={(event) => setBack(event.target.value)}
+                  aria-describedby={errors["back"] ? "new-back-error" : undefined}
+                />
+              </ImageField>
               <FieldError id="new-back-error" message={errors["back"]} />
             </div>
           </>
@@ -436,15 +484,22 @@ export function ItemEditor({
             </div>
             <div className="field">
               <label htmlFor="new-statement">{T.editStatement}</label>
-              <textarea
-                id="new-statement"
-                ref={firstField}
-                autoFocus
-                rows={3}
-                value={statement}
-                onChange={(event) => setStatement(event.target.value)}
-                aria-describedby={errors["statement"] ? "new-statement-error" : undefined}
-              />
+              <ImageField
+                workspaceId={workspaceId}
+                value={imagesOf("statement")}
+                onChange={setField("statement")}
+                warnAnswer
+              >
+                <textarea
+                  id="new-statement"
+                  ref={firstField}
+                  autoFocus
+                  rows={3}
+                  value={statement}
+                  onChange={(event) => setStatement(event.target.value)}
+                  aria-describedby={errors["statement"] ? "new-statement-error" : undefined}
+                />
+              </ImageField>
               <FieldError id="new-statement-error" message={errors["statement"]} />
             </div>
             {trueFalse ? (
@@ -490,11 +545,18 @@ export function ItemEditor({
                           onChange={() => setAnswer(key)}
                         />
                         <strong>{key}</strong>
-                        <input
-                          aria-label={T.editOptionText(key)}
-                          value={option.text}
-                          onChange={(event) => changeOption(index, { text: event.target.value })}
-                        />
+                        <ImageField
+                          workspaceId={workspaceId}
+                          value={imagesOf(`option.${key}` as keyof ItemImages)}
+                          onChange={setField(`option.${key}` as keyof ItemImages)}
+                          warnAnswer
+                        >
+                          <input
+                            aria-label={T.editOptionText(key)}
+                            value={option.text}
+                            onChange={(event) => changeOption(index, { text: event.target.value })}
+                          />
+                        </ImageField>
                         {options.length > MIN_OPTIONS && (
                           <button
                             type="button"
@@ -538,13 +600,19 @@ export function ItemEditor({
             )}
             <div className="field">
               <label htmlFor="new-explanation">{T.newItemExplanation}</label>
-              <textarea
-                id="new-explanation"
-                rows={3}
-                value={explanation}
-                onChange={(event) => setExplanation(event.target.value)}
-                aria-describedby={errors["explanation"] ? "new-explanation-error" : undefined}
-              />
+              <ImageField
+                workspaceId={workspaceId}
+                value={imagesOf("explanation")}
+                onChange={setField("explanation")}
+              >
+                <textarea
+                  id="new-explanation"
+                  rows={3}
+                  value={explanation}
+                  onChange={(event) => setExplanation(event.target.value)}
+                  aria-describedby={errors["explanation"] ? "new-explanation-error" : undefined}
+                />
+              </ImageField>
               <FieldError id="new-explanation-error" message={errors["explanation"]} />
             </div>
           </>

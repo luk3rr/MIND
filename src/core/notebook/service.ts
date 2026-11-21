@@ -4,6 +4,8 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { cleanImages, hasImages } from "../images/refs.js";
+import type { ImageRef, ItemImages } from "../images/refs.js";
 import { and, count, eq, inArray, isNull, max, or } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
@@ -25,6 +27,8 @@ export interface CardCreated {
 export interface ErrorEntry {
   itemId: number;
   front: string;
+  /** How many pictures the card carries (the list shows the count, not the pictures). */
+  imageCount: number;
   topic: string | null;
   sourceTitle: string;
   sourcePage: number | null;
@@ -46,6 +50,7 @@ interface QuestionPayload {
   explanation: string;
   answer: string;
   options: { key: string; text: string; why: string }[];
+  images?: ItemImages;
 }
 
 /** The card subtype, front and back of the card that revisits a missed question. */
@@ -59,13 +64,34 @@ export function errorCardText(
     const verdict = payload.answer === "C" ? "Verdadeiro" : "Falso";
     return ["true_false", statement, `${verdict}. ${explanation}`];
   }
-  const listing = payload.options.map((o) => `${o.key}) ${o.text}`).join("\n");
+  const listing = payload.options
+    .map(
+      (o) =>
+        `${o.key}) ${o.text.trim() || (hasImages(payload.images, `option.${o.key}`) ? "(imagem)" : "")}`,
+    )
+    .join("\n");
   const right = payload.options.find((o) => o.key === payload.answer)?.text ?? "";
   return [
     "qa",
     `${statement}\n\n${listing}`,
     `Resposta: ${payload.answer}) ${right}\n\n${explanation}`,
   ];
+}
+
+/**
+ * The pictures of the card made from a missed question: the statement's and the options' go on
+ * the front (in that order), the comment's on the back.
+ */
+export function errorCardImages(payload: QuestionPayload): ItemImages | undefined {
+  const images = (payload.images ?? {}) as Record<string, ImageRef[] | undefined>;
+  const front = ["statement", "option.A", "option.B", "option.C", "option.D", "option.E"].flatMap(
+    (field) => images[field] ?? [],
+  );
+  const back = images["explanation"] ?? [];
+  return cleanImages({
+    ...(front.length > 0 ? { front } : {}),
+    ...(back.length > 0 ? { back } : {}),
+  });
 }
 
 /** Turns mistakes into cards and lists everything the user got wrong. */
@@ -149,10 +175,9 @@ export class ErrorNotebook {
         "Só é possível virar card uma questão que você errou.",
       );
     }
-    const [subtype, front, back] = errorCardText(
-      question.subtype,
-      JSON.parse(question.payloadJson) as QuestionPayload,
-    );
+    const payload = JSON.parse(question.payloadJson) as QuestionPayload;
+    const [subtype, front, back] = errorCardText(question.subtype, payload);
+    const cardImages = errorCardImages(payload);
     const now = this.clock.now().toISOString();
     const card = this.db
       .insert(item)
@@ -166,7 +191,11 @@ export class ErrorNotebook {
         ),
         kind: "card",
         subtype,
-        payloadJson: JSON.stringify({ front, back }),
+        payloadJson: JSON.stringify({
+          front,
+          back,
+          ...(cardImages ? { images: cardImages } : {}),
+        }),
         status: "approved",
         topicId: question.topicId,
         chunkId: question.chunkId,
@@ -214,6 +243,9 @@ export class ErrorNotebook {
         return {
           itemId: row.id,
           front: String((JSON.parse(row.payloadJson) as { front?: string }).front ?? ""),
+          imageCount: Object.values(
+            (JSON.parse(row.payloadJson) as { images?: Record<string, unknown[]> }).images ?? {},
+          ).reduce((total, refs) => total + refs.length, 0),
           topic: topicName,
           sourceTitle: row.sourceTitle,
           sourcePage: row.sourcePage,

@@ -261,3 +261,19 @@ export const studySession = sqliteTable(
     index("ix_study_session_source").on(table.source),
   ],
 );
+
+/**
+ * The metadata of an image file kept in `files/images/<hash>.<ext>`. An item points to an image
+ * by its hash from `item.payload_json`; nothing here counts references (see `sweepImages`).
+ */
+export const image = sqliteTable("image", {
+  /** SHA-256 of the file, in lowercase hex. The file name is derived from it. */
+  hash: text("hash").primaryKey(),
+  ext: text("ext").notNull(),
+  mime: text("mime").notNull(),
+  bytes: integer("bytes").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  animated: integer("animated", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().$defaultFn(now),
+});

@@ -36,6 +36,7 @@ import { AssistService } from "./assist/service.js";
 import { SelectionGenerator } from "./generation/selection.js";
 import { ImportService } from "./importing/service.js";
 import { ItemAuthoringService } from "./authoring/service.js";
+import { ImageService } from "./images/service.js";
 import { ErrorNotebook } from "./notebook/service.js";
 import { PracticeService } from "./practice/service.js";
 import { PracticeSettings } from "./practice/settings.js";
@@ -123,6 +124,8 @@ export interface Core {
   selection(workspaceId: number): SelectionGenerator;
   /** Creates items by hand (not from a generation). */
   authoring(workspaceId: number): ItemAuthoringService;
+  /** Stores, validates and reads the images of items. */
+  images(workspaceId: number): ImageService;
   study(workspaceId: number): StudyService;
   /** The study timer of a workspace; one instance per workspace for the life of the core. */
   time(workspaceId: number): TimeService;
@@ -249,6 +252,7 @@ export function createCore(options: CoreOptions): Core {
     importing: new ImportService(registry, clock),
     selection: (workspaceId) => new SelectionGenerator(registry.open(workspaceId), llm),
     authoring: (workspaceId) => new ItemAuthoringService(registry.open(workspaceId), clock),
+    images: (workspaceId) => new ImageService(registry.open(workspaceId), clock),
     notebook: (workspaceId) => new ErrorNotebook(registry.open(workspaceId), clock),
     stats: (workspaceId) =>
       new StatsService(registry.open(workspaceId), {

@@ -437,7 +437,8 @@ describe("Items screen", () => {
     const panel = await screen.findByRole("dialog", { name: "Novo cartão" });
     // The panel opens with the cursor in the first field, so the typing starts at once.
     expect(within(panel).getByLabelText("Frente")).toHaveFocus();
-    await act(() => user.keyboard("Pergunta rápida?{Tab}Resposta rápida."));
+    // Each text field is followed by its "＋ Imagem" button, so the second field is two Tabs away.
+    await act(() => user.keyboard("Pergunta rápida?{Tab}{Tab}Resposta rápida."));
     await act(() => user.click(within(panel).getByRole("button", { name: "Salvar" })));
     expect(interactions).toBeLessThanOrEqual(5);
     expect(interactions).toBe(3);
@@ -456,7 +457,7 @@ describe("Items screen", () => {
     await screen.findByRole("table", { name: "Itens" });
     await user.click(screen.getByRole("button", { name: "Novo item" }));
     const panel = await screen.findByRole("dialog", { name: "Novo cartão" });
-    await user.keyboard("Frente{Tab}Verso{Control>}{Enter}{/Control}");
+    await user.keyboard("Frente{Tab}{Tab}Verso{Control>}{Enter}{/Control}");
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Novo cartão" })).toBeNull());
     expect(fake.invoke).toHaveBeenCalledWith(
       "items:create",

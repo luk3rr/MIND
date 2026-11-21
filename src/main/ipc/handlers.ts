@@ -52,6 +52,8 @@ export interface UiBridge {
   pickSavePath?(defaultName: string): Promise<string | null>;
   /** Opens the native dialog for a spreadsheet (`.csv` or `.xlsx`); null when cancelled. */
   pickImportFile?(): Promise<string | null>;
+  /** Opens the native dialog for a picture (PNG, JPEG, WebP or GIF); null when cancelled. */
+  pickImage?(): Promise<string | null>;
   /** Opens the native dialog for a backup `.zip`; null when cancelled. */
   pickBackup?(): Promise<string | null>;
   /** Opens (or focuses) the separate reader window of a PDF. */
@@ -73,7 +75,14 @@ const PREVIEW_PAGE_SIZE = 20;
 /** How many generations the list sends; the screen pages and searches them. */
 const RUNS_LISTED = 500;
 
+/** How many large files chosen in the dialog wait for a yes at once. */
+const PENDING_LARGE_MAX = 20;
+
 export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Handlers {
+  // A large file chosen in the dialog is kept by path (never sent to the window) until the person
+  // confirms; the window only holds the token.
+  const pendingLarge = new Map<string, string>();
+  let tokens = 0;
   return {
     "window:getState": () => ({ route: routes.lastRoute, contractVersion: CONTRACT_VERSION }),
     "window:setLastRoute": ({ route }) => {
@@ -97,6 +106,48 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
       return { cancelled: false, workspace: await importWorkspace(core.registry, path) };
     },
     "workspace:rename": ({ id, name }) => core.registry.rename(id, name),
+    "image:put": async ({ workspaceId, source, confirmLarge }) => {
+      const images = core.images(workspaceId);
+      const none = { stored: false, ref: null, info: null, warning: null, token: null };
+      if (source.kind === "bytes") {
+        const result = images.put(
+          { bytes: Buffer.from(source.bytes) },
+          { confirmLarge: confirmLarge === true },
+        );
+        return result.stored
+          ? { ...none, cancelled: false, stored: true, ref: result.ref, info: result.info }
+          : { ...none, cancelled: false, info: result.info, warning: result.warning };
+      }
+      let path: string | null;
+      if (source.kind === "dialog") {
+        path = (await ui.pickImage?.()) ?? null;
+        if (path === null) return { ...none, cancelled: true };
+      } else {
+        path = pendingLarge.get(source.token) ?? null;
+        pendingLarge.delete(source.token);
+        if (path === null) {
+          throw new AppError(
+            "FILE_MISSING",
+            "A escolha do arquivo expirou. Escolha a imagem de novo.",
+          );
+        }
+      }
+      const result = images.put({ path }, { confirmLarge: source.kind === "confirm" });
+      if (result.stored) {
+        return { ...none, cancelled: false, stored: true, ref: result.ref, info: result.info };
+      }
+      tokens += 1;
+      const token = `large-${tokens}`;
+      pendingLarge.set(token, path);
+      if (pendingLarge.size > PENDING_LARGE_MAX) {
+        pendingLarge.delete(pendingLarge.keys().next().value as string);
+      }
+      return { ...none, cancelled: false, info: result.info, warning: result.warning, token };
+    },
+    "image:get": ({ workspaceId, hash }) => core.images(workspaceId).get(hash),
+    "image:stats": ({ workspaceId }) => core.images(workspaceId).stats(),
+    "image:sweep": ({ workspaceId, now }) =>
+      core.images(workspaceId).sweep(now === true ? { graceMs: 0 } : {}),
     "today:summary": ({ workspaceId }) => ({
       ...todaySummary(core.registry.open(workspaceId)),
       pendingFeedback: core.practice(workspaceId).pendingCount(),
@@ -209,10 +260,11 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "review:approve": ({ workspaceId, ids }) => core.review(workspaceId).review(ids, []),
     "review:discard": ({ workspaceId, ids }) => core.review(workspaceId).review([], ids),
     "review:approveAll": ({ workspaceId, runId }) => core.review(workspaceId).approveAll(runId),
-    "review:edit": ({ workspaceId, itemId, front, back, topic, options, answer }) =>
+    "review:edit": ({ workspaceId, itemId, front, back, topic, options, answer, images }) =>
       core.review(workspaceId).edit(itemId, front, back, topic, {
         ...(options !== undefined ? { options } : {}),
         ...(answer !== undefined ? { answer } : {}),
+        ...(images !== undefined ? { images } : {}),
       }),
     "items:create": ({ workspaceId, draft, topic, source, origin }) =>
       core.authoring(workspaceId).create({
@@ -239,8 +291,11 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     },
     "import:previewRows": ({ workspaceId, token, status, offset, limit }) =>
       core.importing.rows(workspaceId, token, status, offset, limit),
-    "import:commit": ({ workspaceId, token, includeDuplicates }) =>
-      core.importing.commit(workspaceId, token, includeDuplicates),
+    "import:commit": async ({ workspaceId, token, includeDuplicates }) => {
+      // The pictures of a .zip are read and stored first; the items are then stored all or none.
+      await core.importing.prepare(workspaceId, token, includeDuplicates);
+      return core.importing.commit(workspaceId, token, includeDuplicates);
+    },
     "import:discard": ({ workspaceId, token }) => {
       core.importing.discard(workspaceId, token);
       return {};
@@ -293,6 +348,7 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
           isNew: next.schedule === null,
           front: sides.front,
           back: sides.back,
+          images: next.item.images,
           previews: {
             "1": previews[Rating.AGAIN],
             "2": previews[Rating.HARD],
@@ -499,6 +555,12 @@ export function createHandlers(core: Core, routes: RouteStore, ui: UiBridge): Ha
     "reader:info": ({ workspaceId, materialId }) => core.reader(workspaceId).info(materialId),
     "reader:page": ({ workspaceId, materialId, page, scale }) =>
       core.reader(workspaceId).page(materialId, page, scale),
+    "reader:cropRegion": async ({ workspaceId, materialId, page, rect }) => {
+      const bytes = await core.reader(workspaceId).region(materialId, page, rect);
+      const stored = core.images(workspaceId).put({ bytes }, { confirmLarge: true });
+      if (!stored.stored) throw new AppError("INTERNAL_ERROR", "A imagem não pôde ser guardada.");
+      return { ref: stored.ref, info: stored.info };
+    },
     "reader:text": ({ workspaceId, materialId, page }) =>
       core.reader(workspaceId).text(materialId, page),
     "reader:search": ({ workspaceId, materialId, query }) =>

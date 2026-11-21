@@ -16,6 +16,7 @@ import { MixControl, useMix } from "../components/MixControl.js";
 import { StudyTabs } from "../components/StudyTabs.js";
 import { sectionPath, useRouter } from "../router.js";
 import { ItemActions } from "../components/ItemActions.js";
+import { ItemImageList } from "../components/ItemImageList.js";
 
 type Next = OutputOf<"study:next">;
 
@@ -227,6 +228,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
           </p>
           <div className="card-front" aria-label="Frente">
             <Pieces pieces={next.card.front} />
+            <ItemImageList workspaceId={workspaceId} images={next.card.images?.front} />
           </div>
           {!revealed && (
             <p>
@@ -240,6 +242,7 @@ export function StudyPage({ workspaceId }: { workspaceId: number }) {
               <hr />
               <div className="card-back" aria-label="Verso">
                 <Pieces pieces={next.card.back} />
+                <ItemImageList workspaceId={workspaceId} images={next.card.images?.back} />
               </div>
               <p className="muted">
                 {T.source}: {next.card.sourceTitle}

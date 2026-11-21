@@ -5,6 +5,8 @@
  */
 
 import type { FieldError } from "../contracts/errors.js";
+import { cleanImages, textOrImage } from "../images/refs.js";
+import type { ItemImages } from "../images/refs.js";
 import { payloadProblem } from "../generation/cards.js";
 import { CERTO_ERRADO_OPTIONS } from "../generation/questions.js";
 import type { CardPayload, CardSubtype, QuestionPayload } from "../generation/schemas.js";
@@ -20,6 +22,7 @@ export interface CardDraft {
   subtype: CardSubtype;
   front: string;
   back: string;
+  images?: ItemImages | undefined;
 }
 
 export interface QuestionDraft {
@@ -29,6 +32,7 @@ export interface QuestionDraft {
   options: { key: string; text: string; why: string }[];
   answer: string;
   explanation: string;
+  images?: ItemImages | undefined;
 }
 
 export type ItemDraft = CardDraft | QuestionDraft;
@@ -42,7 +46,11 @@ export function draftProblem(draft: ItemDraft): FieldError | null {
 }
 
 function cardProblem(draft: CardDraft): FieldError | null {
-  const problem = payloadProblem(draft.subtype, draft.front, draft.back);
+  const problem = payloadProblem(
+    draft.subtype,
+    textOrImage(draft.front, draft.images, "front"),
+    textOrImage(draft.back, draft.images, "back"),
+  );
   if (problem === null) return null;
   const message = PROBLEM_MESSAGES[problem] ?? "Texto inválido.";
   return { field: FRONT_PROBLEMS.has(problem) ? "front" : "back", message };
@@ -50,7 +58,7 @@ function cardProblem(draft: CardDraft): FieldError | null {
 
 function questionProblem(draft: QuestionDraft): FieldError | null {
   const fail = (field: string, message: string): FieldError => ({ field, message });
-  if (!draft.statement.trim())
+  if (!textOrImage(draft.statement, draft.images, "statement").trim())
     return fail("statement", "O enunciado da questão não pode ficar vazio.");
   if (draft.subtype === "certo_errado") {
     if (draft.options.length > 0) return fail("options", "Certo ou errado não tem alternativas.");
@@ -65,13 +73,14 @@ function questionProblem(draft: QuestionDraft): FieldError | null {
     }
     const seen = new Set<string>();
     for (const [index, option] of options.entries()) {
-      if (!option.text.trim()) {
+      if (!textOrImage(option.text, draft.images, `option.${option.key}`).trim()) {
         return fail(`options.${index}.text`, "O texto da alternativa não pode ficar vazio.");
       }
       if (!option.why.trim()) {
         return fail(`options.${index}.why`, "Informe o motivo desta alternativa.");
       }
-      const key = normalize(option.text).text;
+      const pictures = JSON.stringify(draft.images?.[`option.${option.key}` as "option.A"] ?? []);
+      const key = `${normalize(option.text).text}|${pictures === "[]" ? "" : pictures}`;
       if (seen.has(key)) {
         return fail(`options.${index}.text`, "Duas alternativas não podem ser iguais.");
       }
@@ -81,13 +90,19 @@ function questionProblem(draft: QuestionDraft): FieldError | null {
       return fail("answer", "Escolha uma das alternativas como correta.");
     }
   }
-  if (!draft.explanation.trim()) return fail("explanation", "A explicação não pode ficar vazia.");
+  if (!textOrImage(draft.explanation, draft.images, "explanation").trim()) {
+    return fail("explanation", "A explicação não pode ficar vazia.");
+  }
   return null;
 }
 
 /** What is stored in `item.payload_json` for a draft that passed `draftProblem`. */
 export function payloadOf(draft: ItemDraft): CardPayload | QuestionPayload {
-  if (draft.kind === "card") return { front: draft.front.trim(), back: draft.back.trim() };
+  const images = cleanImages(draft.images);
+  const extra = images ? { images } : {};
+  if (draft.kind === "card") {
+    return { front: draft.front.trim(), back: draft.back.trim(), ...extra };
+  }
   return {
     statement: draft.statement.trim(),
     options:
@@ -96,5 +111,6 @@ export function payloadOf(draft: ItemDraft): CardPayload | QuestionPayload {
         : draft.options.map((o) => ({ key: o.key, text: o.text.trim(), why: o.why.trim() })),
     answer: draft.answer,
     explanation: draft.explanation.trim(),
+    ...extra,
   };
 }

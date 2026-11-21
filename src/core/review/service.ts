@@ -4,6 +4,9 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { cleanImages, hasImages, hashesOf, textOrImage } from "../images/refs.js";
+import { ImageService } from "../images/service.js";
+import type { ItemImages } from "../images/refs.js";
 import { and, asc, count, eq, sql } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { isoNow, systemClock } from "../clock.js";
@@ -45,6 +48,8 @@ export interface ItemInfo {
   approvedAt: string | null;
   options: { key: string; text: string; why: string }[];
   answer: string | null;
+  /** The images of each field, in order; empty when the item has none. */
+  images: ItemImages;
 }
 
 /** One item of the catalog: enough to find, filter and manage it, with where it came from. */
@@ -129,6 +134,7 @@ export class ReviewService {
       approvedAt: row.approvedAt,
       options: isQuestion ? ((payload["options"] as ItemInfo["options"] | undefined) ?? []) : [],
       answer: isQuestion ? String(payload["answer"] ?? "") : null,
+      images: (payload["images"] as ItemImages | undefined) ?? {},
     };
   }
 
@@ -257,7 +263,12 @@ export class ReviewService {
     front: string,
     back: string,
     topicName: string | null,
-    choices?: { options?: { key: string; text: string; why: string }[]; answer?: string },
+    choices?: {
+      options?: { key: string; text: string; why: string }[];
+      answer?: string;
+      /** Replaces the pictures of the whole item when given; omitted keeps the current ones. */
+      images?: ItemImages;
+    },
   ): ItemInfo {
     const row = this.db.select().from(item).where(eq(item.id, itemId)).get();
     if (!row) throw new AppError("ITEM_NOT_FOUND", `Não existe item com id ${itemId}.`);
@@ -265,11 +276,29 @@ export class ReviewService {
       throw new AppError("VALIDATION_ERROR", "Itens descartados não podem ser editados.");
     }
     const isQuestion = row.kind === "question";
+    const old = JSON.parse(row.payloadJson) as Record<string, unknown>;
+    const images =
+      choices?.images !== undefined
+        ? cleanImages(choices.images)
+        : (old["images"] as ItemImages | undefined);
+    if (choices?.images !== undefined && images) {
+      const gone = new ImageService(this.workspace, this.clock).missing(hashesOf(images));
+      if (gone.length > 0) {
+        throw new AppError("IMAGE_NOT_FOUND", "A imagem não foi encontrada. Anexe-a de novo.");
+      }
+    }
+    const [frontKey, backKey] = isQuestion ? ["statement", "explanation"] : ["front", "back"];
+    const frontText = textOrImage(front, images, frontKey as string);
+    const backText = textOrImage(back, images, backKey as string);
     let problem: string | null;
     if (isQuestion) {
-      problem = !front.trim() ? "empty_statement" : !back.trim() ? "empty_explanation" : null;
+      problem = !frontText.trim()
+        ? "empty_statement"
+        : !backText.trim()
+          ? "empty_explanation"
+          : null;
     } else {
-      problem = payloadProblem(row.subtype, front, back);
+      problem = payloadProblem(row.subtype, frontText, backText);
     }
     if (problem !== null) {
       const message = PROBLEM_MESSAGES[problem] ?? "Texto inválido.";
@@ -277,14 +306,16 @@ export class ReviewService {
         { field: FRONT_PROBLEMS.has(problem) ? "front" : "back", message },
       ]);
     }
-    const [frontKey, backKey] = isQuestion ? ["statement", "explanation"] : ["front", "back"];
-    const old = JSON.parse(row.payloadJson) as Record<string, unknown>;
     const next: Record<string, unknown> = {
       ...old,
       [frontKey as string]: front.trim(),
       [backKey as string]: back.trim(),
     };
-    if (isQuestion && choices) this.applyChoices(row.subtype, old, next, choices);
+    if (choices?.images !== undefined) {
+      if (images) next["images"] = images;
+      else delete next["images"];
+    }
+    if (isQuestion && choices) this.applyChoices(row.subtype, old, next, choices, images);
     const changed = JSON.stringify(next) !== JSON.stringify(old);
     this.workspace.connection.sqlite.transaction(() => {
       this.db
@@ -296,6 +327,8 @@ export class ReviewService {
         .where(eq(item.id, itemId))
         .run();
     })();
+    // Pictures taken out of the item (or replaced) may now be unused; recent ones are kept.
+    if (choices?.images !== undefined) new ImageService(this.workspace, this.clock).sweep();
     return this.get(itemId);
   }
 
@@ -305,6 +338,7 @@ export class ReviewService {
     old: Record<string, unknown>,
     next: Record<string, unknown>,
     choices: { options?: { key: string; text: string; why: string }[]; answer?: string },
+    images: ItemImages | undefined,
   ): void {
     const fail = (field: string, message: string): never => {
       throw new AppError("VALIDATION_ERROR", message, [{ field, message }]);
@@ -320,11 +354,14 @@ export class ReviewService {
       }
       const seen = new Set<string>();
       for (const option of given) {
-        if (!option.text.trim())
+        if (!option.text.trim() && !hasImages(images, `option.${option.key}`))
           fail(`option:${option.key}`, "O texto da alternativa não pode ficar vazio.");
         if (!option.why.trim())
           fail(`option:${option.key}`, "A justificativa não pode ficar vazia.");
-        const text = option.text.trim().toLowerCase();
+        const pictures = JSON.stringify(
+          (images as Record<string, unknown> | undefined)?.[`option.${option.key}`] ?? [],
+        );
+        const text = `${option.text.trim().toLowerCase()}|${pictures === "[]" ? "" : pictures}`;
         if (seen.has(text)) fail(`option:${option.key}`, "Duas alternativas não podem ser iguais.");
         seen.add(text);
       }

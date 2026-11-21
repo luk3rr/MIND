@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { imageHash, imageRef, itemImages } from "../images/refs.js";
 import type { ChannelName } from "./channel-names.js";
 
 /** Bumped whenever a channel changes in an incompatible way; checked at startup. */
@@ -210,6 +211,8 @@ const itemInfo = z.object({
   approvedAt: z.string().nullable(),
   options: z.array(z.object({ key: z.string(), text: z.string(), why: z.string() })),
   answer: z.string().nullable(),
+  /** The images of each field, in order; absent for an item with none. */
+  images: itemImages.optional(),
 });
 
 /** A question as the window sees it before answering: no answer key, comment or quote. */
@@ -219,6 +222,8 @@ const questionView = z.object({
   subtype: z.string(),
   topic: z.string().nullable(),
   options: z.array(z.object({ key: z.string(), text: z.string() })),
+  /** Only the pictures of the statement and of the options: the comment's stay hidden. */
+  images: itemImages.optional(),
 });
 
 /** What is revealed about an answer once its feedback is released. */
@@ -237,6 +242,7 @@ const feedback = z.object({
   sourcePage: z.number().int().nullable(),
   quote: z.string(),
   pdfSource,
+  images: itemImages.optional(),
 });
 
 /** A card written by hand. Emptiness is checked by the service so each field gets its own message. */
@@ -246,6 +252,7 @@ const cardDraft = z
     subtype: z.enum(["qa", "cloze", "compare", "true_false"]),
     front: z.string().max(5000),
     back: z.string().max(5000),
+    images: itemImages.optional(),
   })
   .strict();
 
@@ -273,6 +280,7 @@ const questionDraft = z
     /** "C" or "E" for certo_errado, an alternative key otherwise. */
     answer: z.string().max(2),
     explanation: z.string().max(2000),
+    images: itemImages.optional(),
   })
   .strict();
 
@@ -301,6 +309,8 @@ const previewRow = z.object({
   topicIsNew: z.boolean(),
   /** Why the row is an error or a duplicate, in Portuguese; null for a valid row. */
   problem: z.string().nullable(),
+  /** What was left out of a row that is imported anyway, such as a picture the zip lacks. */
+  warning: z.string().nullable().optional(),
 });
 
 const previewTotals = z.object({
@@ -308,6 +318,10 @@ const previewTotals = z.object({
   valid: z.number().int(),
   errors: z.number().int(),
   duplicates: z.number().int(),
+  /** Pictures of a `.zip` that the valid rows use; 0 for a plain spreadsheet. */
+  images: z.number().int().optional(),
+  /** Pictures a row names that the `.zip` does not have or that cannot be used. */
+  missingImages: z.number().int().optional(),
 });
 
 /** A passage selected in the reader and what to write from it; the model decides what is left out. */
@@ -427,6 +441,7 @@ const topicStat = z.object({
 const errorEntry = z.object({
   itemId: z.number().int(),
   front: z.string(),
+  imageCount: z.number().int().optional(),
   topic: z.string().nullable(),
   sourceTitle: z.string(),
   sourcePage: z.number().int().nullable(),
@@ -540,6 +555,14 @@ const box = z.object({
   y: z.number(),
   width: z.number(),
   height: z.number(),
+});
+
+const imageInfo = z.object({
+  mime: z.string(),
+  bytes: z.number().int(),
+  width: z.number().int(),
+  height: z.number().int(),
+  animated: z.boolean(),
 });
 
 const readerTarget = { workspaceId, materialId: z.number().int().positive() };
@@ -766,6 +789,8 @@ export const channels = {
           .max(10)
           .optional(),
         answer: z.string().max(2).optional(),
+        /** The pictures of the whole item; sent only when they changed. */
+        images: itemImages.optional(),
       })
       .strict(),
     output: itemInfo,
@@ -880,6 +905,8 @@ export const channels = {
       skippedDuplicates: z.number().int(),
       skippedErrors: z.number().int(),
       topicsCreated: z.number().int(),
+      /** Pictures stored from a `.zip`. */
+      images: z.number().int().optional(),
     }),
   },
   "import:discard": {
@@ -984,6 +1011,7 @@ export const channels = {
           isNew: z.boolean(),
           front: z.array(piece),
           back: z.array(piece),
+          images: itemImages.optional(),
           previews: z.object({
             "1": z.string(),
             "2": z.string(),
@@ -1419,6 +1447,82 @@ export const channels = {
   "time:deleteSession": {
     input: z.object({ workspaceId, id: z.number().int().positive() }).strict(),
     output: z.object({}).strict(),
+  },
+  "image:put": {
+    input: z
+      .object({
+        workspaceId,
+        /**
+         * `bytes`: a picture pasted, dropped or read by the window. `dialog`: the main process
+         * opens the native file chooser and reads the file itself. `confirm`: stores the large
+         * file that a previous `dialog` call warned about, by the token it returned.
+         */
+        source: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("bytes"), bytes: z.instanceof(Uint8Array) }).strict(),
+          z.object({ kind: z.literal("dialog") }).strict(),
+          z.object({ kind: z.literal("confirm"), token: z.string().min(1).max(100) }).strict(),
+        ]),
+        /** Store a file of 20 MB or more that the person accepted (only for `bytes`). */
+        confirmLarge: z.boolean().optional(),
+      })
+      .strict(),
+    output: z.object({
+      cancelled: z.boolean(),
+      stored: z.boolean(),
+      ref: imageRef.nullable(),
+      info: imageInfo.nullable(),
+      /** Set when nothing was stored because the file is large and needs a yes. */
+      warning: z.literal("LARGE_FILE").nullable(),
+      /** For a large file chosen in the dialog: send it back in `confirm` to store it. */
+      token: z.string().nullable(),
+    }),
+  },
+  "image:get": {
+    input: z.object({ workspaceId, hash: imageHash }).strict(),
+    output: z.object({
+      dataUrl: z.string().startsWith("data:image/"),
+      mime: z.string(),
+      bytes: z.number().int(),
+      width: z.number().int(),
+      height: z.number().int(),
+    }),
+  },
+  "reader:cropRegion": {
+    input: z
+      .object({
+        ...readerTarget,
+        page: z.number().int().min(1),
+        /** A rectangle in fractions of the page, from its top left corner. */
+        rect: z
+          .object({
+            x: z.number().min(0).max(1),
+            y: z.number().min(0).max(1),
+            width: z.number().gt(0).max(1),
+            height: z.number().gt(0).max(1),
+          })
+          .strict(),
+      })
+      .strict(),
+    output: z.object({ ref: imageRef, info: imageInfo }),
+  },
+  "image:stats": {
+    input: z.object({ workspaceId }).strict(),
+    output: z.object({
+      count: z.number().int(),
+      bytes: z.number().int(),
+      unusedCount: z.number().int(),
+      unusedBytes: z.number().int(),
+    }),
+  },
+  "image:sweep": {
+    input: z
+      .object({
+        workspaceId,
+        /** True removes every unused picture now; otherwise the recent ones are kept. */
+        now: z.boolean().optional(),
+      })
+      .strict(),
+    output: z.object({ removed: z.number().int(), freedBytes: z.number().int() }),
   },
   "reader:info": {
     input: z.object(readerTarget).strict(),

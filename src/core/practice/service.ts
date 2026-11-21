@@ -4,6 +4,8 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { beforeAnswer } from "../images/refs.js";
+import type { ItemImages } from "../images/refs.js";
 import { and, asc, count, eq, inArray, isNotNull, isNull, lte } from "drizzle-orm";
 import { AppError } from "../contracts/errors.js";
 import { systemClock } from "../clock.js";
@@ -55,6 +57,8 @@ export interface QuestionView {
   subtype: string;
   topic: string | null;
   options: { key: string; text: string }[];
+  /** The pictures of the statement and of the options; never those of the explanation. */
+  images?: ItemImages;
 }
 
 /** What is revealed about an answer once its feedback is released. */
@@ -73,6 +77,8 @@ export interface Feedback {
   sourcePage: number | null;
   quote: string;
   pdfSource: ItemInfo["pdfSource"];
+  /** All the pictures of the question: they are shown with the feedback, never before. */
+  images?: ItemImages;
 }
 
 /** The part of a question the window may see before it is answered. */
@@ -83,6 +89,7 @@ export function questionView(info: ItemInfo): QuestionView {
     subtype: info.subtype,
     topic: info.topic,
     options: info.options.map((option) => ({ key: option.key, text: option.text })),
+    ...(beforeAnswer(info.images) ? { images: beforeAnswer(info.images) as ItemImages } : {}),
   };
 }
 
@@ -353,6 +360,7 @@ export class PracticeService {
         sourcePage: info.sourcePage,
         quote: info.quote,
         pdfSource: info.pdfSource,
+        ...(info.images && Object.keys(info.images).length > 0 ? { images: info.images } : {}),
       };
     });
   }

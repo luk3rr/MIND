@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import type { ItemImages } from "../images/refs.js";
 import { z } from "zod";
 
 export const CARD_SUBTYPES = ["qa", "cloze", "compare", "true_false"] as const;
@@ -29,6 +30,8 @@ export const cardBatchSchema = z.object({ cards: z.array(cardOutSchema) });
 export interface CardPayload {
   front: string;
   back: string;
+  /** The pictures of each field; absent for a card with none. */
+  images?: ItemImages;
 }
 
 export type QuestionSubtype = "certo_errado" | "multiple_choice";
@@ -105,6 +108,8 @@ export interface QuestionPayload {
   options: OptionOut[];
   answer: string;
   explanation: string;
+  /** The pictures of each field; absent for a question with none. */
+  images?: ItemImages;
   /** Calculation questions: the expression the app evaluated to confirm the answer. */
   calculation?: { expression: string; decimals: number; unit: string | null; result: number };
 }

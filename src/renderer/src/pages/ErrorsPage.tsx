@@ -79,6 +79,9 @@ export function ErrorsPage({ workspaceId }: { workspaceId: number }) {
               <li key={entry.itemId} className="card">
                 <p style={{ whiteSpace: "pre-wrap" }}>
                   <strong>{entry.front}</strong>
+                  {(entry.imageCount ?? 0) > 0 && (
+                    <span className="pill"> {T.imageCount(entry.imageCount ?? 0)}</span>
+                  )}
                 </p>
                 <p className="muted">
                   {entry.fromQuestion ? T.errorFromQuestion : T.cards}

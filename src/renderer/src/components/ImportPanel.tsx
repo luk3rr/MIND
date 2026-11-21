@@ -188,6 +188,7 @@ export function ImportPanel({
           <p role="status" className="card" style={{ margin: 0 }}>
             {T.importDone(result.imported, result.skippedDuplicates, result.skippedErrors)}
             {result.topicsCreated > 0 && ` ${T.importTopicsCreated(result.topicsCreated)}`}
+            {(result.images ?? 0) > 0 && ` ${T.importImagesStored(result.images ?? 0)}`}
           </p>
           <table aria-label={T.importDoneTitle}>
             <thead>
@@ -236,6 +237,14 @@ export function ImportPanel({
             <span className="pill">{T.importValid(totals.valid)}</span>{" "}
             <span className="pill">{T.importErrors(totals.errors)}</span>{" "}
             <span className="pill">{T.importDuplicates(totals.duplicates)}</span>
+            {totals.images !== undefined && (
+              <>
+                {" "}
+                <span className="pill">
+                  {T.importImages(totals.images, totals.missingImages ?? 0)}
+                </span>
+              </>
+            )}
           </p>
           <div className="actions" role="group" aria-label={T.importFilterLabel}>
             {filters.map(([value, label]) => (
@@ -280,6 +289,11 @@ export function ImportPanel({
                     <td>
                       <span className="pill">{STATUS_LABEL[row.status]}</span>
                       {row.problem && <div className="muted">{row.problem}</div>}
+                      {row.warning && (
+                        <div className="muted" role="note">
+                          {row.warning}
+                        </div>
+                      )}
                     </td>
                     <td>
                       {row.status === "valid" && T.importWillImport}
@@ -344,6 +358,7 @@ export function ImportPanel({
       <div className="stack">
         <Steps current={0} />
         <p className="muted">{T.importHint}</p>
+        <p className="muted">{T.importZipHint}</p>
         <fieldset className="field">
           <legend>{T.importKindLabel}</legend>
           <div className="row">

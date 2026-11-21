@@ -756,7 +756,14 @@ export const T = {
   importKindLabel: "O que importar",
   importChoose: "Escolher arquivo…",
   importDrop:
-    "Escolha um arquivo .csv ou .xlsx (até 5.000 linhas e 10 MB). O arquivo é lido neste computador.",
+    "Escolha um arquivo .csv ou .xlsx (até 5.000 linhas e 10 MB), ou um .zip com a planilha e as imagens. O arquivo é lido neste computador.",
+  importZipHint:
+    "Para levar imagens, ponha a planilha e os arquivos de imagem num .zip e preencha as colunas imagem_frente e imagem_verso (cartões) ou imagem_enunciado, imagem_a a imagem_e e imagem_explicacao (questões) com o nome do arquivo; vários nomes se separam por ponto e vírgula.",
+  importImages: (images: number, missing: number) =>
+    missing > 0
+      ? `${images} imagem(ns) ligada(s) · ${missing} faltando`
+      : `${images} imagem(ns) ligada(s)`,
+  importImagesStored: (count: number) => `${count} imagem(ns) guardada(s) com os itens.`,
   importReading: "Lendo o arquivo…",
   importFileSummary: (name: string, rows: number) =>
     `${name} · ${rows.toLocaleString("pt-BR")} linha(s)`,
@@ -972,4 +979,77 @@ export const T = {
     "Os cards do caderno entram na sua fila de estudo. As questões que você errou voltam na aba Questões, para você tentar de novo.",
   errorsRedoQuestions: (count: number) => `Refazer questões que errei (${count})`,
   errorsStudyCards: "Estudar os cards do caderno",
+  imageAdd: "＋ Imagem",
+  imageAddHint: "ou cole (Ctrl+V) ou arraste um arquivo aqui",
+  imageDrop: "Solte a imagem aqui",
+  imageRemove: (position: number) => `Remover a imagem ${position}`,
+  imageListLabel: "Imagens",
+  imageDefaultAlt: "Imagem do item",
+  imageLoading: "Carregando a imagem…",
+  imageMissing: "Imagem indisponível: o arquivo não foi encontrado.",
+  imageLargeWarning: (megabytes: number) =>
+    `Arquivo de ${megabytes} MB. Vai ocupar espaço no workspace e no backup.`,
+  imageLargeConfirm: "Anexar mesmo assim",
+  imageLargeCancel: "Cancelar",
+  imageNotAnImage: "Este arquivo não é uma imagem.",
+  imageSize: (width: number, height: number) => `${width}×${height}`,
+  imageAltLabel: (position: number) => `Texto alternativo da imagem ${position}`,
+  imageAltPlaceholder: "Texto alternativo ou legenda (opcional)",
+  imageMoveUp: (position: number) => `Mover a imagem ${position} para cima`,
+  imageMoveDown: (position: number) => `Mover a imagem ${position} para baixo`,
+  imageReplace: "Substituir",
+  cropMode: "Recortar figura",
+  cropLayer: "Arraste sobre a página para recortar uma figura",
+  cropHelp: "Arraste sobre a página para escolher a região da figura.",
+  cropTitle: (page: number) => `Recorte da página ${page}`,
+  cropNewCard: "Novo card…",
+  cropNewQuestion: "Nova questão…",
+  cropAttach: "Anexar a um item…",
+  cropHint: "A região é guardada em alta resolução (200 dpi).",
+  attachTitle: "Anexar a um item",
+  attachItem: "Item",
+  attachPick: "Escolha um item",
+  attachField: "Campo",
+  attachNoText: "(só imagem)",
+  attachNoItems: "Ainda não há itens para receber a imagem.",
+  attachConfirm: "Anexar",
+  attachFieldOption: (key: string) => `Alternativa ${key}`,
+  attachDone: "Imagem anexada ao item.",
+  imageStorageTitle: "Armazenamento de imagens",
+  imageStorageCount: (count: number) => (count === 1 ? "em 1 imagem" : `em ${count} imagens`),
+  imageStorageUnused: (count: number, size: string) =>
+    count === 1
+      ? `1 imagem não é usada por nenhum item (${size}).`
+      : `${count} imagens não são usadas por nenhum item (${size}).`,
+  imageStorageNoneUnused: "Nenhuma imagem sem uso.",
+  imageStorageClear: "Limpar agora",
+  imageStorageConfirm:
+    "As imagens que nenhum item usa serão apagadas do computador, inclusive as que você acabou de anexar a um item ainda não salvo. Isso não pode ser desfeito.",
+  imageStorageCleared: (count: number, size: string) =>
+    count === 1 ? `1 imagem removida (${size}).` : `${count} imagens removidas (${size}).`,
+  imageStorageHint:
+    "As imagens ficam na pasta do workspace e entram no backup (.zip). Itens descartados guardam as suas imagens para poder voltar.",
+  imageEdit: (position: number) => `Editar a imagem ${position}`,
+  imageEditShort: "Editar",
+  imageEditorTitle: "Ajustar imagem",
+  imageEditorPreview: "Prévia da imagem ajustada",
+  imageEditorFailed: "Não foi possível ajustar esta imagem.",
+  imageEditorTurnLeft: "↺ Girar à esquerda",
+  imageEditorTurnRight: "↻ Girar à direita",
+  imageEditorReset: "Restaurar",
+  imageEditorUse: "Usar imagem",
+  imageEditorGif: "Só o primeiro quadro de um GIF animado é usado ao cortar ou girar.",
+  imageEditorOriginalKept: "O arquivo original é guardado; o ajuste vale só para este item.",
+  imageEditorCut: {
+    left: "Cortar à esquerda",
+    top: "Cortar em cima",
+    right: "Cortar à direita",
+    bottom: "Cortar embaixo",
+  },
+  imageZoom: (alt: string) => `Ampliar imagem: ${alt}`,
+  imageZoomClose: "Fechar",
+  imageCount: (count: number) => (count === 1 ? "1 imagem" : `${count} imagens`),
+  imageRemoveShort: "Remover",
+  imageAnswerWarning:
+    "Dica: evite que a imagem traga a resposta escrita (legenda dentro da figura).",
 } as const;

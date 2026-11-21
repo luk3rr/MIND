@@ -43,6 +43,7 @@ describe("migrations", () => {
         "chunk_embedding",
         "chunk_fts",
         "generation_run",
+        "image",
         "item",
         "job",
         "material",
@@ -76,7 +77,32 @@ describe("migrations", () => {
       "0005_item_runs_by_material.sql",
       "0006_run_out_of_scope.sql",
       "0007_material_analysis.sql",
+      "0008_item_images.sql",
     ]);
+  });
+
+  it("adds the image table to a populated 0.9.0 workspace without touching its items (NFR-5)", () => {
+    const connection = openDatabase(join(tempDir(), "workspace.db"), {});
+    const { sqlite } = connection;
+    applyMigrations(sqlite, workspaceMigrations.slice(0, 8));
+    sqlite
+      .prepare(
+        "INSERT INTO generation_run (kind, subtype, model, requested, created_at) VALUES ('card','qa','m',1,'x')",
+      )
+      .run();
+    sqlite
+      .prepare(
+        "INSERT INTO item (run_id, kind, subtype, payload_json, created_at) VALUES (1,'card','qa','{\"front\":\"a\",\"back\":\"b\"}','x')",
+      )
+      .run();
+
+    applyMigrations(sqlite, workspaceMigrations);
+
+    expect(sqlite.prepare("SELECT payload_json FROM item").all()).toEqual([
+      { payload_json: '{"front":"a","back":"b"}' },
+    ]);
+    expect(sqlite.prepare("SELECT COUNT(*) AS n FROM image").get()).toEqual({ n: 0 });
+    connection.close();
   });
 
   it("migrates a database from before the study practices without losing answers (NFR-1)", () => {

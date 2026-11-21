@@ -7,7 +7,8 @@
 import { useEffect, useId, useRef } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 
-const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Modal dialog: focus goes inside, Tab stays inside, Esc closes and focus returns. */
 export function Dialog({

@@ -201,6 +201,52 @@ export class PdfReader {
     }
   }
 
+  /**
+   * A rectangle of a page as a PNG at `dpi`. `rect` is in fractions of the page (0 to 1, from the
+   * top left), so it does not depend on the scale the window drew the page at. The resolution is
+   * lowered when the picture would pass `MAX_PIXELS`.
+   */
+  renderRegion(
+    path: string,
+    number: number,
+    rect: { x: number; y: number; width: number; height: number },
+    dpi: number,
+  ): RenderedPage {
+    const page = this.page(path, number);
+    const [left, top, right, bottom] = page.getBounds();
+    const pageWidth = right - left;
+    const pageHeight = bottom - top;
+    const x0 = Math.min(Math.max(rect.x, 0), 1);
+    const y0 = Math.min(Math.max(rect.y, 0), 1);
+    const x1 = Math.min(Math.max(rect.x + rect.width, 0), 1);
+    const y1 = Math.min(Math.max(rect.y + rect.height, 0), 1);
+    const regionArea = Math.max((x1 - x0) * pageWidth * (y1 - y0) * pageHeight, 1);
+    const scale = Math.min(dpi / 72, Math.sqrt(MAX_PIXELS / regionArea));
+    const box: [number, number, number, number] = [
+      Math.floor(x0 * pageWidth * scale),
+      Math.floor(y0 * pageHeight * scale),
+      Math.max(Math.ceil(x1 * pageWidth * scale), Math.floor(x0 * pageWidth * scale) + 1),
+      Math.max(Math.ceil(y1 * pageHeight * scale), Math.floor(y0 * pageHeight * scale) + 1),
+    ];
+    const pixmap = new mupdf.Pixmap(mupdf.ColorSpace.DeviceRGB, box, false);
+    try {
+      pixmap.clear(255);
+      const device = new mupdf.DrawDevice(
+        mupdf.Matrix.concat(mupdf.Matrix.translate(-left, -top), mupdf.Matrix.scale(scale, scale)),
+        pixmap,
+      );
+      try {
+        page.run(device, mupdf.Matrix.identity);
+        device.close();
+      } finally {
+        device.destroy();
+      }
+      return { png: pixmap.asPNG(), width: pixmap.getWidth(), height: pixmap.getHeight() };
+    } finally {
+      pixmap.destroy();
+    }
+  }
+
   /** The text lines of a page with their boxes, for selection and copy. */
   text(path: string, number: number): { width: number; height: number; lines: TextLine[] } {
     const page = this.page(path, number);

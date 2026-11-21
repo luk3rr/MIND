@@ -4,6 +4,7 @@
  * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
  */
 
+import { imagesFor } from "../../../core/images/refs.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OutputOf } from "../../../core/contracts/index.js";
 import { FilterSelect, parseFilter, usePersistedFilter } from "../components/FilterSelect.js";
@@ -16,6 +17,7 @@ import { MixControl, useMix } from "../components/MixControl.js";
 import { StudyTabs } from "../components/StudyTabs.js";
 import { useHotkeys, useInvoke } from "../hooks.js";
 import { MathText } from "../MathText.js";
+import { ItemImageList } from "../components/ItemImageList.js";
 import { T } from "../strings.js";
 import { useActivity } from "../time.js";
 
@@ -355,6 +357,7 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
               <MathText text={question.item.statement} />
             </strong>
           </p>
+          <ItemImageList workspaceId={workspaceId} images={question.item.images?.statement} />
           <div className="stack" role="radiogroup" aria-label={T.practiceTitle}>
             {question.item.options.map((option, position) => {
               const feedback = entry.feedback;
@@ -374,6 +377,11 @@ export function PracticePage({ workspaceId }: { workspaceId: number }) {
                   onClick={() => update(index, { chosen: option.key })}
                 >
                   <strong>{option.key}</strong> · <MathText text={option.text} />
+                  <ItemImageList
+                    workspaceId={workspaceId}
+                    images={imagesFor(question.item.images, `option.${option.key}`)}
+                    zoom={false}
+                  />
                   <span className="muted"> ({position + 1})</span>
                   {why && <span className="muted"> — {why}</span>}
                 </button>
